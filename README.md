@@ -1,17 +1,40 @@
-# Dwangsomhulp
+# nubeslist.nl
 
 Webapplicatie voor **dwangsom bij niet tijdig beslissen** (Algemene wet bestuursrecht,
 art. 4:17 e.v.). Bestaat uit twee delen:
 
-- **Aanvragersdeel** — landingspagina en een wizard die per soort aanvraag alleen de
+- **Aanvragersdeel.** Landingspagina en een wizard die per soort aanvraag alleen de
   relevante vragen stelt, de beslistermijn en de dwangsom berekent en het resultaat toont
   vóórdat de aanvrager zijn aanvraag indient.
-- **Beheerdeel** — afgeschermd overzicht van binnengekomen aanvragen met status, notities,
+- **Beheerdeel.** Afgeschermd overzicht van binnengekomen aanvragen met status, notities,
   herberekening, conceptbrieven en CSV-export.
 
 De dwangsomregeling is landelijk en identiek voor UWV (WIA, Wajong, WW, Ziektewet),
 gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Alleen de
 *beslistermijn* verschilt per zaaktype; die staat in een aparte catalogus.
+
+## Merk en vindbaarheid
+
+De naam is **nubeslist.nl**. Het merkteken is een klok met een vinkje erin: er loopt een
+termijn, en er hoort een beslissing te komen.
+
+```
+public/merk.svg        Het merkteken, ook het favicon (vector, dus overal scherp)
+public/icoon-180.png   Voor het beginscherm van een telefoon
+public/icoon-512.png   Grote variant
+public/deelkaart.png   Het beeld onder een gedeelde link in WhatsApp of LinkedIn
+scripts/maak-merk.mjs  Maakt die drie png's opnieuw uit dezelfde vormen
+```
+
+De png's worden getekend met afstandsfuncties en `node:zlib`, zonder enige afhankelijkheid.
+Verander je het merkteken, draai dan `node scripts/maak-merk.mjs` zodat de bestanden
+gelijk blijven lopen met `public/merk.svg`.
+
+Elke publieke pagina heeft een eigen `<title>`, `description`, `canonical` en og-tags. De
+beheerpagina staat bewust op `noindex, nofollow` en heeft geen deelkaart.
+
+De naam in de brieven en op de machtiging komt uit `BEDRIJF_NAAM`; staat die niet ingesteld,
+dan valt hij terug op nubeslist.nl.
 
 ## Starten
 
@@ -328,5 +351,5 @@ volledige lijst.
 
 ## Voorbehoud
 
-Dwangsomhulp is een particuliere dienstverlener, geen overheidsinstantie. De berekening is
+nubeslist.nl is een particuliere dienstverlener, geen overheidsinstantie. De berekening is
 een inschatting op basis van de ingevulde gegevens en is geen juridisch advies.

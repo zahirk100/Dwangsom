@@ -3,8 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Controleer uw brief — Dwangsomhulp</title>
-<meta name="description" content="Upload de brief van UWV, DUO of uw gemeente. Binnen een minuut weet u of wij voor u in actie kunnen komen.">
+<title>Controleer uw brief bij nubeslist.nl</title>
+<meta name="description" content="Upload de brief van UWV, DUO, de SVB of uw gemeente. Binnen een minuut weet u of er een dwangsom voor u openstaat van maximaal € 1.442.">
+<link rel="canonical" href="https://nubeslist.nl/aanvraag">
+<meta name="theme-color" content="#24509a">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/aanvraag">
+<meta property="og:title" content="Controleer of de overheid te laat is met uw beslissing">
+<meta property="og:description" content="Upload de brief van UWV, DUO, de SVB of uw gemeente. Binnen een minuut weet u of er een dwangsom voor u openstaat van maximaal € 1.442.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
 <link rel="stylesheet" href="/assets/stijl.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
 <style>
@@ -19,10 +33,14 @@
   p.onder { color: var(--tekst-zacht); margin-bottom: 24px; }
 
   /* ----------------------------------------------------------- uploaden -- */
+  /* Let op: dit is een <label>, en die is van zichzelf inline. Zonder een
+     eigen display valt het kader uiteen in losse stukjes naast de tekst. */
   .dropzone {
+    display: block; width: 100%;
     border: 2px dashed var(--rand-sterk); border-radius: var(--radius); background: var(--blauw-50);
     padding: 34px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
   }
+  .dropzone:focus-within { border-color: var(--blauw-600); box-shadow: 0 0 0 3px var(--blauw-100); }
   .dropzone:hover, .dropzone.sleep { border-color: var(--blauw-600); background: var(--blauw-100); }
   .dropzone__icoon { font-size: 2.2rem; line-height: 1; }
   .dropzone__titel { font-weight: 700; margin: 10px 0 4px; }
@@ -95,7 +113,18 @@
 
 <header class="balk">
   <div class="omhulsel balk__inhoud">
-    <a class="merk" href="/"><span class="merk__teken">D</span> <span class="merk__naam">Dwangsomhulp</span></a>
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2f6bc4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="4" opacity=".45"/>
+        <path d="M22.5 32.8 29.2 39.5 43 24.8" fill="none" stroke="#fff" stroke-width="5.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
     <nav>
       <a class="nav-secundair" href="/hoe-werkt-het">Hoe werkt het</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
@@ -118,7 +147,7 @@
         <input type="file" id="bestand" accept=".pdf,.txt,application/pdf,text/plain,image/*">
         <div class="dropzone__icoon">📄</div>
         <div class="dropzone__titel">Kies uw brief of maak een foto</div>
-        <div class="dropzone__uitleg">Pdf of tekstbestand · duurt ongeveer tien seconden</div>
+        <div class="dropzone__uitleg">Pdf of tekstbestand, duurt ongeveer tien seconden</div>
       </label>
 
       <p class="of">of</p>
@@ -169,7 +198,7 @@
       <div class="veld">
         <div class="keuzes">
           <label class="keuze"><input type="checkbox" id="akkoord">
-            <span class="keuze__tekst">Ik machtig Dwangsomhulp en ga akkoord met de voorwaarden
+            <span class="keuze__tekst">Ik machtig nubeslist.nl en ga akkoord met de voorwaarden
               <span class="keuze__uitleg">Geen vergoeding toegekend, dan geen kosten</span></span></label>
         </div>
         <p class="veld__fout verborgen" data-fout="akkoord"></p>
@@ -201,7 +230,7 @@
     </div>
   </form>
 
-  <p class="fijndruk">Dwangsomhulp is geen overheidsinstantie. De uitkomst is een inschatting en geen juridisch advies.</p>
+  <p class="fijndruk">nubeslist.nl is geen overheidsinstantie. De uitkomst is een inschatting en geen juridisch advies.</p>
 </main>
 
 <script type="module" src="/assets/funnel.js"></script>

@@ -459,7 +459,7 @@ function rendereLade() {
     el('div', { class: 'kolomkop', tekst: `Notities (${a.notities.length})` }),
     a.notities.length === 0 ? el('p', { class: 'subtiel', style: 'font-size:.9rem', tekst: 'Nog geen notities.' }) : null,
     a.notities.map((n) => el('div', { class: 'notitie' },
-      el('div', { class: 'notitie__meta', tekst: `${n.door} · ${datumTijd(n.op)}` }),
+      el('div', { class: 'notitie__meta', tekst: `${n.door}, ${datumTijd(n.op)}` }),
       el('div', { tekst: n.tekst }))),
     notitieVeld,
     el('div', { class: 'knoprij' }, notitieKnop),
@@ -552,7 +552,7 @@ function machtigingBlok(a) {
   if (status.verstuurdOp) regels.push(`Verstuurd op ${datumTijd(status.verstuurdOp)}`);
   if (status.ontvangenOp) regels.push(`Ondertekend ontvangen op ${datumTijd(status.ontvangenOp)}`);
   houder.append(el('p', { class: 'subtiel', style: 'font-size:.9rem; margin:0 0 10px',
-    tekst: regels.length ? regels.join(' \u00b7 ') : 'Nog niet verstuurd.' }));
+    tekst: regels.length ? regels.join('. ') : 'Nog niet verstuurd.' }));
 
   async function zet(actie) {
     const data = await api(`/api/beheer/aanvragen/${a.id}/machtiging`, {
@@ -653,9 +653,9 @@ function volgendeStapBlok(a) {
   houder.append(el('div', { class: `melding melding--${klok.kleur === 'rood' ? 'fout' : (klok.kleur === 'oranje' ? 'let-op' : 'info')}` },
     el('strong', { tekst: vervolg.actieLabel || 'Geen actie gepland' }),
     el('p', { tekst: [
-      a.actiedatum ? `${toonDatum(parseDatum(a.actiedatum))} (${klok.tekst})` : 'Geen datum om te bewaken',
+      a.actiedatum ? `${toonDatum(parseDatum(a.actiedatum))} (${klok.tekst}).` : 'Geen datum om te bewaken.',
       vervolg.actieUitleg || '',
-    ].filter(Boolean).join(' \u00b7 ') })));
+    ].filter(Boolean).join(' ') })));
 
   const knoppen = el('div', { class: 'knoprij' });
 

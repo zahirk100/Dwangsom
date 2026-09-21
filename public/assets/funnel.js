@@ -507,10 +507,10 @@ function rendereMachtiging() {
   vak.textContent = '';
   vak.append(
     el('p', { style: 'margin:0 0 10px' }, 'Ik, ', el('strong', { tekst: naam }),
-      ', machtig Dwangsomhulp om mij te vertegenwoordigen bij ',
+      ', machtig nubeslist.nl om mij te vertegenwoordigen bij ',
       el('strong', { tekst: orgaan }), ' in de procedure over ',
       el('strong', { tekst: zaaktype ? zaaktype.label : 'mijn aanvraag' }), '.'),
-    el('p', { style: 'margin:0' }, 'Dwangsomhulp mag namens mij de benodigde stukken indienen, de '
+    el('p', { style: 'margin:0' }, 'nubeslist.nl mag namens mij de benodigde stukken indienen, de '
       + 'procedure voeren en correspondentie ontvangen. Een toegekende vergoeding wordt '
       + 'rechtstreeks aan mij uitbetaald.'),
   );
@@ -654,7 +654,7 @@ function rendereKlaar(data) {
   lijst.textContent = '';
   for (const s of stappen) {
     lijst.append(el('li', { 'data-staat': s.staat },
-      el('span', { class: 'tracker__merk', tekst: s.staat === 'klaar' ? '✓' : (s.staat === 'bezig' ? '→' : '·') }),
+      el('span', { class: 'tracker__merk', tekst: s.staat === 'klaar' ? '✓' : (s.staat === 'bezig' ? '→' : '○') }),
       el('span', { class: 'tracker__tekst' }, s.tekst, el('span', { tekst: s.onder }))));
   }
   navigatie.classList.add('verborgen');

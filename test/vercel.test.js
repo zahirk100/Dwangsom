@@ -102,7 +102,7 @@ test('de applicatie serveert ook de pagina\'s zelf', async () => {
   const antwoord = await haal('/');
   assert.equal(antwoord.status, 200);
   assert.match(antwoord.headers.get('content-type'), /text\/html/);
-  assert.match(await antwoord.text(), /Dwangsomhulp/);
+  assert.match(await antwoord.text(), /nubeslist\.nl/);
 
   for (const pad of ['/aanvraag', '/beheer', '/hoe-werkt-het']) {
     const pagina = await haal(pad);

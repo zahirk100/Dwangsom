@@ -3,74 +3,180 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dwangsomhulp — overheid te laat? Upload uw brief</title>
-<meta name="description" content="Wacht u te lang op een beslissing van UWV, DUO of uw gemeente? Upload uw brief. Binnen een minuut weet u of wij voor u in actie kunnen komen.">
-<link rel="stylesheet" href="/assets/stijl.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
-<style>
-  .held { padding: 68px 0 52px; }
-  .held__raster { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
-  .held__oogmerk {
-    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;
-    padding: 6px 14px; border-radius: 999px; background: var(--blauw-100);
-    color: var(--blauw-600); font-size: .84rem; font-weight: 640;
-  }
-  .held p.lead { font-size: 1.14rem; color: var(--tekst-zacht); max-width: 54ch; }
-  .held__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 18px; }
-  .held__punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: .93rem; color: var(--tekst-zacht); }
-  .held__punten li { display: flex; gap: 9px; align-items: flex-start; }
-  .instanties { margin-top: 20px; font-size: .88rem; color: var(--tekst-zacht); }
-  .instanties strong { color: var(--tekst); font-weight: 650; }
-  .vink { color: var(--groen-600); font-weight: 800; flex: none; }
+<title>nubeslist.nl, uw dwangsom als de overheid te laat beslist</title>
+<meta name="description" content="Wacht u te lang op een beslissing van UWV, DUO, de SVB of uw gemeente? Upload uw brief bij nubeslist.nl. Binnen een minuut weet u of er een dwangsom van maximaal € 1.442 openstaat. Geen vergoeding betekent geen kosten.">
+<link rel="canonical" href="https://nubeslist.nl/">
+<meta name="theme-color" content="#24509a">
+<meta name="robots" content="index, follow">
 
-  .bedragkaart { padding: 28px; border-radius: 20px; background: var(--vlak); border: 1px solid var(--rand); box-shadow: var(--schaduw); }
-  .bedragkaart__titel { font-size: .82rem; text-transform: uppercase; letter-spacing: .07em; color: var(--tekst-zacht); font-weight: 680; }
-  .bedragkaart__bedrag { font-size: 3rem; font-weight: 800; letter-spacing: -.03em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
-  .staaf { display: grid; grid-template-columns: repeat(42, 1fr); gap: 2px; margin: 20px 0 10px; }
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/">
+<meta property="og:title" content="Overheid te laat met uw beslissing? Dan staat er geld voor u klaar">
+<meta property="og:description" content="Upload uw brief en zie binnen een minuut of het bestuursorgaan u een dwangsom van maximaal € 1.442 verschuldigd is. Wij doen de aanvraag voor u.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Het merkteken van nubeslist.nl">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Overheid te laat met uw beslissing?">
+<meta name="twitter:description" content="Upload uw brief en zie binnen een minuut of er een dwangsom openstaat van maximaal € 1.442.">
+<meta name="twitter:image" content="https://nubeslist.nl/deelkaart.png">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  /* ------------------------------------------------------------ banner -- */
+  .banner {
+    position: relative; overflow: hidden; color: #fff;
+    background: radial-gradient(1100px 520px at 18% -10%, #2f6bc4 0%, transparent 62%),
+                linear-gradient(155deg, #1c3a6e 0%, #0d1b33 100%);
+  }
+  .banner__raster {
+    display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+    gap: 52px; align-items: center;
+    /* padding-block, want de zijkanten komen van .omhulsel; met een gewone
+       padding-regel valt die marge weg en plakt de tekst aan de schermrand. */
+    padding-block: 76px 72px;
+  }
+  .banner__oogmerk {
+    display: inline-flex; align-items: center; gap: 9px; margin-bottom: 22px;
+    padding: 7px 15px; border-radius: 999px; font-size: .84rem; font-weight: 620;
+    background: rgba(255, 255, 255, .12); color: #dce8fb;
+    border: 1px solid rgba(255, 255, 255, .16);
+  }
+  .banner h1 {
+    color: #fff; font-size: clamp(2.1rem, 5.2vw, 3.25rem); line-height: 1.08;
+    letter-spacing: -.03em; margin: 0 0 18px; text-wrap: balance;
+  }
+  .banner__slogan {
+    font-size: clamp(1.06rem, 2.4vw, 1.28rem); color: #c6d8f4;
+    line-height: 1.55; margin: 0; max-width: 46ch;
+  }
+  .banner__slogan strong { color: #fff; font-weight: 700; }
+  .banner__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 30px 0 26px; }
+  .banner .knop--primair { background: #fff; color: var(--blauw-800); }
+  .banner .knop--primair:hover { background: #dfeafb; color: var(--blauw-900); }
+  .banner .knop--zacht {
+    background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .3);
+  }
+  .banner .knop--zacht:hover { background: rgba(255, 255, 255, .16); color: #fff; border-color: #fff; }
+  .banner__punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .banner__punten li {
+    display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start;
+    font-size: .96rem; color: #c6d8f4;
+  }
+  .banner__punten svg { width: 20px; height: 20px; margin-top: 1px; }
+  .instanties { margin: 26px 0 0; font-size: .87rem; color: #9fb6d9; }
+  .instanties__rij { list-style: none; padding: 0; margin: 9px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .instanties__rij li {
+    padding: 5px 12px; border-radius: 8px; font-weight: 620; font-size: .85rem;
+    background: rgba(255, 255, 255, .1); color: #e4edfb;
+  }
+
+  /* De kaart met de opbouw van het bedrag. */
+  .bedragkaart {
+    padding: 28px; border-radius: 20px; color: var(--tekst);
+    background: var(--vlak); border: 1px solid var(--rand);
+    box-shadow: 0 20px 50px rgba(5, 12, 26, .35);
+  }
+  .bedragkaart__titel {
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--tekst-zacht); font-weight: 700;
+  }
+  .bedragkaart__bedrag {
+    font-size: clamp(2.4rem, 6vw, 3rem); font-weight: 800; letter-spacing: -.035em;
+    margin: 4px 0 6px; font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .bedragkaart__onder { color: var(--tekst-zacht); font-size: .9rem; margin: 0; }
+  .staaf { display: grid; grid-template-columns: repeat(42, 1fr); gap: 2px; margin: 22px 0 12px; }
   .staaf span { height: 34px; border-radius: 2px; }
   .staaf .t1 { background: var(--blauw-100); }
   .staaf .t2 { background: var(--blauw-500); }
   .staaf .t3 { background: var(--blauw-700); }
-  .staaf-uitleg { display: flex; justify-content: space-between; font-size: .8rem; color: var(--tekst-zacht); font-variant-numeric: tabular-nums; }
+  .tarieven { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .tarieven li { font-size: .78rem; color: var(--tekst-zacht); line-height: 1.35; }
+  .tarieven strong { display: block; font-size: .98rem; color: var(--tekst); font-variant-numeric: tabular-nums; }
 
-  section.blok { padding: 56px 0; }
-  .sectiekop { max-width: 62ch; margin-bottom: 32px; }
-  .sectiekop p { color: var(--tekst-zacht); }
-  .stappen { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); counter-reset: stap; }
-  .stap { padding: 24px; counter-increment: stap; }
+  /* ------------------------------------------------------------ secties -- */
+  /* Ook hier padding-block: de linker- en rechtermarge komt van .omhulsel. */
+  section.blok { padding-block: 64px; }
+  .sectiekop { max-width: 60ch; margin-bottom: 34px; }
+  .sectiekop h2 { text-wrap: balance; }
+  .sectiekop p { color: var(--tekst-zacht); margin-bottom: 0; }
+
+  .stappen { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); counter-reset: stap; }
+  .stap { padding: 26px 24px; counter-increment: stap; display: flex; flex-direction: column; }
   .stap::before {
-    content: counter(stap); display: grid; place-items: center; width: 34px; height: 34px;
-    border-radius: 10px; background: var(--blauw-600); color: #fff; font-weight: 760; margin-bottom: 14px;
+    content: counter(stap); display: grid; place-items: center; width: 36px; height: 36px;
+    border-radius: 11px; background: var(--blauw-600); color: #fff; font-weight: 780;
+    font-size: 1.02rem; margin-bottom: 16px; flex: none;
   }
-  .stap h3 { margin-bottom: 6px; }
+  .stap h3 { margin-bottom: 7px; font-size: 1.04rem; }
   .stap p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+  .stap__tijd { margin-top: 14px; font-size: .8rem; font-weight: 640; color: var(--blauw-600); }
 
-  .kolommen { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; }
-  .organisatie { padding: 24px; }
-  .organisatie h3 { display: flex; align-items: center; gap: 10px; }
-  .organisatie ul { margin: 12px 0 0; padding-left: 20px; font-size: .93rem; color: var(--tekst-zacht); }
-  .organisatie li { margin-bottom: 4px; }
+  .uitleg { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; }
+  .uitleg article { padding: 26px 24px; }
+  .uitleg h3 { font-size: 1.02rem; margin-bottom: 8px; }
+  .uitleg p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+  .uitleg p + p { margin-top: 10px; }
 
-  details.vraag { border-bottom: 1px solid var(--rand); padding: 16px 0; }
-  details.vraag summary { cursor: pointer; font-weight: 640; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  .kolommen { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+  .organisatie { padding: 26px 24px; }
+  .organisatie h3 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 1.02rem; }
+  .organisatie ul { margin: 14px 0 0; padding: 0; list-style: none; font-size: .93rem; color: var(--tekst-zacht); }
+  .organisatie li { padding: 7px 0; border-top: 1px solid var(--rand); }
+  .organisatie li:first-child { border-top: 0; padding-top: 0; }
+
+  .kosten { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .kosten article { padding: 26px 24px; }
+  .kosten h3 { font-size: 1.02rem; margin-bottom: 8px; display: flex; align-items: center; gap: 9px; }
+  .kosten p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+  .kosten svg { width: 22px; height: 22px; flex: none; }
+
+  details.vraag { border-bottom: 1px solid var(--rand); padding: 18px 0; }
+  details.vraag:first-of-type { border-top: 1px solid var(--rand); }
+  details.vraag summary {
+    cursor: pointer; font-weight: 640; list-style: none;
+    display: flex; justify-content: space-between; gap: 18px; align-items: flex-start;
+  }
   details.vraag summary::-webkit-details-marker { display: none; }
-  details.vraag summary::after { content: "+"; color: var(--blauw-600); font-size: 1.3rem; line-height: 1; }
-  details.vraag[open] summary::after { content: "–"; }
-  details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht); }
+  details.vraag summary::after {
+    content: "+"; color: var(--blauw-600); font-size: 1.45rem; line-height: 1; flex: none;
+  }
+  details.vraag[open] summary::after { content: "\2212"; }
+  details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht); max-width: 70ch; }
 
   .oproep {
-    margin: 56px 0 0; padding: 44px; border-radius: 20px; text-align: center;
+    margin: 64px 0 0; padding: 48px 40px; border-radius: 22px; text-align: center;
     background: linear-gradient(150deg, var(--blauw-700), var(--blauw-900)); color: #fff;
   }
-  .oproep h2 { color: #fff; }
-  .oproep p { color: #c9d9f2; max-width: 52ch; margin: 0 auto 24px; }
+  .oproep h2 { color: #fff; text-wrap: balance; }
+  .oproep p { color: #c6d8f4; max-width: 50ch; margin: 0 auto 26px; }
   .oproep .knop--primair { background: #fff; color: var(--blauw-800); }
-  .oproep .knop--primair:hover { background: #e7effc; }
+  .oproep .knop--primair:hover { background: #dfeafb; }
+  .oproep__fijn { font-size: .84rem; color: #9fb6d9; margin: 20px auto 0; }
 
-  @media (max-width: 880px) {
-    .held__raster, .kolommen { grid-template-columns: 1fr; gap: 34px; }
-    .held { padding: 40px 0 32px; }
-    .oproep { padding: 30px 20px; }
+  /* ------------------------------------------------------------- mobiel -- */
+  @media (max-width: 960px) {
+    .banner__raster { grid-template-columns: 1fr; gap: 38px; padding-block: 52px 54px; }
+    .bedragkaart { max-width: 520px; }
+  }
+  @media (max-width: 640px) {
+    section.blok { padding-block: 46px; }
+    .banner__raster { padding-block: 40px 44px; }
+    .banner__knoppen { gap: 10px; }
+    .banner__knoppen .knop { width: 100%; }
+    .bedragkaart { padding: 22px 18px; }
+    .staaf span { height: 26px; }
+    .tarieven { grid-template-columns: 1fr; gap: 6px; }
+    .tarieven li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .tarieven strong { display: inline; }
+    .oproep { padding: 34px 20px; margin-top: 44px; }
+    .oproep .knop { width: 100%; }
   }
 </style>
 </head>
@@ -78,47 +184,78 @@
 
 <header class="balk">
   <div class="omhulsel balk__inhoud">
-    <a class="merk" href="/"><span class="merk__teken">D</span> <span class="merk__naam">Dwangsomhulp</span></a>
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2f6bc4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="4" opacity=".45"/>
+        <path d="M22.5 32.8 29.2 39.5 43 24.8" fill="none" stroke="#fff" stroke-width="5.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
     <nav>
-      <a class="nav-secundair" href="/hoe-werkt-het">Hoe werkt het</a>
-      <a class="nav-secundair" href="#vragen">Veelgestelde vragen</a>
+      <a class="nav-secundair" href="#hoe">Hoe het werkt</a>
+      <a class="nav-secundair" href="#kosten">Kosten</a>
+      <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
       <a class="knop knop--primair knop--klein" href="/aanvraag">
-        <span class="nav-lang">Bereken uw dwangsom</span><span class="nav-kort">Berekenen</span>
+        <span class="nav-lang">Controleer mijn brief</span><span class="nav-kort">Starten</span>
       </a>
     </nav>
   </div>
 </header>
 
 <main>
-  <section class="held">
-    <div class="omhulsel held__raster">
+
+  <!-- ==================================================== banner met slogan -->
+  <section class="banner">
+    <div class="omhulsel banner__raster">
       <div>
-        <span class="held__oogmerk">⏱️ Artikel 4:17 Algemene wet bestuursrecht</span>
-        <h1>Overheid te laat met uw beslissing?</h1>
-        <p class="lead">
-          Upload uw brief. Binnen een minuut weet u of wij voor u in actie kunnen komen —
-          en kan het bestuursorgaan een dwangsom verschuldigd zijn van
-          <strong>maximaal € 1.442</strong>.
+        <span class="banner__oogmerk">Artikel 4:17 Algemene wet bestuursrecht</span>
+        <h1>Beslist de overheid te laat? Dan betaalt zij u.</h1>
+        <p class="banner__slogan">
+          Wacht u al weken op een beslissing van UWV, DUO, de SVB of uw gemeente?
+          Upload uw brief en u ziet binnen een minuut of er een dwangsom voor u
+          openstaat van <strong>maximaal € 1.442</strong>.
         </p>
-        <div class="held__knoppen">
-          <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief →</a>
-          <a class="knop knop--zacht" href="/hoe-werkt-het">Eerst uitleg lezen</a>
+
+        <div class="banner__knoppen">
+          <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief</a>
+          <a class="knop knop--zacht" href="#hoe">Eerst lezen hoe het werkt</a>
         </div>
-        <ul class="held__punten">
-          <li><span class="vink">✓</span> Wij lezen zelf uit de brief om welke zaak en welke datum het gaat</li>
-          <li><span class="vink">✓</span> U beantwoordt hooguit een paar vragen en tekent één keer</li>
-          <li><span class="vink">✓</span> Geen vergoeding toegekend? Dan geen kosten</li>
+
+        <ul class="banner__punten">
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="#7fe3bd" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+            <span>Wij lezen zelf uit uw brief om welke zaak en welke datum het gaat</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="#7fe3bd" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+            <span>U vult een paar gegevens aan en tekent één keer digitaal</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="#7fe3bd" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>
+            <span>Daarna regelen wij het en bewaken wij alle termijnen voor u</span>
+          </li>
         </ul>
-        <p class="instanties">Werkt voor <strong>UWV</strong> · <strong>DUO</strong> ·
-           <strong>Gemeente</strong> · <strong>SVB</strong> · <strong>Belastingdienst</strong></p>
+
+        <p class="instanties">Wij werken voor beslissingen van:</p>
+        <ul class="instanties__rij">
+          <li>UWV</li><li>Gemeente</li><li>DUO</li><li>SVB</li><li>Belastingdienst</li>
+        </ul>
       </div>
 
       <aside class="bedragkaart" aria-label="Opbouw van de dwangsom">
         <div class="bedragkaart__titel">Maximale dwangsom</div>
         <div class="bedragkaart__bedrag">€ 1.442</div>
-        <p style="color:var(--tekst-zacht); font-size:.9rem; margin:0">
-          Opgebouwd over ten hoogste 42 dagen, met een oplopend tarief per dag.
+        <p class="bedragkaart__onder">
+          De teller loopt ten hoogste 42 dagen en het bedrag per dag stijgt onderweg.
         </p>
         <div class="staaf" aria-hidden="true">
           <span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span>
@@ -128,45 +265,88 @@
           <span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span>
           <span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span>
         </div>
-        <div class="staaf-uitleg">
-          <span>dag 1–14<br><strong>€ 23 p/d</strong></span>
-          <span>dag 15–28<br><strong>€ 35 p/d</strong></span>
-          <span>dag 29–42<br><strong>€ 45 p/d</strong></span>
-        </div>
+        <ul class="tarieven">
+          <li><strong>€ 23</strong> per dag, de eerste 14 dagen</li>
+          <li><strong>€ 35</strong> per dag, dag 15 tot en met 28</li>
+          <li><strong>€ 45</strong> per dag, dag 29 tot en met 42</li>
+        </ul>
       </aside>
     </div>
   </section>
 
+  <!-- ============================================================ zo werkt -->
   <section class="blok omhulsel" id="hoe">
     <div class="sectiekop">
-      <h2>Zo werkt het</h2>
-      <p>De dwangsomregeling staat in de Algemene wet bestuursrecht en geldt landelijk hetzelfde
-         voor UWV, gemeenten en andere bestuursorganen. Wij vertalen die regels naar uw situatie.</p>
+      <h2>Zo werkt het bij ons</h2>
+      <p>U hoeft geen wetsartikelen op te zoeken en geen formulier van vijftien vragen in te
+         vullen. Uw brief bevat alles wat wij nodig hebben, dus daar beginnen wij mee.</p>
     </div>
     <div class="stappen">
       <article class="kaart stap">
-        <h3>Upload uw brief</h3>
-        <p>De brief waarin staat wanneer u een beslissing zou krijgen. Een pdf of een foto uit uw berichtenbox.</p>
+        <h3>U uploadt uw brief</h3>
+        <p>De brief waarin staat wanneer u een beslissing zou krijgen. Meestal is dat de
+           ontvangstbevestiging uit uw berichtenbox.</p>
+        <span class="stap__tijd">ongeveer 10 seconden</span>
       </article>
       <article class="kaart stap">
         <h3>Wij lezen hem uit</h3>
-        <p>Instantie, soort zaak, uw gegevens en de uiterste beslisdatum. U hoeft niets op te zoeken.</p>
+        <p>Welke instantie, welke soort zaak, uw gegevens en de uiterste beslisdatum. U hoeft
+           zelf niets op te zoeken of over te typen.</p>
+        <span class="stap__tijd">direct op het scherm</span>
       </article>
       <article class="kaart stap">
-        <h3>U ziet het meteen</h3>
-        <p>Is de termijn voorbij, dan zegt het scherm dat direct — nog vóór u gegevens invult.</p>
+        <h3>U ziet meteen waar u staat</h3>
+        <p>Is de termijn voorbij, dan zegt het scherm dat op dat moment. Is de termijn nog niet
+           voorbij, dan zeggen wij dat net zo eerlijk.</p>
+        <span class="stap__tijd">binnen een minuut</span>
       </article>
       <article class="kaart stap">
-        <h3>Eén keer tekenen</h3>
-        <p>U machtigt ons met uw handtekening. Daarna regelen wij het en bewaken wij de termijnen.</p>
+        <h3>U tekent één keer</h3>
+        <p>Met uw handtekening op het scherm machtigt u ons. Daarna schrijven wij de brieven,
+           bewaken wij de termijnen en houden wij u op de hoogte.</p>
+        <span class="stap__tijd">klaar in twee minuten</span>
       </article>
     </div>
   </section>
 
-  <section class="blok omhulsel">
+  <!-- ======================================================== wat gebeurt er -->
+  <section class="blok omhulsel" id="daarna">
+    <div class="sectiekop">
+      <h2>Wat doen wij daarna voor u?</h2>
+      <p>Een dwangsom komt er niet vanzelf. Er moet eerst een brief naar het bestuursorgaan,
+         en daarna moeten er data bewaakt worden. Dat is precies wat wij overnemen.</p>
+    </div>
+    <div class="uitleg">
+      <article class="kaart">
+        <h3>1. Wij stellen in gebreke</h3>
+        <p>Dat is de brief waarin staat dat de beslistermijn voorbij is en dat u alsnog een
+           besluit wilt. Zonder die brief gaat er geen dwangsom lopen.</p>
+        <p>Wij schrijven hem, versturen hem en bewaren het verzendbewijs. Dat bewijs bepaalt
+           later vanaf welke dag er geteld wordt.</p>
+      </article>
+      <article class="kaart">
+        <h3>2. Wij bewaken de twee weken</h3>
+        <p>Het bestuursorgaan krijgt na onze brief nog twee weken om alsnog te beslissen. Komt
+           er in die twee weken een besluit, dan is er geen dwangsom verschuldigd.</p>
+        <p>Blijft het stil, dan begint de teller te lopen. Wij houden die datum in de gaten,
+           u hoeft niets bij te houden.</p>
+      </article>
+      <article class="kaart">
+        <h3>3. Wij vorderen het bedrag</h3>
+        <p>Zodra de dwangsom is opgelopen, dienen wij de vordering in bij het bestuursorgaan
+           en volgen wij de beschikking op.</p>
+        <p>Het bedrag wordt rechtstreeks op uw eigen rekening uitbetaald. Daarom vragen wij uw
+           IBAN en gaat het geld nooit via ons.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- =========================================================== instanties -->
+  <section class="blok omhulsel" id="waarvoor">
     <div class="sectiekop">
       <h2>Voor welke beslissingen geldt dit?</h2>
-      <p>Voor vrijwel elke aanvraag of elk bezwaarschrift bij een bestuursorgaan. De bekendste:</p>
+      <p>De regeling staat in de Algemene wet bestuursrecht en geldt landelijk hetzelfde bij
+         vrijwel elke aanvraag en elk bezwaarschrift. Dit komt het vaakst voor.</p>
     </div>
     <div class="kolommen">
       <article class="kaart organisatie">
@@ -182,67 +362,158 @@
       <article class="kaart organisatie">
         <h3><span class="label-chip label-chip--paars">Gemeente</span> Inkomen, zorg en vergunningen</h3>
         <ul>
-          <li>Bijstandsuitkering (Participatiewet)</li>
-          <li>Bijzondere bijstand en inkomenstoeslag</li>
+          <li>Bijstandsuitkering uit de Participatiewet</li>
+          <li>Bijzondere bijstand en individuele inkomenstoeslag</li>
           <li>Wmo-maatwerkvoorziening en jeugdhulp</li>
           <li>Schuldhulpverlening</li>
           <li>Bezwaar tegen een gemeentelijk besluit</li>
         </ul>
       </article>
+      <article class="kaart organisatie">
+        <h3><span class="label-chip">Overig</span> Landelijke instanties</h3>
+        <ul>
+          <li>DUO, bijvoorbeeld studiefinanciering</li>
+          <li>SVB, bijvoorbeeld AOW of kinderbijslag</li>
+          <li>Belastingdienst en Toeslagen</li>
+          <li>Provincie en waterschap</li>
+          <li>Bezwaar bij al deze instanties</li>
+        </ul>
+      </article>
     </div>
   </section>
 
+  <!-- ================================================================ kosten -->
+  <section class="blok omhulsel" id="kosten">
+    <div class="sectiekop">
+      <h2>Wat kost het u?</h2>
+      <p>Niets vooraf. Wij werken pas voor u nadat u getekend heeft, en wij verdienen pas iets
+         als er ook daadwerkelijk een vergoeding wordt toegekend.</p>
+    </div>
+    <div class="kosten">
+      <article class="kaart">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--groen-600)" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 6.5"/></svg>
+          Controleren is gratis
+        </h3>
+        <p>De uitslag op het scherm kost u niets en verplicht u tot niets. U beslist daarna zelf
+           of u ons inschakelt.</p>
+      </article>
+      <article class="kaart">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--groen-600)" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 6.5"/></svg>
+          Geen vergoeding, geen kosten
+        </h3>
+        <p>Wordt er geen dwangsom toegekend, dan brengen wij u niets in rekening. Het risico
+           ligt bij ons, niet bij u.</p>
+      </article>
+      <article class="kaart">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--groen-600)" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 6.5"/></svg>
+          Het geld gaat naar u
+        </h3>
+        <p>Een toegekende dwangsom wordt door het bestuursorgaan rechtstreeks op uw eigen
+           rekening gestort.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================================================================ vragen -->
   <section class="blok omhulsel" id="vragen">
     <div class="sectiekop">
       <h2>Veelgestelde vragen</h2>
+      <p>Staat uw vraag er niet bij? Start gerust de controle; die is gratis en u zit nergens aan vast.</p>
     </div>
+
     <details class="vraag" open>
       <summary>Wat is een ingebrekestelling en waarom is die nodig?</summary>
-      <p>Een ingebrekestelling is een brief waarin u laat weten dat de beslistermijn is verstreken en
-         waarin u om een besluit vraagt. Zonder die brief gaat de dwangsom niet lopen. Het bestuursorgaan
-         krijgt daarna twee weken om alsnog te beslissen; pas daarna telt de dwangsom (art. 4:17 lid 3 Awb).
-         Wij stellen de brief voor u op.</p>
+      <p>Een ingebrekestelling is een brief waarin u laat weten dat de beslistermijn is verstreken
+         en waarin u om een besluit vraagt. Zonder die brief gaat er geen dwangsom lopen. Het
+         bestuursorgaan krijgt daarna twee weken om alsnog te beslissen, en pas na die twee weken
+         begint de teller (artikel 4:17 lid 3 Awb). Wij stellen de brief voor u op en versturen hem.</p>
     </details>
     <details class="vraag">
       <summary>Hoeveel is de dwangsom precies?</summary>
-      <p>De eerste veertien dagen € 23 per dag, de volgende veertien dagen € 35 per dag en de laatste
-         veertien dagen € 45 per dag. Na 42 dagen stopt de teller op € 1.442 (art. 4:17 lid 2 Awb).</p>
+      <p>De eerste veertien dagen is het € 23 per dag, de volgende veertien dagen € 35 per dag en
+         de laatste veertien dagen € 45 per dag. Na 42 dagen stopt de teller op € 1.442. Dat staat
+         in artikel 4:17 lid 2 Awb.</p>
     </details>
     <details class="vraag">
       <summary>Hoe lang mag het bestuursorgaan over mijn aanvraag doen?</summary>
       <p>Dat verschilt per soort aanvraag. Staat er geen bijzondere termijn in de wet, dan geldt de
-         regel uit de Awb: een redelijke termijn, in ieder geval binnen acht weken. Bij een bezwaarschrift
-         is het zes weken na afloop van de bezwaartermijn, of twaalf weken als er een adviescommissie is.
-         Noemt het bestuursorgaan zelf een datum in de ontvangstbevestiging? Die telt.</p>
+         regel uit de Awb: een redelijke termijn, en in ieder geval binnen acht weken. Bij een
+         bezwaarschrift is het zes weken na afloop van de bezwaartermijn, of twaalf weken als er
+         een adviescommissie bij betrokken is. Noemt het bestuursorgaan in uw brief zelf een datum?
+         Dan telt die datum.</p>
     </details>
     <details class="vraag">
-      <summary>Wanneer heb ik géén recht op een dwangsom?</summary>
-      <p>Onder meer als u geen belanghebbende bent, als uw aanvraag kennelijk niet-ontvankelijk is, of
-         als u onredelijk laat in gebreke stelt. Ook bij Woo-verzoeken en asielaanvragen is de
-         dwangsomregeling uitgesloten. In die gevallen bestaat wel de mogelijkheid van beroep bij de
-         rechtbank wegens niet tijdig beslissen.</p>
+      <summary>Wanneer heb ik geen recht op een dwangsom?</summary>
+      <p>Onder meer als u geen belanghebbende bent, als uw aanvraag kennelijk niet-ontvankelijk is,
+         of als u onredelijk laat in gebreke stelt. Ook bij Woo-verzoeken en asielaanvragen is de
+         dwangsomregeling uitgesloten. In die gevallen kunt u wel beroep instellen bij de rechtbank
+         wegens niet tijdig beslissen.</p>
     </details>
     <details class="vraag">
       <summary>Loopt de dwangsom door zolang er geen besluit is?</summary>
       <p>Ja, maar maximaal 42 dagen. Daarna blijft het bedrag staan op € 1.442. Komt er eerder een
-         besluit, dan stopt de teller de dag voor de bekendmaking van dat besluit.</p>
+         besluit, dan stopt de teller op de dag voor de bekendmaking van dat besluit.</p>
+    </details>
+    <details class="vraag">
+      <summary>Ik heb alleen een foto van mijn brief, kan dat ook?</summary>
+      <p>Een pdf uit uw berichtenbox werkt het beste, want daar staat de tekst leesbaar in. Lukt dat
+         niet, dan kunt u de tekst van de brief ook gewoon in het scherm plakken of overtypen. Bij
+         een foto vragen wij u de belangrijkste gegevens zelf in te vullen.</p>
+    </details>
+    <details class="vraag">
+      <summary>Wat doen jullie met mijn gegevens?</summary>
+      <p>Wij gebruiken uw gegevens alleen om uw zaak te beoordelen en de aanvraag namens u in te
+         dienen. Uw burgerservicenummer hebben wij nodig omdat het bestuursorgaan uw zaak daarmee
+         terugvindt, en uw IBAN omdat een toegekende vergoeding rechtstreeks aan u wordt uitbetaald.
+         Wij verkopen niets door en delen niets met anderen dan het bestuursorgaan waar uw zaak ligt.</p>
+    </details>
+    <details class="vraag">
+      <summary>Mijn termijn is nog niet voorbij, kan ik mij alvast melden?</summary>
+      <p>Ja. U doet dan een vooraanmelding. Wij noteren de datum waarop de beslistermijn afloopt en
+         nemen contact met u op zodra er iets moet gebeuren. Zo mist u het moment niet waarop de
+         ingebrekestelling de deur uit moet.</p>
     </details>
 
     <div class="oproep">
       <h2>Wacht u te lang op een beslissing?</h2>
-      <p>Upload uw brief. De controle is gratis en vrijblijvend; u beslist zelf of u ons inschakelt.</p>
-      <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief →</a>
+      <p>Upload uw brief en u weet binnen een minuut waar u aan toe bent.</p>
+      <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief</a>
+      <p class="oproep__fijn">Gratis, vrijblijvend en zonder account</p>
     </div>
   </section>
 </main>
 
 <footer class="voet">
   <div class="omhulsel">
-    <p><strong>Dwangsomhulp</strong> is een particuliere dienstverlener en geen overheidsinstantie.
-       Wij zijn niet verbonden aan UWV, een gemeente of een ander bestuursorgaan.</p>
-    <p>De berekening is een inschatting op basis van de door u ingevulde gegevens en vormt geen
+    <div class="voet__merk">
+      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="voetverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2f6bc4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#voetverloop)"/>
+        <circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="4" opacity=".45"/>
+        <path d="M22.5 32.8 29.2 39.5 43 24.8" fill="none" stroke="#fff" stroke-width="5.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>nubeslist.nl</span>
+    </div>
+    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+       verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
+    <p>De berekening is een inschatting op basis van de gegevens die u aanlevert en is geen
        juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
-    <p><a href="/hoe-werkt-het">Hoe werkt het</a> · <a href="/aanvraag">Aanvraag starten</a> · <a href="/beheer">Beheeromgeving</a></p>
+    <ul class="voet__links">
+      <li><a href="/hoe-werkt-het">Hoe werkt het</a></li>
+      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="#kosten">Kosten</a></li>
+      <li><a href="#vragen">Veelgestelde vragen</a></li>
+      <li><a href="/beheer">Beheeromgeving</a></li>
+    </ul>
   </div>
 </footer>
 

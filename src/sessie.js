@@ -18,7 +18,7 @@ const COOKIE_NAAM = 'dh_sessie';
 
 export function sessieSleutel(env = process.env) {
   const geheim = env.SESSIE_GEHEIM || env.BEHEER_WACHTWOORD;
-  if (geheim) return createHash('sha256').update(`dwangsomhulp:${geheim}`).digest();
+  if (geheim) return createHash('sha256').update(`nubeslist:${geheim}`).digest();
   // Geen geheim ingesteld: alleen zinvol lokaal, en dan is een verse sleutel
   // per start juist netjes.
   return randomBytes(32);

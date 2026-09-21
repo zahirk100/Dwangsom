@@ -12,7 +12,7 @@ import { machtigingContext, machtigingHtml } from '../src/machtiging.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from '../src/organisatie.js';
 
 const organisatie = organisatiegegevens({
-  BEDRIJF_NAAM: 'Dwangsomhulp B.V.',
+  BEDRIJF_NAAM: 'nubeslist.nl B.V.',
   BEDRIJF_ADRES: 'Stationsweg 10',
   BEDRIJF_POSTCODE_PLAATS: '8011 AA  Zwolle',
   BEDRIJF_KVK: '12345678',

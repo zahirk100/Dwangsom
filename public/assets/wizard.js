@@ -9,7 +9,7 @@ import { BESTUURSORGANEN, zaaktypenVoor, zoekZaaktype } from '/shared/catalogus.
 import { bepaalDossiereisen, stukkenVanKlant } from '/shared/dossier.js';
 
 const TOTAAL_STAPPEN = 8;
-const OPSLAG_SLEUTEL = 'dwangsomhulp-wizard';
+const OPSLAG_SLEUTEL = 'nubeslist-wizard';
 
 const form = document.getElementById('wizard');
 const voortgang = document.getElementById('voortgang');

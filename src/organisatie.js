@@ -11,7 +11,7 @@ const ONBEKEND = '';
 
 export function organisatiegegevens(env = process.env) {
   return {
-    naam: env.BEDRIJF_NAAM || 'Dwangsomhulp',
+    naam: env.BEDRIJF_NAAM || 'nubeslist.nl',
     adres: env.BEDRIJF_ADRES || ONBEKEND,
     postcodePlaats: env.BEDRIJF_POSTCODE_PLAATS || ONBEKEND,
     kvk: env.BEDRIJF_KVK || ONBEKEND,

@@ -1,4 +1,4 @@
-/* Dwangsomhulp - stijlsysteem */
+/* nubeslist.nl - stijlsysteem */
 
 :root {
   --blauw-900: #0d1b33;
@@ -86,17 +86,24 @@ a { color: var(--blauw-600); }
 /* ------------------------------------------------------------- navigatie -- */
 .balk {
   position: sticky; top: 0; z-index: 30;
-  background: color-mix(in srgb, var(--vlak) 88%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--vlak);
   border-bottom: 1px solid var(--rand);
 }
-.balk__inhoud { display: flex; align-items: center; gap: 16px; height: 64px; }
-.merk { display: flex; align-items: center; gap: 10px; font-weight: 760; color: var(--tekst); text-decoration: none; letter-spacing: -.02em; }
-.merk__teken {
-  width: 32px; height: 32px; border-radius: 9px; flex: none;
-  background: linear-gradient(140deg, var(--blauw-500), var(--blauw-700));
-  color: #fff; display: grid; place-items: center; font-size: 15px; font-weight: 800;
+/* Doorschijnend alleen waar de vervaging het ook echt doet; anders schemert
+   de donkere banner erdoorheen zodra de pagina eronder doorschuift. */
+@supports (backdrop-filter: blur(10px)) {
+  .balk {
+    background: color-mix(in srgb, var(--vlak) 94%, transparent);
+    backdrop-filter: blur(14px) saturate(140%);
+  }
 }
+.balk__inhoud { display: flex; align-items: center; gap: 16px; height: 64px; }
+.merk {
+  display: flex; align-items: center; gap: 10px; font-weight: 760; color: var(--tekst);
+  text-decoration: none; letter-spacing: -.025em; font-size: 1.06rem; white-space: nowrap;
+}
+.merk__teken { width: 32px; height: 32px; flex: none; }
+.merk__punt { color: var(--blauw-600); }
 .balk nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .balk nav a {
   color: var(--tekst-zacht); text-decoration: none; font-size: .93rem; font-weight: 560;
@@ -229,6 +236,13 @@ table.tabel tbody tr:hover { background: var(--blauw-50); }
   font-size: .87rem; color: var(--tekst-zacht);
 }
 .voet a { color: var(--tekst-zacht); }
+.voet__merk { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.voet__merk svg { width: 26px; height: 26px; flex: none; }
+.voet__merk span { font-weight: 720; color: var(--tekst); letter-spacing: -.02em; }
+/* Links onder elkaar op mobiel, naast elkaar zodra het past; geen scheidingstekens. */
+.voet__links { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.voet__links a { text-decoration: none; font-weight: 560; }
+.voet__links a:hover { color: var(--blauw-600); text-decoration: underline; }
 
 /* --------------------------------------------------------------- mobiel -- */
 /* Op zeer smalle schermen wijkt de merknaam; het logo blijft de link naar huis. */

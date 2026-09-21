@@ -1,5 +1,5 @@
 /**
- * Dwangsomhulp - webserver.
+ * nubeslist.nl - webserver.
  *
  * Draait op twee manieren:
  *   - `node server.js` op een gewone server of lokaal;
@@ -531,7 +531,7 @@ export async function start(poort = POORT) {
   await gereed();
   await new Promise((resolve) => server.listen(poort, resolve));
   const { port } = server.address();
-  console.log(`\n  Dwangsomhulp draait op http://localhost:${port}`);
+  console.log(`\n  nubeslist.nl draait op http://localhost:${port}`);
   console.log(`  Beheeromgeving:        http://localhost:${port}/beheer`);
   console.log(`  Opslag:                ${opslag.omschrijving}`);
   console.log(`  Funnel op /aanvraag:   ${FUNNEL} (klassieke wizard: /aanvraag-klassiek)`);
