@@ -54,6 +54,20 @@
 <main>
   <!-- ---------------------------------------------------------- inloggen -->
   <section id="inloggen" class="verborgen">
+    <div class="kaart inlogvak verborgen" id="instellen-nodig">
+      <h1 style="font-size:1.25rem">Nog één instelling nodig</h1>
+      <p class="veld__hulp">Deze omgeving heeft geen vast beheerwachtwoord. Serverloos betekent dat
+         elke instantie anders zou zijn, dus inloggen lukt pas als u er één instelt.</p>
+      <ol class="veld__hulp" style="padding-left:18px; line-height:1.7">
+        <li>Open uw project op vercel.com</li>
+        <li>Ga naar <strong>Settings → Environment Variables</strong></li>
+        <li>Voeg <code>BEHEER_WACHTWOORD</code> toe met een sterk wachtwoord</li>
+        <li>Klik bij <strong>Deployments</strong> op <strong>Redeploy</strong></li>
+      </ol>
+      <p class="veld__hulp">Het aanvraagdeel van de site werkt ondertussen gewoon.</p>
+      <a class="knop knop--zacht" href="/" style="width:100%">Terug naar de site</a>
+    </div>
+
     <form class="kaart inlogvak" id="inlogformulier">
       <h1 style="font-size:1.3rem">Inloggen</h1>
       <p class="veld__hulp">Deze omgeving bevat persoonsgegevens van aanvragers.</p>

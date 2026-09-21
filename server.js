@@ -37,6 +37,15 @@ let beheerWachtwoord = process.env.BEHEER_WACHTWOORD || '';
 export const wachtwoordGegenereerd = !beheerWachtwoord;
 if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
 
+/**
+ * Zonder BEHEER_WACHTWOORD verzint elke instantie een eigen wachtwoord. Lokaal
+ * is dat prima: er is één proces en het wachtwoord komt in beeld bij het
+ * starten. Serverloos is het onbruikbaar - elke instantie zou een ander
+ * wachtwoord en een andere sessiesleutel hebben. Dan is inloggen niet stuk,
+ * maar onmogelijk, en dat moet de beheerpagina eerlijk kunnen zeggen.
+ */
+const beheerOnbruikbaar = wachtwoordGegenereerd && OP_VERCEL;
+
 const SLEUTEL = sessieSleutel({ ...process.env, BEHEER_WACHTWOORD: beheerWachtwoord });
 
 const opslag = kiesOpslag({ dataDir: DATA_DIR });
@@ -123,6 +132,9 @@ async function beheerApi(req, res, url) {
     if (!limiet.toegestaan) {
       return stuurFout(res, 429, `Te veel inlogpogingen. Probeer het over ${limiet.wachtSeconden} seconden opnieuw.`);
     }
+    if (beheerOnbruikbaar) {
+      return stuurFout(res, 503, 'Er is nog geen beheerwachtwoord ingesteld voor deze omgeving.');
+    }
     const body = await leesJsonBody(req);
     if (!wachtwoordKlopt(body.wachtwoord)) return stuurFout(res, 401, 'Onjuist wachtwoord.');
     loginBegrenzer.herstel(ip);
@@ -131,7 +143,12 @@ async function beheerApi(req, res, url) {
   }
 
   if (url.pathname === '/api/beheer/sessie' && req.method === 'GET') {
-    return stuurJson(res, 200, { ingelogd: ingelogd(req) });
+    return stuurJson(res, 200, {
+      ingelogd: ingelogd(req),
+      wachtwoordIngesteld: !wachtwoordGegenereerd,
+      serverloos: OP_VERCEL,
+      instelbaar: beheerOnbruikbaar,
+    });
   }
 
   if (url.pathname === '/api/beheer/logout' && req.method === 'POST') {

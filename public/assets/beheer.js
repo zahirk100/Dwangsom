@@ -62,11 +62,15 @@ async function api(pad, opties = {}) {
 
 // ------------------------------------------------------------- inloggen ---
 
-function toonInloggen() {
+function toonInloggen({ instelbaar = false } = {}) {
   inloggenVak.classList.remove('verborgen');
   dashboardVak.classList.add('verborgen');
   sluitLade();
-  document.getElementById('wachtwoord').focus();
+  // Is er nog geen beheerwachtwoord ingesteld, dan heeft een inlogveld geen
+  // zin; dan hoort de beheerder te lezen wat hij moet doen.
+  document.getElementById('instellen-nodig').classList.toggle('verborgen', !instelbaar);
+  document.getElementById('inlogformulier').classList.toggle('verborgen', instelbaar);
+  if (!instelbaar) document.getElementById('wachtwoord').focus();
 }
 
 function toonDashboard() {
@@ -135,9 +139,10 @@ function rendereOpslagwaarschuwing(opslag) {
   if (!opslag || opslag.duurzaam) return;
   vak.append(el('div', { class: 'melding melding--fout' },
     el('strong', {}, 'Let op: aanvragen worden nu niet bewaard'),
-    el('p', {}, `Deze omgeving draait op ${opslag.omschrijving}. Ingediende aanvragen `
-      + 'verdwijnen zodra de server herstart. Koppel een database (KV_REST_API_URL en '
-      + 'KV_REST_API_TOKEN) voordat u klanten naar deze site verwijst.')));
+    el('p', {}, `Deze omgeving draait op ${opslag.omschrijving}. Een zojuist ingediende `
+      + 'aanvraag kan daardoor ontbreken in dit overzicht, en alles verdwijnt zodra de '
+      + 'server herstart. Prima om de app te proberen, maar koppel een database '
+      + '(KV_REST_API_URL en KV_REST_API_TOKEN) voordat u klanten naar deze site verwijst.')));
 }
 
 function rendereKengetallen(stats) {
@@ -346,5 +351,5 @@ function rendereLade() {
 // ------------------------------------------------------------- opstart ----
 
 api('/api/beheer/sessie')
-  .then((data) => (data.ingelogd ? toonDashboard() : toonInloggen()))
-  .catch(toonInloggen);
+  .then((data) => (data.ingelogd ? toonDashboard() : toonInloggen(data)))
+  .catch(() => toonInloggen());

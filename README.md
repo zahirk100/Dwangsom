@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 59 tests, zonder netwerk
+npm test                        # 64 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
