@@ -1,8 +1,0 @@
-Dit bestand komt rechtstreeks uit public/.
-
-Zie je deze tekst, dan werkt de statische hosting en ligt het probleem bij de
-serverloze functie. Krijg je hier een foutmelding of 404, dan wordt public/
-helemaal niet als statische map geserveerd en klopt de projectinstelling
-"Output Directory" niet.
-
-Dit bestand mag weg zodra de deploy draait.

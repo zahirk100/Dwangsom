@@ -1,9 +1,8 @@
 /**
- * Bootst na hoe Vercel de serverloze functie aanroept: het platform leest de
- * body al in (req.body), stuurt verzoeken via een rewrite naar de functie
- * terwijl req.url het oorspronkelijke pad houdt, en beeindigt TLS zelf
- * (x-forwarded-proto). Deze test bewaakt dat de applicatie daar tegen kan,
- * zonder dat er echt gedeployd hoeft te worden.
+ * Bootst na hoe Vercel de applicatie aanroept: het platform laadt server.js,
+ * roept de default export aan, leest de body al in (req.body) en beeindigt
+ * TLS zelf (x-forwarded-proto). Deze test bewaakt dat de applicatie daar
+ * tegen kan, zonder dat er echt gedeployd hoeft te worden.
  */
 
 import test from 'node:test';
@@ -17,7 +16,7 @@ const tijdelijk = await fs.mkdtemp(path.join(os.tmpdir(), 'dwangsom-vercel-'));
 process.env.DATA_DIR = tijdelijk;
 process.env.BEHEER_WACHTWOORD = 'test-wachtwoord';
 
-const { default: handler } = await import('../api/index.js');
+const { default: handler } = await import('../server.js');
 
 // De nabootsing: body inlezen, dan pas de functie aanroepen. Net als bij een
 // rewrite op Vercel blijft req.url het pad dat de bezoeker vroeg.
@@ -97,9 +96,9 @@ test('een sessie overleeft een koude start van de functie', async () => {
   assert.equal(tokenIsGeldig(verseSleutel, cookie.split('=')[1]), true);
 });
 
-test('bereikt een paginaverzoek de functie, dan serveert die de pagina zelf', async () => {
-  // Normaal serveert Vercel public/ statisch. Gebeurt dat niet, dan vangt de
-  // functie het op; anders zou de bezoeker een functiefout zien.
+test('de applicatie serveert ook de pagina\'s zelf', async () => {
+  // Vercel draait server.js als de applicatie: pagina's en API lopen via
+  // dezelfde router, zonder rewrite die het pad onderweg verandert.
   const antwoord = await haal('/');
   assert.equal(antwoord.status, 200);
   assert.match(antwoord.headers.get('content-type'), /text\/html/);

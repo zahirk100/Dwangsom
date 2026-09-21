@@ -115,7 +115,7 @@ async function laadLijst() {
   const data = await api(`/api/beheer/aanvragen?${filterQuery()}`);
   statussen = data.statussen;
   vulStatusfilter();
-  rendereOpslagwaarschuwing(data.opslag);
+  rendereOpslagwaarschuwing(data.opslag, data.open);
   rendereKengetallen(data.statistieken);
   rendereTabel(data.aanvragen);
   document.getElementById('knop-export').href = `/api/beheer/export.csv?status=${document.getElementById('filter-status').value}`;
@@ -133,9 +133,18 @@ function vulStatusfilter() {
  * Zonder duurzame opslag (bijvoorbeeld op Vercel zonder database) verdwijnen
  * ingediende aanvragen zodra de functie afkoelt. Dat mag niemand ontgaan.
  */
-function rendereOpslagwaarschuwing(opslag) {
+function rendereOpslagwaarschuwing(opslag, open) {
   const vak = document.getElementById('opslag-waarschuwing');
   vak.textContent = '';
+
+  if (open) {
+    vak.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', {}, 'Testmodus: deze omgeving is niet afgeschermd'),
+      el('p', {}, 'Iedereen met de link kan de dossiers van aanvragers inzien. '
+        + 'Haal de omgevingsvariabele BEHEER_OPEN weg voordat u echte aanvragen '
+        + 'binnenkrijgt; dan geldt het beheerwachtwoord weer.')));
+  }
+
   if (!opslag || opslag.duurzaam) return;
   vak.append(el('div', { class: 'melding melding--fout' },
     el('strong', {}, 'Let op: aanvragen worden nu niet bewaard'),

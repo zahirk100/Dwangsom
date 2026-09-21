@@ -32,6 +32,14 @@ const POORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(HIER, 'data');
 const OP_VERCEL = Boolean(process.env.VERCEL);
 
+/**
+ * Testschakelaar: met BEHEER_OPEN=1 is de beheeromgeving zonder wachtwoord
+ * bereikbaar. Bedoeld om te kunnen proefdraaien; de omgeving laat er een
+ * duidelijke waarschuwing bij zien. Vóór livegang haal je de variabele weg,
+ * meer is er niet voor nodig.
+ */
+const BEHEER_OPEN = process.env.BEHEER_OPEN === '1';
+
 let beheerWachtwoord = process.env.BEHEER_WACHTWOORD || '';
 export const wachtwoordGegenereerd = !beheerWachtwoord;
 if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
@@ -43,7 +51,7 @@ if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
  * wachtwoord en een andere sessiesleutel hebben. Dan is inloggen niet stuk,
  * maar onmogelijk, en dat moet de beheerpagina eerlijk kunnen zeggen.
  */
-const beheerOnbruikbaar = wachtwoordGegenereerd && OP_VERCEL;
+const beheerOnbruikbaar = wachtwoordGegenereerd && OP_VERCEL && !BEHEER_OPEN;
 
 const SLEUTEL = sessieSleutel({ ...process.env, BEHEER_WACHTWOORD: beheerWachtwoord });
 
@@ -71,6 +79,7 @@ function veiligeCookie(req) {
 }
 
 function ingelogd(req) {
+  if (BEHEER_OPEN) return true;
   return tokenIsGeldig(SLEUTEL, parseCookies(req.headers.cookie)[COOKIE_NAAM]);
 }
 
@@ -126,6 +135,7 @@ async function publiekeApi(req, res, url) {
 
 async function beheerApi(req, res, url) {
   if (url.pathname === '/api/beheer/login' && req.method === 'POST') {
+    if (BEHEER_OPEN) return stuurJson(res, 200, { ingelogd: true, open: true });
     const ip = clientIp(req);
     const limiet = loginBegrenzer.controleer(ip);
     if (!limiet.toegestaan) {
@@ -144,9 +154,10 @@ async function beheerApi(req, res, url) {
   if (url.pathname === '/api/beheer/sessie' && req.method === 'GET') {
     return stuurJson(res, 200, {
       ingelogd: ingelogd(req),
+      open: BEHEER_OPEN,
       wachtwoordIngesteld: !wachtwoordGegenereerd,
       serverloos: OP_VERCEL,
-      instelbaar: beheerOnbruikbaar,
+      instelbaar: beheerOnbruikbaar && !BEHEER_OPEN,
     });
   }
 
@@ -169,6 +180,7 @@ async function beheerApi(req, res, url) {
       statussen: STATUSSEN,
       statistieken: await store.statistieken(),
       opslag: { soort: opslag.soort, duurzaam: opslag.duurzaam, omschrijving: opslag.omschrijving },
+      open: BEHEER_OPEN,
     });
   }
 
@@ -357,7 +369,9 @@ export async function start(poort = POORT) {
     console.log('  LET OP: aanvragen worden niet duurzaam bewaard. Stel KV_REST_API_URL en');
     console.log('          KV_REST_API_TOKEN in, of draai op een server met een eigen schijf.');
   }
-  if (wachtwoordGegenereerd) {
+  if (BEHEER_OPEN) {
+    console.log('  LET OP: BEHEER_OPEN=1, de beheeromgeving is zonder wachtwoord bereikbaar.\n');
+  } else if (wachtwoordGegenereerd) {
     console.log(`  Beheerwachtwoord (gegenereerd): ${beheerWachtwoord}`);
     console.log('  Zet BEHEER_WACHTWOORD in de omgeving om een vast wachtwoord te gebruiken.\n');
   } else {
