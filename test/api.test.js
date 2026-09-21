@@ -241,3 +241,52 @@ test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
   assert.match(csv, /soort/);
   assert.match(csv, /Vooraanmelding/);
 });
+
+test('de beheerder maakt met een klik een machtiging en houdt de status bij', async () => {
+  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
+  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const metCookie = { headers: { cookie } };
+
+  const aanvragen = await (await haal('/api/beheer/aanvragen?soort=aanvraag', metCookie)).json();
+  const dossier = aanvragen.aanvragen[0];
+
+  const document = await haal(`/api/beheer/aanvragen/${dossier.id}/machtiging`, metCookie);
+  assert.equal(document.status, 200);
+  assert.match(document.headers.get('content-type'), /text\/html/);
+  assert.match(document.headers.get('x-robots-tag'), /noindex/);
+  const html = await document.text();
+  assert.match(html, /Machtiging/);
+  assert.match(html, /T\. Tester/, 'de bekende gegevens staan er al in');
+  assert.match(html, /Teststraat 1/);
+
+  const detail = await (await haal(`/api/beheer/aanvragen/${dossier.id}`, metCookie)).json();
+  assert.ok(Array.isArray(detail.machtiging.ontbrekendeGegevens));
+  assert.ok(detail.machtiging.ontbrekendeGegevens.includes('Geboortedatum'),
+    'zonder geboortedatum hoort de beheerder gewaarschuwd te worden');
+
+  const verstuurd = await (await haal(`/api/beheer/aanvragen/${dossier.id}/machtiging`, {
+    ...metCookie, method: 'POST', body: JSON.stringify({ actie: 'verstuurd' }),
+  })).json();
+  assert.ok(verstuurd.aanvraag.machtiging.verstuurdOp);
+
+  const ontvangen = await (await haal(`/api/beheer/aanvragen/${dossier.id}/machtiging`, {
+    ...metCookie, method: 'POST', body: JSON.stringify({ actie: 'ontvangen' }),
+  })).json();
+  assert.ok(ontvangen.aanvraag.machtiging.ontvangenOp);
+  assert.equal(ontvangen.aanvraag.stukken.machtiging, true,
+    'de ondertekende machtiging hoort meteen als stuk in het dossier te hangen');
+  assert.match(ontvangen.aanvraag.historie.at(-1).tekst, /ondertekende machtiging/i);
+
+  const onzin = await haal(`/api/beheer/aanvragen/${dossier.id}/machtiging`, {
+    ...metCookie, method: 'POST', body: JSON.stringify({ actie: 'iets-anders' }),
+  });
+  assert.equal(onzin.status, 400);
+});
+
+test('de machtiging is niet zonder inloggen op te halen', async () => {
+  const lijst = await (await haal('/api/beheer/aanvragen', {
+    headers: { cookie: (await (await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) })).headers.getSetCookie()[0].split(';')[0]) },
+  })).json();
+  const antwoord = await haal(`/api/beheer/aanvragen/${lijst.aanvragen[0].id}/machtiging`);
+  assert.equal(antwoord.status, 401);
+});

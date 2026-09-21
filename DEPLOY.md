@@ -175,6 +175,9 @@ Dat laatste punt is het echte bewijs dat de opslag werkt.
 | Naam | Waarde | Waarom |
 | --- | --- | --- |
 | `SESSIE_GEHEIM` | willekeurige reeks van 32+ tekens | dan blijven beheerders ingelogd als je het beheerwachtwoord wijzigt |
+| `BEDRIJF_NAAM` | je bedrijfsnaam | komt op de machtiging te staan |
+| `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` | je vestigingsadres | idem |
+| `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | je KvK-nummer en contactgegevens | idem; wat leeg blijft wordt een invulregel |
 
 Zo'n geheim maak je met:
 

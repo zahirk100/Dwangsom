@@ -15,6 +15,7 @@ let soorten = [];
 let huidigSoort = 'alle';
 let actieveAanvraag = null;
 let actieveEisen = null;
+let actieveMachtiging = null;
 
 const UITKOMST_LABEL = {
   'recht': { tekst: 'Recht opgebouwd', kleur: 'groen' },
@@ -277,6 +278,7 @@ async function openLade(id) {
   const data = await api(`/api/beheer/aanvragen/${id}`);
   actieveAanvraag = data.aanvraag;
   actieveEisen = data.eisen || { gegevens: [], stukken: [] };
+  actieveMachtiging = data.machtiging || null;
   rendereLade();
 }
 
@@ -400,6 +402,9 @@ function rendereLade() {
       el('strong', {}, 'Nog op te vragen bij de aanvrager'),
       el('p', { tekst: ontbrekendeGegevens(a).map((g) => g.label).join(', ') })) : null,
 
+    el('div', { class: 'kolomkop', tekst: 'Machtiging' }),
+    machtigingBlok(a),
+
     el('div', { class: 'kolomkop', tekst: 'Documenten' }),
     el('div', { class: 'knoprij' },
       el('a', { class: 'knop knop--zacht knop--klein', href: `/api/beheer/aanvragen/${a.id}/brief?soort=ingebrekestelling` }, '⬇ Ingebrekestelling'),
@@ -463,6 +468,71 @@ function stukkenBlok(a) {
       )));
   }
   return houder;
+}
+
+/**
+ * Machtiging: in één klik opgemaakt uit de gegevens die al bekend zijn, en
+ * daarna bijhouden of hij verstuurd en ondertekend terug is.
+ */
+function machtigingBlok(a) {
+  const status = actieveMachtiging || {};
+  const houder = el('div', {});
+
+  const ontbreekt = status.ontbrekendeGegevens || [];
+  if (ontbreekt.length) {
+    houder.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', {}, 'Nog niet compleet'),
+      el('p', { tekst: `Deze gegevens van de aanvrager ontbreken en komen als invulregel op de `
+        + `machtiging: ${ontbreekt.join(', ')}.` })));
+  }
+  const eigenGegevens = status.ontbrekendeOrganisatiegegevens || [];
+  if (eigenGegevens.length) {
+    houder.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', {}, 'Onze eigen gegevens ontbreken'),
+      el('p', { tekst: `Stel deze omgevingsvariabelen in, anders staan ze als invulregel op het `
+        + `document: ${eigenGegevens.join(', ')}.` })));
+  }
+
+  const regels = [];
+  if (status.verstuurdOp) regels.push(`Verstuurd op ${datumTijd(status.verstuurdOp)}`);
+  if (status.ontvangenOp) regels.push(`Ondertekend ontvangen op ${datumTijd(status.ontvangenOp)}`);
+  houder.append(el('p', { class: 'subtiel', style: 'font-size:.9rem; margin:0 0 10px',
+    tekst: regels.length ? regels.join(' \u00b7 ') : 'Nog niet verstuurd.' }));
+
+  async function zet(actie) {
+    const data = await api(`/api/beheer/aanvragen/${a.id}/machtiging`, {
+      method: 'POST', body: JSON.stringify({ actie }),
+    });
+    actieveAanvraag = data.aanvraag;
+    actieveMachtiging = { ...actieveMachtiging, ...(data.aanvraag.machtiging || {}) };
+    rendereLade();
+    laadLijst();
+  }
+
+  const knoppen = el('div', { class: 'knoprij' },
+    el('a', {
+      class: 'knop knop--primair knop--klein',
+      href: `/api/beheer/aanvragen/${a.id}/machtiging`,
+      target: '_blank', rel: 'noopener',
+    }, 'Opstellen en afdrukken'),
+  );
+
+  if (!status.verstuurdOp) {
+    knoppen.append(maakKnop('Markeer als verstuurd', () => zet('verstuurd')));
+  }
+  if (!status.ontvangenOp) {
+    knoppen.append(maakKnop('Ondertekend ontvangen', () => zet('ontvangen')));
+  } else {
+    knoppen.append(maakKnop('Terugzetten', () => zet('ingetrokken'), 'knop--stil'));
+  }
+  houder.append(knoppen);
+  return houder;
+}
+
+function maakKnop(tekst, bijKlik, extraClass = 'knop--zacht') {
+  const knop = el('button', { class: `knop ${extraClass} knop--klein`, type: 'button' }, tekst);
+  knop.addEventListener('click', bijKlik);
+  return knop;
 }
 
 /** Verplichte contactgegevens die nog niet zijn ingevuld. */

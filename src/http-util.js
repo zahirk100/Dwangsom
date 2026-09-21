@@ -44,6 +44,19 @@ export function stuurTekst(res, statuscode, tekst, extraHeaders = {}) {
   return true;
 }
 
+export function stuurHtml(res, statuscode, html, extraHeaders = {}) {
+  const body = Buffer.from(html, 'utf8');
+  res.writeHead(statuscode, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Content-Length': body.length,
+    'Cache-Control': 'no-store',
+    'X-Robots-Tag': 'noindex, nofollow',
+    ...extraHeaders,
+  });
+  res.end(body);
+  return true;
+}
+
 export function stuurFout(res, statuscode, melding, details) {
   return stuurJson(res, statuscode, { fout: melding, details: details || undefined });
 }

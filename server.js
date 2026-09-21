@@ -18,8 +18,10 @@ import { kiesOpslag } from './src/opslag.js';
 import { maakToken, tokenIsGeldig, sessieCookie, sessieSleutel, COOKIE_NAAM } from './src/sessie.js';
 import {
   Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
-  serveerBestand, stuurFout, stuurJson, stuurTekst,
+  serveerBestand, stuurFout, stuurHtml, stuurJson, stuurTekst,
 } from './src/http-util.js';
+import { machtigingContext, machtigingHtml } from './src/machtiging.js';
+import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
 import { valideerAanvraag } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
 import { bepaalDossiereisen, dossierStatus } from './public/shared/dossier.js';
@@ -210,6 +212,11 @@ async function beheerApi(req, res, url) {
         statussen: STATUSSEN,
         soorten: SOORTEN,
         eisen: bepaalDossiereisen(aanvraag),
+        machtiging: {
+          ...(aanvraag.machtiging || {}),
+          ontbrekendeGegevens: machtigingContext(aanvraag, organisatiegegevens()).ontbreekt,
+          ontbrekendeOrganisatiegegevens: ontbrekendeOrganisatiegegevens(),
+        },
       });
     }
 
@@ -224,6 +231,17 @@ async function beheerApi(req, res, url) {
       const tekst = String(body.tekst || '').trim().slice(0, 2000);
       if (!tekst) return stuurFout(res, 400, 'Notitie is leeg.');
       return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, 'beheerder') });
+    }
+
+    if (subpad === '/machtiging' && req.method === 'GET') {
+      return stuurHtml(res, 200, machtigingHtml(aanvraag, organisatiegegevens()));
+    }
+
+    if (subpad === '/machtiging' && req.method === 'POST') {
+      const body = await leesJsonBody(req);
+      const bijgewerkt = await store.werkMachtigingBij(aanvraag.id, body.actie, 'beheerder');
+      if (!bijgewerkt) return stuurFout(res, 400, 'Onbekende actie voor de machtiging.');
+      return stuurJson(res, 200, { aanvraag: bijgewerkt });
     }
 
     if (subpad === '/stukken' && req.method === 'POST') {

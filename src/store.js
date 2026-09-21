@@ -153,6 +153,39 @@ export class Store {
     return aanvraag;
   }
 
+  /**
+   * Machtiging: verstuurd naar de aanvrager, of ondertekend terugontvangen.
+   * Het terugontvangen vinkt meteen het bijbehorende stuk af, zodat het
+   * dossier op één plek klopt.
+   */
+  async werkMachtigingBij(id, actie, door) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+    const machtiging = { ...(aanvraag.machtiging || {}) };
+
+    if (actie === 'verstuurd') {
+      machtiging.verstuurdOp = nu;
+      aanvraag.historie.push({ op: nu, door: door || 'beheerder', tekst: 'Machtiging naar de aanvrager gestuurd.' });
+    } else if (actie === 'ontvangen') {
+      machtiging.ontvangenOp = nu;
+      aanvraag.stukken = { ...(aanvraag.stukken || {}), machtiging: true };
+      aanvraag.historie.push({ op: nu, door: door || 'beheerder', tekst: 'Ondertekende machtiging ontvangen en in het dossier gehangen.' });
+    } else if (actie === 'ingetrokken') {
+      machtiging.verstuurdOp = null;
+      machtiging.ontvangenOp = null;
+      aanvraag.stukken = { ...(aanvraag.stukken || {}), machtiging: false };
+      aanvraag.historie.push({ op: nu, door: door || 'beheerder', tekst: 'Machtigingsstatus teruggezet.' });
+    } else {
+      return null;
+    }
+
+    aanvraag.machtiging = machtiging;
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
   /** Bijwerken welke stukken binnen zijn. */
   async werkStukkenBij(id, stukken, door) {
     const aanvraag = await this.vind(id);

@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 92 tests, zonder netwerk
+npm test                        # 100 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -33,6 +33,7 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | leeg | Redis via REST; verplicht op serverloze hosting |
 | `SECURE_COOKIES` | automatisch achter HTTPS | Zet op `1` om af te dwingen |
+| `BEDRIJF_NAAM`, `BEDRIJF_ADRES`, `BEDRIJF_POSTCODE_PLAATS`, `BEDRIJF_KVK`, `BEDRIJF_EMAIL`, `BEDRIJF_TELEFOON` | leeg | Onze eigen gegevens op de machtiging. Wat leeg is, wordt een invulregel in het document en een waarschuwing in het dossier. |
 
 ## Structuur
 
@@ -41,6 +42,8 @@ server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
 api/index.js           Ingang voor Vercel: /api/* naar dezelfde router
 api/ping.js            Diagnose-eindpunt, zonder imports; mag weg als alles draait
 vercel.json            cleanUrls en de rewrite van /api/* naar api/index.js
+src/machtiging.js      Machtiging als afdrukbare pagina, uit de dossiergegevens
+src/organisatie.js     Onze eigen gegevens uit de omgeving
 src/store.js           Dossierregels: referenties, status, notities, historie
 src/opslag.js          Opslagdrivers: bestand, Redis via REST, geheugen
 src/sessie.js          Sessies als ondertekend cookie, zonder serverstatus
@@ -112,6 +115,24 @@ niet meer vraagt dan dat en de beheerder achteraf niets hoeft na te bellen:
 De aanvrager vinkt aan wat hij heeft; de beheeromgeving toont per dossier wat
 nog ontbreekt, en de CSV-export zet die lijst in een kolom.
 
+## De machtiging
+
+In het dossier maakt **Opstellen en afdrukken** de machtiging in één klik op uit
+de gegevens die al bekend zijn: naam, geboortedatum en adres van de aanvrager,
+onze eigen gegevens, en om welke zaak het gaat. Het resultaat is een afdrukbare
+pagina — de browser maakt er met *opslaan als pdf* een bestand van, dus daar is
+geen bibliotheek voor nodig. De aanvrager hoeft alleen te ondertekenen.
+
+Wat ontbreekt wordt niet verzonnen maar zichtbaar gelaten: een stippellijn in
+het document en een waarschuwing boven het dossier, met de namen van de velden
+die nog moeten worden aangevuld. Dat geldt ook voor onze eigen gegevens als de
+`BEDRIJF_*`-variabelen niet zijn ingesteld.
+
+Daarna houdt het dossier bij of de machtiging is verstuurd en ondertekend terug
+is. Dat laatste vinkt meteen het bijbehorende stuk af, zodat het dossier op één
+plek klopt. De machtiging omvat bewust geen betalingen: een toegekende dwangsom
+wordt rechtstreeks aan de aanvrager uitbetaald.
+
 ## Wat de aanvrager wél en niet te zien krijgt
 
 De wizard toont de uitkomst, het bedrag en de data uit de eigen zaak, plus wat
@@ -149,6 +170,9 @@ Beheer (sessiecookie vereist):
 | `PATCH /api/beheer/aanvragen/:id` | Status wijzigen |
 | `POST /api/beheer/aanvragen/:id/notities` | Interne notitie |
 | `POST /api/beheer/aanvragen/:id/herbereken` | Opnieuw rekenen op vandaag |
+| `POST /api/beheer/aanvragen/:id/stukken` | Aanvinken welke stukken binnen zijn |
+| `GET /api/beheer/aanvragen/:id/machtiging` | De machtiging als afdrukbare pagina |
+| `POST /api/beheer/aanvragen/:id/machtiging` | Status: `verstuurd`, `ontvangen` of `ingetrokken` |
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
