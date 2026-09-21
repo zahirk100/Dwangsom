@@ -368,6 +368,24 @@ export async function start(poort = POORT) {
 
 export { server, store, opslag, verwerk };
 
+/**
+ * Default export voor platforms die deze module zelf laden en er de
+ * applicatie uit halen, zoals Vercel. Die verwachten "een functie of een
+ * server"; zonder default export weigert de runtime de module met
+ * "Invalid export found in module ... The default export must be a function
+ * or server" en faalt elk verzoek, ook dat naar de startpagina.
+ *
+ * De handler doet hetzelfde als de lokale server: pagina's en API via
+ * dezelfde router.
+ */
+export default async function handler(req, res) {
+  try {
+    await verwerk(req, res);
+  } catch (err) {
+    foutAfhandeling(err, req, res);
+  }
+}
+
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   start().catch((err) => {
     console.error('Starten mislukt:', err);

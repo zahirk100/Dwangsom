@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 64 tests, zonder netwerk
+npm test                        # 69 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -109,10 +109,11 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
-Lokaal serveert `server.js` ook de pagina's. Op Vercel serveert het platform
-`public/` statisch en gaat alleen `/api/*` via een rewrite naar `api/index.js`,
-dat dezelfde router aanroept. Er is geen bouwstap: wat in de repository staat,
-is wat er wordt geserveerd.
+Lokaal serveert `server.js` ook de pagina's. Op Vercel wordt diezelfde module
+geladen en via de **default export** aangeroepen; `api/index.js` doet hetzelfde
+voor `/api/*`. Beide wegen komen uit bij dezelfde `verwerk`-router, dus de
+applicatie gedraagt zich overal gelijk. Er is geen bouwstap: wat in de
+repository staat, is wat er wordt geserveerd.
 
 ## Hosting en opslag
 

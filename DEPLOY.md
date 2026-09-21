@@ -83,6 +83,13 @@ op GitHub nog op de werkbranch. Kies één van beide:
 Doe je geen van beide, dan werkt de site ook gewoon — hij wordt dan alleen
 vanaf de werkbranch gebouwd.
 
+### "Invalid export found in module server.mjs"
+
+Vercel laadt `server.js` zelf en haalt de applicatie uit de **default export**.
+Ontbreekt die, dan weigert de runtime de hele module en faalt elk verzoek — ook
+dat naar de startpagina, met `500 FUNCTION_INVOCATION_FAILED`. `server.js`
+exporteert daarom onderaan een handler als default. Een test bewaakt dat.
+
 ### Krijg je "500 FUNCTION_INVOCATION_FAILED"?
 
 Dat betekent dat de serverloze functie niet opstartte. Het project gebruikt nu
