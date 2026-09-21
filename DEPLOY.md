@@ -25,6 +25,50 @@ instelling), later de **database en het eigen domein** voor echt gebruik.
 
 4. Klik op **Deploy**. Je krijgt een URL als `https://dwangsom-xxx.vercel.app`.
 
+### Zie je de repository niet in de lijst?
+
+Dat is bijna altijd de toegangsinstelling van de Vercel-app op GitHub: bij het
+koppelen kun je kiezen tussen *All repositories* en *Only select repositories*,
+en bij die tweede keuze staat `Dwangsom` er niet bij. De repository zelf is in
+orde en publiek. Loop dit af:
+
+1. **Zoek eerst gewoon.** De lijst op vercel.com/new toont maar een handvol
+   repositories. Typ `Dwangsom` in het zoekveld erboven.
+2. **Klopt het account?** Links bovenin staat onder welk account of team je
+   werkt. De repository hoort bij het GitHub-account **zahirk100**; kies dat
+   account, niet een team.
+3. **Geef de Vercel-app toegang.** Onder de lijst staat een link als
+   *Adjust GitHub App Permissions* of *Configure GitHub App*. Kan je die niet
+   vinden, ga dan op GitHub naar
+   **Settings → Applications → Installed GitHub Apps → Vercel → Configure**.
+   Kies daar bij *Repository access* voor **All repositories**, of voor
+   *Only select repositories* met `Dwangsom` erbij, en sla op. Terug in Vercel
+   staat hij er meteen tussen (eventueel na verversen).
+4. **Nog steeds niet?** Dan is GitHub waarschijnlijk niet gekoppeld aan je
+   Vercel-account: *Account Settings → Authentication → GitHub → Connect*.
+
+### Plan B: deployen vanaf je eigen computer
+
+Werkt de koppeling niet, dan kun je er helemaal omheen. Je hebt alleen Node
+nodig:
+
+```bash
+git clone https://github.com/zahirk100/Dwangsom.git
+cd Dwangsom
+npx vercel login
+npx vercel --prod
+```
+
+De CLI stelt een paar vragen (project aanmaken, naam bevestigen) en geeft daarna
+de URL. Omgevingsvariabelen zet je erbij met:
+
+```bash
+npx vercel env add BEHEER_WACHTWOORD production
+```
+
+Deze route heeft geen GitHub-koppeling nodig, maar deployt ook niet
+automatisch bij een nieuwe commit; je draait dan zelf `npx vercel --prod`.
+
 ### 2. Controleer welke branch Vercel bouwt
 
 De code staat op twee branches met exact dezelfde inhoud: `main` en de
