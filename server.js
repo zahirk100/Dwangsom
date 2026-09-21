@@ -45,6 +45,13 @@ const OP_VERCEL = Boolean(process.env.VERCEL);
  */
 const BEHEER_OPEN = process.env.BEHEER_OPEN === '1';
 
+/**
+ * Welke funnel staat op /aanvraag? De nieuwe (brief uploaden) is standaard;
+ * met FUNNEL=klassiek staat de oude vragenwizard daar weer. Beide blijven
+ * altijd bereikbaar op hun eigen adres, zodat terugschakelen niets kost.
+ */
+const FUNNEL = process.env.FUNNEL === 'klassiek' ? 'klassiek' : 'nieuw';
+
 let beheerWachtwoord = process.env.BEHEER_WACHTWOORD || '';
 export const wachtwoordGegenereerd = !beheerWachtwoord;
 if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
@@ -103,6 +110,20 @@ function wachtwoordKlopt(ingevoerd) {
 // ----------------------------------------------------------------- routes --
 
 async function publiekeApi(req, res, url) {
+  if (url.pathname === '/api/versie' && req.method === 'GET') {
+    // Zodat in één oogopslag te zien is welke versie er echt draait. Zonder
+    // dit blijft "ik zie geen verandering" giswerk tussen cache, branch en
+    // een mislukte deploy.
+    return stuurJson(res, 200, {
+      commit: String(process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || 'lokaal',
+      branch: process.env.VERCEL_GIT_COMMIT_REF || 'lokaal',
+      funnel: FUNNEL,
+      opslag: opslag.soort,
+      beheerOpen: BEHEER_OPEN,
+      tijd: new Date().toISOString(),
+    });
+  }
+
   if (url.pathname === '/api/catalogus' && req.method === 'GET') {
     return stuurJson(res, 200, { bestuursorganen: BESTUURSORGANEN, zaaktypen: ZAAKTYPEN });
   }
@@ -411,13 +432,6 @@ export async function apiHandler(req, res) {
   if ((await publiekeApi(req, res, url)) !== false) return;
   stuurFout(res, 404, 'Onbekend API-pad.');
 }
-
-/**
- * Welke funnel staat op /aanvraag? De nieuwe (brief uploaden) is standaard;
- * met FUNNEL=klassiek staat de oude vragenwizard daar weer. Beide blijven
- * altijd bereikbaar op hun eigen adres, zodat terugschakelen niets kost.
- */
-const FUNNEL = process.env.FUNNEL === 'klassiek' ? 'klassiek' : 'nieuw';
 
 const PAGINAS = {
   '/': 'index.html',

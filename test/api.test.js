@@ -382,3 +382,10 @@ test('een onjuist BSN of IBAN wordt geweigerd', async () => {
   assert.match(velden.bsn, /klopt niet/);
   assert.match(velden.iban, /klopt niet/);
 });
+
+test('de versie is op te vragen, zodat duidelijk is wat er draait', async () => {
+  const data = await (await haal('/api/versie')).json();
+  assert.equal(data.funnel, 'nieuw');
+  assert.ok(data.commit, 'op Vercel staat hier de commit-hash');
+  assert.ok(data.tijd);
+});
