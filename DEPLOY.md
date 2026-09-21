@@ -120,6 +120,11 @@ rewrite van `/api/*`. Blijft de fout staan, zoek dan gericht:
 
 ### 3. Uitproberen
 
+Download eerst een paar voorbeeldbrieven uit de map `voorbeelden/` in de
+repository; daarmee loop je de funnel in een minuut door. `uwv-wia-...pdf`
+geeft "UWV lijkt te laat", `uwv-verlenging-...pdf` schuift de datum op en
+`uwv-beslissing-genomen.pdf` laat zien dat de procedure stopt.
+
 - `/` — de landingspagina
 - `/aanvraag` — de wizard; vul bijvoorbeeld een WIA-aanvraag van acht maanden
   geleden in met een ingebrekestelling, en je ziet € 1.442 uitgerekend worden
@@ -178,6 +183,7 @@ Dat laatste punt is het echte bewijs dat de opslag werkt.
 | `BEDRIJF_NAAM` | je bedrijfsnaam | komt op de machtiging te staan |
 | `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` | je vestigingsadres | idem |
 | `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | je KvK-nummer en contactgegevens | idem; wat leeg blijft wordt een invulregel |
+| `FUNNEL` | `klassiek` | alleen nodig als je terug wilt naar de oude vragenwizard op `/aanvraag` |
 
 Zo'n geheim maak je met:
 

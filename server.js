@@ -17,7 +17,7 @@ import { Store, STATUSSEN, SOORTEN, isGeldigeStatus, labelVoorStatus, labelVoorS
 import { kiesOpslag } from './src/opslag.js';
 import { maakToken, tokenIsGeldig, sessieCookie, sessieSleutel, COOKIE_NAAM } from './src/sessie.js';
 import {
-  Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
+  MAX_UPLOAD_BYTES, Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
   serveerBestand, stuurFout, stuurHtml, stuurJson, stuurTekst,
 } from './src/http-util.js';
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
@@ -25,6 +25,8 @@ import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organ
 import { valideerAanvraag } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
 import { bepaalDossiereisen, dossierStatus } from './public/shared/dossier.js';
+import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
+import { leesBrief } from './src/brieflezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 
@@ -69,6 +71,7 @@ function gereed() {
 }
 
 const indienBegrenzer = new Snelheidsbegrenzer({ max: 20, vensterMs: 60 * 60 * 1000 });
+const briefBegrenzer = new Snelheidsbegrenzer({ max: 40, vensterMs: 60 * 60 * 1000 });
 const loginBegrenzer = new Snelheidsbegrenzer({ max: 8, vensterMs: 15 * 60 * 1000 });
 
 // ---------------------------------------------------------------- sessie --
@@ -109,23 +112,62 @@ async function publiekeApi(req, res, url) {
     return stuurJson(res, 200, { rapport: berekenDwangsom(body.invoer || body) });
   }
 
+  if (url.pathname === '/api/brief' && req.method === 'POST') {
+    const limiet = briefBegrenzer.controleer(clientIp(req));
+    if (!limiet.toegestaan) {
+      return stuurFout(res, 429, 'Te veel brieven vanaf dit adres. Probeer het later opnieuw.');
+    }
+    const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+    const gelezen = leesBrief(body);
+    if (!gelezen.gelukt) {
+      return stuurJson(res, 422, { fout: gelezen.reden, soort: gelezen.soort, hint: gelezen.hint });
+    }
+
+    const herkenning = herkenBrief(gelezen.tekst);
+    if (!herkenning.leesbaar) {
+      return stuurJson(res, 422, { fout: herkenning.reden });
+    }
+
+    const invoer = naarInvoer(herkenning);
+    // Alleen rekenen als er genoeg uit de brief kwam; anders vraagt de funnel
+    // het ontbrekende alsnog.
+    const rapport = invoer.zaaktype && invoer.basisdatum ? berekenDwangsom(invoer) : null;
+
+    return stuurJson(res, 200, {
+      herkenning,
+      velden: herkendeVelden(herkenning),
+      invoer,
+      rapport,
+      brief: {
+        bron: gelezen.bron,
+        bestandsnaam: String(body.bestandsnaam || '').slice(0, 120),
+        tekens: gelezen.tekst.length,
+        tekst: gelezen.tekst,
+      },
+    });
+  }
+
   if (url.pathname === '/api/aanvragen' && req.method === 'POST') {
     const limiet = indienBegrenzer.controleer(clientIp(req));
     if (!limiet.toegestaan) {
       return stuurFout(res, 429, 'Te veel aanvragen vanaf dit adres. Probeer het later opnieuw.');
     }
     const body = await leesJsonBody(req);
-    const { geldig, fouten, invoer, contact, stukken, rapport } = valideerAanvraag(body);
-    if (!geldig) {
-      return stuurJson(res, 422, { fout: 'De aanvraag is niet compleet.', velden: fouten });
+    const gevalideerd = valideerAanvraag(body);
+    if (!gevalideerd.geldig) {
+      return stuurJson(res, 422, { fout: 'De aanvraag is niet compleet.', velden: gevalideerd.fouten });
     }
+    const { invoer, contact, stukken, rapport, brief, verlengbrief, handtekening, herkomst } = gevalideerd;
     const aanvraag = await store.nieuweAanvraag({
       invoer,
       contact,
       rapport,
       stukken,
+      brief,
+      verlengbrief,
+      handtekening,
       meta: {
-        ingediendVia: 'webformulier',
+        ingediendVia: herkomst,
         userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
       },
     });
@@ -370,9 +412,19 @@ export async function apiHandler(req, res) {
   stuurFout(res, 404, 'Onbekend API-pad.');
 }
 
+/**
+ * Welke funnel staat op /aanvraag? De nieuwe (brief uploaden) is standaard;
+ * met FUNNEL=klassiek staat de oude vragenwizard daar weer. Beide blijven
+ * altijd bereikbaar op hun eigen adres, zodat terugschakelen niets kost.
+ */
+const FUNNEL = process.env.FUNNEL === 'klassiek' ? 'klassiek' : 'nieuw';
+
 const PAGINAS = {
   '/': 'index.html',
-  '/aanvraag': 'aanvraag.html',
+  '/start': 'start.html',
+  '/aanvraag': FUNNEL === 'klassiek' ? 'aanvraag.html' : 'start.html',
+  '/aanvraag-nieuw': 'start.html',
+  '/aanvraag-klassiek': 'aanvraag.html',
   '/beheer': 'beheer.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
 };
@@ -416,6 +468,7 @@ export async function start(poort = POORT) {
   console.log(`\n  Dwangsomhulp draait op http://localhost:${port}`);
   console.log(`  Beheeromgeving:        http://localhost:${port}/beheer`);
   console.log(`  Opslag:                ${opslag.omschrijving}`);
+  console.log(`  Funnel op /aanvraag:   ${FUNNEL} (klassieke wizard: /aanvraag-klassiek)`);
   if (!opslag.duurzaam) {
     console.log('  LET OP: aanvragen worden niet duurzaam bewaard. Stel KV_REST_API_URL en');
     console.log('          KV_REST_API_TOKEN in, of draai op een server met een eigen schijf.');

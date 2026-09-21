@@ -7,6 +7,7 @@ import { parseDatum, vandaag } from '../public/shared/datum.js';
 import { zoekZaaktype } from '../public/shared/catalogus.js';
 import { berekenDwangsom } from '../public/shared/dwangsom.js';
 import { bepaalDossiereisen, stukkenVanKlant } from '../public/shared/dossier.js';
+import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '../public/shared/identiteit.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
@@ -51,6 +52,8 @@ function normaliseerContact(ruw = {}) {
     woonplaats: tekst(ruw.woonplaats, 80),
     geboortedatum: tekst(ruw.geboortedatum, 10),
     kenmerk: tekst(ruw.kenmerk, 60),
+    bsn: normaliseerBsn(tekst(ruw.bsn, 12)),
+    iban: normaliseerIban(tekst(ruw.iban, 40)),
     toelichting: tekst(ruw.toelichting, 2000),
     machtiging: Boolean(ruw.machtiging),
     akkoordVoorwaarden: Boolean(ruw.akkoordVoorwaarden),
@@ -99,6 +102,13 @@ export function valideerAanvraag(body) {
   if (contact.geboortedatum && !parseDatum(contact.geboortedatum)) {
     fouten.geboortedatum = 'Vul de geboortedatum in als jjjj-mm-dd.';
   }
+  // Een typefout in deze twee kost weken, dus meteen narekenen.
+  if (contact.bsn && !bsnKlopt(contact.bsn)) {
+    fouten.bsn = 'Dit burgerservicenummer klopt niet. Controleer de cijfers.';
+  }
+  if (contact.iban && !ibanKlopt(contact.iban)) {
+    fouten.iban = 'Dit IBAN klopt niet. Controleer het rekeningnummer.';
+  }
   if (!contact.akkoordVoorwaarden) {
     fouten.akkoordVoorwaarden = 'U moet akkoord gaan om de aanvraag in te dienen.';
   }
@@ -108,5 +118,42 @@ export function valideerAanvraag(body) {
   const ingestuurd = (body && typeof body.stukken === 'object' && body.stukken) || {};
   const stukken = Object.fromEntries(gevraagd.map((s) => [s.id, Boolean(ingestuurd[s.id])]));
 
-  return { geldig: Object.keys(fouten).length === 0, fouten, invoer, contact, stukken, rapport };
+  // De brief en de handtekening komen uit de nieuwe funnel; de klassieke
+  // wizard stuurt ze niet mee en dat mag.
+  const brief = normaliseerBrief(body && body.brief);
+  const verlengbrief = normaliseerBrief(body && body.verlengbrief);
+  const handtekening = normaliseerHandtekening(body && body.handtekening);
+  const herkomst = tekst(body && body.herkomst, 40) || 'formulier';
+
+  return {
+    geldig: Object.keys(fouten).length === 0,
+    fouten, invoer, contact, stukken, rapport, brief, verlengbrief, handtekening, herkomst,
+  };
+}
+
+const MAX_BRIEFTEKST = 60000;
+const MAX_HANDTEKENING = 400 * 1024;
+
+function normaliseerBrief(ruw) {
+  if (!ruw || typeof ruw !== 'object') return null;
+  const inhoud = tekst(ruw.tekst, MAX_BRIEFTEKST);
+  if (!inhoud) return null;
+  return {
+    bron: tekst(ruw.bron, 20),
+    bestandsnaam: tekst(ruw.bestandsnaam, 120),
+    tekens: inhoud.length,
+    tekst: inhoud,
+    ontvangenOp: new Date().toISOString(),
+  };
+}
+
+function normaliseerHandtekening(ruw) {
+  if (!ruw || typeof ruw !== 'object') return null;
+  const afbeelding = String(ruw.afbeelding || '');
+  if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(afbeelding)) return null;
+  if (afbeelding.length > MAX_HANDTEKENING) return null;
+  return {
+    afbeelding,
+    gezetOp: parseDatum(String(ruw.gezetOp || '').slice(0, 10)) ? ruw.gezetOp : new Date().toISOString(),
+  };
 }

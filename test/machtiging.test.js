@@ -24,6 +24,7 @@ const dossier = {
   contact: {
     naam: 'M. de Vries', geboortedatum: '1980-05-04', adres: 'Dorpsstraat 1',
     postcode: '8000 AA', woonplaats: 'Zwolle', kenmerk: 'UWV-123',
+    bsn: '111222333', iban: 'NL91ABNA0417164300',
   },
   invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2026-01-06' },
 };
@@ -45,6 +46,31 @@ test('ontbrekende gegevens worden gemeld in plaats van verzonnen', () => {
   assert.ok(c.ontbreekt.includes('Adres'));
   assert.ok(c.ontbreekt.includes('Postcode en woonplaats'));
   assert.equal(c.gever.naam, 'A');
+});
+
+test('instanties die om een BSN vragen, krijgen dat veld en missen het als het ontbreekt', () => {
+  const metBsn = machtigingContext(dossier, organisatie);
+  assert.equal(metBsn.gever.bsnNodig, true);
+  assert.equal(metBsn.gever.bsn, '111222333');
+
+  const zonder = machtigingContext(
+    { ...dossier, contact: { ...dossier.contact, bsn: '' } }, organisatie,
+  );
+  assert.ok(zonder.ontbreekt.includes('Burgerservicenummer'));
+});
+
+test('een digitaal gezette handtekening komt in het document', () => {
+  const punt = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const html = machtigingHtml(
+    { ...dossier, handtekening: { afbeelding: punt, gezetOp: '2026-09-21T10:00:00.000Z' } },
+    organisatie,
+  );
+  assert.ok(html.includes('class="gezet"'), 'de handtekening staat op de plek van de lijn');
+  assert.ok(html.includes('Digitaal gezet op 21 september 2026'));
+  assert.ok(html.includes('NL91 ABNA 0417 1643 00'), 'het rekeningnummer staat erbij');
+
+  const zonder = machtigingHtml(dossier, organisatie);
+  assert.ok(zonder.includes('class="lijn"'), 'zonder handtekening blijft er een lijn om te tekenen');
 });
 
 test('de gegevens staan in het document en ontbrekende velden worden invulregels', () => {

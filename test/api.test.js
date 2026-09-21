@@ -290,3 +290,95 @@ test('de machtiging is niet zonder inloggen op te halen', async () => {
   const antwoord = await haal(`/api/beheer/aanvragen/${lijst.aanvragen[0].id}/machtiging`);
   assert.equal(antwoord.status, 401);
 });
+
+test('een geüploade brief wordt gelezen, herkend en doorgerekend', async () => {
+  const pdf = (await import('node:fs')).readFileSync(
+    new URL('../voorbeelden/uwv-wia-ontvangstbevestiging.pdf', import.meta.url),
+  );
+  const antwoord = await haal('/api/brief', {
+    method: 'POST',
+    body: JSON.stringify({
+      bestandsnaam: 'brief.pdf', mediaType: 'application/pdf', data: pdf.toString('base64'),
+    }),
+  });
+  assert.equal(antwoord.status, 200);
+  const data = await antwoord.json();
+  assert.equal(data.herkenning.bestuursorgaan, 'uwv');
+  assert.equal(data.herkenning.beslisdatum, '2026-09-14');
+  assert.equal(data.invoer.termijnBekend, true);
+  assert.equal(data.invoer.termijnEinddatum, '2026-09-14');
+  assert.ok(data.rapport, 'er kon meteen gerekend worden');
+  assert.deepEqual(data.velden.ontbreekt, []);
+  assert.ok(data.brief.tekst.includes('UWV'));
+});
+
+test('een foto wordt geweigerd met uitleg, geen leeg dossier', async () => {
+  const antwoord = await haal('/api/brief', {
+    method: 'POST',
+    body: JSON.stringify({
+      bestandsnaam: 'foto.jpg', mediaType: 'image/jpeg',
+      data: Buffer.from('nep').toString('base64'),
+    }),
+  });
+  assert.equal(antwoord.status, 422);
+  const data = await antwoord.json();
+  assert.equal(data.soort, 'afbeelding');
+  assert.ok(data.hint);
+});
+
+test('een aanmelding uit de funnel bewaart de brief en de handtekening', async () => {
+  const punt = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==';
+  const antwoord = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: {
+        bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06',
+        termijnBekend: true, termijnEinddatum: '2025-03-03',
+        ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
+      },
+      contact: {
+        naam: 'F. Funnel', email: 'f@voorbeeld.nl', adres: 'Briefstraat 1',
+        postcode: '1000 AA', woonplaats: 'Amsterdam', geboortedatum: '1985-03-12',
+        bsn: '111222333', iban: 'NL91ABNA0417164300',
+        machtiging: true, akkoordVoorwaarden: true,
+      },
+      brief: { bron: 'pdf', bestandsnaam: 'brief.pdf', tekst: 'UWV\nuiterlijk 3 maart 2025' },
+      handtekening: { afbeelding: punt, gezetOp: '2026-09-21T10:00:00.000Z' },
+      herkomst: 'briefupload',
+    }),
+  });
+  assert.equal(antwoord.status, 201);
+
+  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
+  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const lijst = await (await haal('/api/beheer/aanvragen?zoek=funnel', { headers: { cookie } })).json();
+  const detail = await (await haal(`/api/beheer/aanvragen/${lijst.aanvragen[0].id}`, { headers: { cookie } })).json();
+
+  assert.equal(detail.aanvraag.brief.bestandsnaam, 'brief.pdf');
+  assert.match(detail.aanvraag.brief.tekst, /UWV/);
+  assert.equal(detail.aanvraag.handtekening.afbeelding, punt);
+  assert.equal(detail.aanvraag.machtiging.digitaal, true);
+  assert.equal(detail.aanvraag.contact.bsn, '111222333');
+  assert.equal(detail.aanvraag.meta.ingediendVia, 'briefupload');
+
+  const machtiging = await (await haal(`/api/beheer/aanvragen/${detail.aanvraag.id}/machtiging`, { headers: { cookie } })).text();
+  assert.ok(machtiging.includes('class="gezet"'), 'de handtekening staat in het document');
+  assert.ok(machtiging.includes('111222333'));
+});
+
+test('een onjuist BSN of IBAN wordt geweigerd', async () => {
+  const antwoord = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06' },
+      contact: {
+        naam: 'F. Fout', email: 'f@voorbeeld.nl',
+        bsn: '123456789', iban: 'NL00BANK0000000000', akkoordVoorwaarden: true,
+      },
+    }),
+  });
+  assert.equal(antwoord.status, 422);
+  const velden = (await antwoord.json()).velden;
+  assert.match(velden.bsn, /klopt niet/);
+  assert.match(velden.iban, /klopt niet/);
+});

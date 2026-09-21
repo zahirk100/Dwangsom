@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controleer uw brief — Dwangsomhulp</title>
+<meta name="description" content="Upload de brief van UWV, DUO of uw gemeente. Binnen een minuut weet u of wij voor u in actie kunnen komen.">
+<link rel="stylesheet" href="/assets/stijl.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+<style>
+  .funnel { max-width: 640px; margin: 0 auto; padding: 30px 16px 80px; }
+  .voortgang-bol { display: flex; gap: 8px; justify-content: center; margin-bottom: 26px; }
+  .voortgang-bol span { width: 8px; height: 8px; border-radius: 50%; background: var(--rand-sterk); transition: background .25s, transform .25s; }
+  .voortgang-bol span.actief { background: var(--blauw-600); transform: scale(1.35); }
+
+  .paneel { padding: 28px; }
+  @media (max-width: 560px) { .paneel { padding: 20px 16px; } .funnel { padding-top: 18px; } }
+  h1.kop { font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2rem); margin-bottom: 8px; }
+  p.onder { color: var(--tekst-zacht); margin-bottom: 24px; }
+
+  /* ----------------------------------------------------------- uploaden -- */
+  .dropzone {
+    border: 2px dashed var(--rand-sterk); border-radius: var(--radius); background: var(--blauw-50);
+    padding: 34px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.sleep { border-color: var(--blauw-600); background: var(--blauw-100); }
+  .dropzone__icoon { font-size: 2.2rem; line-height: 1; }
+  .dropzone__titel { font-weight: 700; margin: 10px 0 4px; }
+  .dropzone__uitleg { font-size: .88rem; color: var(--tekst-zacht); }
+  .dropzone input[type="file"] { display: none; }
+  .of { text-align: center; color: var(--tekst-zacht); font-size: .86rem; margin: 16px 0 10px; }
+
+  .bezig { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .tolletje {
+    width: 20px; height: 20px; border-radius: 50%; flex: none;
+    border: 2px solid var(--blauw-100); border-top-color: var(--blauw-600);
+    animation: draai .7s linear infinite;
+  }
+  @keyframes draai { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .tolletje { animation-duration: 2s; } }
+
+  /* ------------------------------------------------------------ uitslag -- */
+  .uitslag { text-align: center; padding: 6px 0 4px; }
+  .uitslag__icoon { font-size: 2.6rem; line-height: 1; }
+  .uitslag h2 { margin: 12px 0 6px; font-size: 1.45rem; }
+  .uitslag p { color: var(--tekst-zacht); }
+  .feit {
+    background: var(--blauw-50); border: 1px solid var(--blauw-100); border-radius: var(--radius-klein);
+    padding: 14px 16px; margin: 18px 0; font-size: .95rem;
+  }
+  .feit strong { font-variant-numeric: tabular-nums; }
+  .vraagblok { margin-top: 22px; }
+  .vraagblok > span { display: block; font-weight: 640; margin-bottom: 8px; }
+
+  /* --------------------------------------------------------- controleren -- */
+  .kaartje { border: 1px solid var(--rand); border-radius: var(--radius-klein); padding: 16px 18px; background: var(--vlak); }
+  .kaartje dl { margin: 0; display: grid; gap: 7px; }
+  .kaartje dl > div { display: flex; justify-content: space-between; gap: 14px; font-size: .94rem; }
+  .kaartje dt { color: var(--tekst-zacht); }
+  .kaartje dd { margin: 0; font-weight: 620; text-align: right; }
+  .uit-brief { font-size: .74rem; color: var(--groen-600); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* --------------------------------------------------------- machtiging -- */
+  .machtigingtekst {
+    background: var(--grijs-100); border-radius: var(--radius-klein); padding: 16px 18px;
+    font-size: .93rem; line-height: 1.65; margin-bottom: 18px;
+  }
+  .machtigingtekst strong { font-weight: 700; }
+  .handtekeningvak { border: 1px solid var(--rand-sterk); border-radius: var(--radius-klein); background: #fff; position: relative; }
+  .handtekeningvak canvas { display: block; width: 100%; height: 170px; touch-action: none; border-radius: var(--radius-klein); cursor: crosshair; }
+  .handtekeningvak__hint {
+    position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+    color: #9aa6b8; font-size: .92rem;
+  }
+  .handtekeningvak.getekend .handtekeningvak__hint { display: none; }
+  .handtekening-rij { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+  /* ---------------------------------------------------------------- klaar -- */
+  .tracker { list-style: none; margin: 22px 0 0; padding: 0; text-align: left; }
+  .tracker li { display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--rand); }
+  .tracker li:last-child { border-bottom: none; }
+  .tracker__merk { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 800; }
+  .tracker li[data-staat="klaar"] .tracker__merk { background: var(--groen-100); color: var(--groen-600); }
+  .tracker li[data-staat="bezig"] .tracker__merk { background: var(--blauw-100); color: var(--blauw-600); }
+  .tracker li[data-staat="wacht"] .tracker__merk { background: var(--grijs-100); color: var(--tekst-zacht); }
+  .tracker__tekst { font-size: .94rem; }
+  .tracker__tekst span { display: block; font-size: .84rem; color: var(--tekst-zacht); }
+
+  .navigatie { display: flex; gap: 12px; align-items: center; margin-top: 24px; }
+  .navigatie .rechts { margin-left: auto; }
+  .fijndruk { font-size: .82rem; color: var(--tekst-zacht); text-align: center; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/"><span class="merk__teken">D</span> <span class="merk__naam">Dwangsomhulp</span></a>
+    <nav>
+      <a class="nav-secundair" href="/hoe-werkt-het">Hoe werkt het</a>
+      <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
+    </nav>
+  </div>
+</header>
+
+<main class="funnel">
+  <div class="voortgang-bol" id="bollen" aria-hidden="true"></div>
+
+  <form id="funnel" class="kaart paneel" novalidate>
+
+    <!-- ===================================================== 1. uploaden -->
+    <section class="stap" data-stap="1">
+      <h1 class="kop">Upload uw laatste brief</h1>
+      <p class="onder">De brief waarin staat wanneer u een beslissing kunt verwachten. Wij lezen er
+         zelf uit welke instantie het is, waar het over gaat en welke datum er geldt.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="bestand" accept=".pdf,.txt,application/pdf,text/plain,image/*">
+        <div class="dropzone__icoon">📄</div>
+        <div class="dropzone__titel">Kies uw brief of maak een foto</div>
+        <div class="dropzone__uitleg">Pdf of tekstbestand · duurt ongeveer tien seconden</div>
+      </label>
+
+      <p class="of">of</p>
+      <details>
+        <summary style="cursor:pointer; font-size:.92rem">Brief niet digitaal? Plak de tekst</summary>
+        <div class="veld" style="margin-top:12px">
+          <textarea id="plaktekst" rows="6" placeholder="Plak hier de tekst van uw brief, met de datum waarop u een beslissing zou krijgen."></textarea>
+          <button type="button" class="knop knop--zacht knop--klein" id="knop-plak" style="margin-top:10px">Deze tekst gebruiken</button>
+        </div>
+      </details>
+
+      <div id="upload-melding" style="margin-top:18px"></div>
+      <p class="fijndruk">Wij gebruiken uw brief alleen om uw zaak te beoordelen.</p>
+    </section>
+
+    <!-- ====================================================== 2. uitslag -->
+    <section class="stap verborgen" data-stap="2">
+      <div id="uitslag"></div>
+    </section>
+
+    <!-- ================================================== 3. controleren -->
+    <section class="stap verborgen" data-stap="3">
+      <h1 class="kop">Klopt dit?</h1>
+      <p class="onder">Dit hebben wij uit uw brief gehaald. Controleer het even; aanpassen kan.</p>
+      <div id="uitbrief"></div>
+      <div id="aanvullen" style="margin-top:24px"></div>
+    </section>
+
+    <!-- ================================================== 4. machtiging -->
+    <section class="stap verborgen" data-stap="4">
+      <h1 class="kop">Geef ons toestemming</h1>
+      <p class="onder">Dit is het enige wat u hoeft te ondertekenen.</p>
+      <div class="machtigingtekst" id="machtigingtekst"></div>
+
+      <div class="veld">
+        <span class="veld__kop">Uw handtekening</span>
+        <div class="handtekeningvak" id="handtekeningvak">
+          <canvas id="handtekening" width="1100" height="340" aria-label="Teken hier uw handtekening"></canvas>
+          <div class="handtekeningvak__hint">Teken hier met uw vinger of muis</div>
+        </div>
+        <div class="handtekening-rij">
+          <button type="button" class="knop knop--stil knop--klein" id="knop-wissen">Opnieuw</button>
+          <span class="subtiel" style="font-size:.82rem">Wij leggen datum en tijd vast bij uw handtekening.</span>
+        </div>
+        <p class="veld__fout verborgen" data-fout="handtekening"></p>
+      </div>
+
+      <div class="veld">
+        <div class="keuzes">
+          <label class="keuze"><input type="checkbox" id="akkoord">
+            <span class="keuze__tekst">Ik machtig Dwangsomhulp en ga akkoord met de voorwaarden
+              <span class="keuze__uitleg">Geen vergoeding toegekend, dan geen kosten</span></span></label>
+        </div>
+        <p class="veld__fout verborgen" data-fout="akkoord"></p>
+      </div>
+
+      <div id="indien-fout"></div>
+    </section>
+
+    <!-- ======================================================= 5. klaar -->
+    <section class="stap verborgen" data-stap="5">
+      <div class="uitslag">
+        <div class="uitslag__icoon">✅</div>
+        <h2 id="klaar-titel">Gelukt</h2>
+        <p id="klaar-tekst"></p>
+        <p class="subtiel" style="font-size:.86rem">Uw referentienummer</p>
+        <div style="font-size:1.4rem; font-weight:780; letter-spacing:.02em" id="referentie"></div>
+        <ul class="tracker" id="tracker"></ul>
+        <div style="margin-top:24px">
+          <a class="knop knop--zacht" href="/">Terug naar de site</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="navigatie verborgen" id="navigatie">
+      <button type="button" class="knop knop--stil" id="knop-terug">← Vorige</button>
+      <div class="rechts">
+        <button type="button" class="knop knop--primair" id="knop-verder">Volgende →</button>
+      </div>
+    </div>
+  </form>
+
+  <p class="fijndruk">Dwangsomhulp is geen overheidsinstantie. De uitkomst is een inschatting en geen juridisch advies.</p>
+</main>
+
+<script type="module" src="/assets/funnel.js"></script>
+</body>
+</html>

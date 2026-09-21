@@ -172,6 +172,85 @@ export const ZAAKTYPEN = [
     termijnMetAdviescommissieDagen: 84,
   },
 
+  // ------------------------------------------------------------------ DUO ---
+  {
+    id: 'duo-studiefinanciering',
+    bestuursorgaan: 'duo',
+    label: 'Studiefinanciering of studieschuld',
+    groep: 'Onderwijs',
+    termijnDagen: 56,
+    termijnVanaf: TERMIJN_VANAF.AANVRAAG,
+    zekerheid: 'restnorm',
+    grondslag: 'Awb art. 4:13 lid 2 (acht weken)',
+    toelichting: 'DUO noemt in de ontvangstbevestiging meestal zelf een datum. Die telt.',
+  },
+  {
+    id: 'duo-bezwaar',
+    bestuursorgaan: 'duo',
+    label: 'Bezwaar tegen een beslissing van DUO',
+    groep: 'Bezwaar',
+    termijnDagen: 42,
+    termijnVanaf: TERMIJN_VANAF.BEZWAARTERMIJN,
+    zekerheid: 'wettelijk',
+    grondslag: 'Awb art. 7:10 lid 1 (zes weken, of twaalf weken met adviescommissie)',
+    toelichting: '',
+    verdagingDagen: 42,
+    vraagAdviescommissie: true,
+    termijnMetAdviescommissieDagen: 84,
+  },
+
+  // ------------------------------------------------------------------ SVB ---
+  {
+    id: 'svb-aow',
+    bestuursorgaan: 'svb',
+    label: 'AOW, kinderbijslag of nabestaandenuitkering',
+    groep: 'Sociale verzekeringen',
+    termijnDagen: 56,
+    termijnVanaf: TERMIJN_VANAF.AANVRAAG,
+    zekerheid: 'restnorm',
+    grondslag: 'Awb art. 4:13 lid 2 (acht weken)',
+    toelichting: '',
+  },
+  {
+    id: 'svb-bezwaar',
+    bestuursorgaan: 'svb',
+    label: 'Bezwaar tegen een beslissing van de SVB',
+    groep: 'Bezwaar',
+    termijnDagen: 42,
+    termijnVanaf: TERMIJN_VANAF.BEZWAARTERMIJN,
+    zekerheid: 'wettelijk',
+    grondslag: 'Awb art. 7:10 lid 1 (zes weken, of twaalf weken met adviescommissie)',
+    toelichting: '',
+    verdagingDagen: 42,
+    vraagAdviescommissie: true,
+    termijnMetAdviescommissieDagen: 84,
+  },
+
+  // -------------------------------------------------------- Belastingdienst --
+  {
+    id: 'bel-toeslag',
+    bestuursorgaan: 'belastingdienst',
+    label: 'Toeslag aanvragen of wijzigen',
+    groep: 'Toeslagen',
+    termijnDagen: 56,
+    termijnVanaf: TERMIJN_VANAF.AANVRAAG,
+    zekerheid: 'restnorm',
+    grondslag: 'Awb art. 4:13 lid 2 (acht weken)',
+    toelichting: 'Voor toeslagen gelden soms eigen termijnen; de datum uit de brief gaat voor.',
+  },
+  {
+    id: 'bel-bezwaar',
+    bestuursorgaan: 'belastingdienst',
+    label: 'Bezwaar bij de Belastingdienst of Toeslagen',
+    groep: 'Bezwaar',
+    termijnDagen: 42,
+    termijnVanaf: TERMIJN_VANAF.BEZWAARTERMIJN,
+    zekerheid: 'wettelijk',
+    grondslag: 'Awb art. 7:10 lid 1 (zes weken)',
+    toelichting: '',
+    verdagingDagen: 42,
+  },
+
   // -------------------------------------------------------------- Overig ---
   {
     id: 'overig-aanvraag',
@@ -203,8 +282,18 @@ export const ZAAKTYPEN = [
 export const BESTUURSORGANEN = [
   { id: 'uwv', label: 'UWV', omschrijving: 'WIA, Wajong, WW, Ziektewet' },
   { id: 'gemeente', label: 'Gemeente', omschrijving: 'Bijstand, Wmo, jeugdhulp, vergunningen' },
-  { id: 'anders', label: 'Ander bestuursorgaan', omschrijving: 'SVB, Belastingdienst, provincie, waterschap' },
+  { id: 'duo', label: 'DUO', omschrijving: 'Studiefinanciering en studieschuld' },
+  { id: 'svb', label: 'SVB', omschrijving: 'AOW, kinderbijslag, nabestaandenuitkering' },
+  { id: 'belastingdienst', label: 'Belastingdienst', omschrijving: 'Toeslagen en aanslagen' },
+  { id: 'anders', label: 'Ander bestuursorgaan', omschrijving: 'Provincie, waterschap, ander orgaan' },
 ];
+
+/** Instanties die om een burgerservicenummer vragen bij een machtiging. */
+const VRAAGT_BSN = new Set(['uwv', 'gemeente', 'duo', 'svb', 'belastingdienst']);
+
+export function vraagtBsn(bestuursorgaanId) {
+  return VRAAGT_BSN.has(bestuursorgaanId);
+}
 
 const INDEX = new Map(ZAAKTYPEN.map((z) => [z.id, z]));
 

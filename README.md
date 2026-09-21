@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 100 tests, zonder netwerk
+npm test                        # 120 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -33,12 +33,16 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | leeg | Redis via REST; verplicht op serverloze hosting |
 | `SECURE_COOKIES` | automatisch achter HTTPS | Zet op `1` om af te dwingen |
+| `FUNNEL` | `nieuw` | `klassiek` zet de oude vragenwizard terug op `/aanvraag` |
 | `BEDRIJF_NAAM`, `BEDRIJF_ADRES`, `BEDRIJF_POSTCODE_PLAATS`, `BEDRIJF_KVK`, `BEDRIJF_EMAIL`, `BEDRIJF_TELEFOON` | leeg | Onze eigen gegevens op de machtiging. Wat leeg is, wordt een invulregel in het document en een waarschuwing in het dossier. |
 
 ## Structuur
 
 ```
 server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
+src/pdftekst.js        Tekst uit een pdf halen, met alleen node:zlib
+src/brieflezer.js      Upload aannemen: pdf, tekstbestand of geplakte tekst
+src/briefherkenning.js Uit de brieftekst de zaak, de datums en de persoon halen
 api/index.js           Ingang voor Vercel: /api/* naar dezelfde router
 api/ping.js            Diagnose-eindpunt, zonder imports; mag weg als alles draait
 vercel.json            cleanUrls en de rewrite van /api/* naar api/index.js
@@ -81,6 +85,50 @@ wat de browser meestuurt is nooit leidend.
 Mogelijke uitkomsten: `termijn-loopt`, `ingebrekestelling-nodig`, `hersteltermijn-loopt`,
 `recht`, `geen-recht`.
 
+## Twee funnels
+
+De aanvrager kan op twee manieren binnenkomen. Welke op `/aanvraag` staat,
+bepaalt de omgevingsvariabele `FUNNEL`; beide blijven altijd bereikbaar.
+
+| Route | Funnel | Idee |
+| --- | --- | --- |
+| `/aanvraag-nieuw` (standaard op `/aanvraag`) | **Brief uploaden** | Het document is de intake. Vijf schermen, één handtekening. |
+| `/aanvraag-klassiek` | **Vragenwizard** | Acht stappen waarin de aanvrager alles zelf invult. Blijft de terugval als er geen bruikbare brief is. |
+
+Terugschakelen kost één variabele: `FUNNEL=klassiek`. De oude funnel staat
+bovendien als branch `backup/funnel-v1-klassiek` in de repository.
+
+### Hoe de briefupload werkt
+
+1. **Inlezen** (`src/brieflezer.js`) — een pdf, een tekstbestand of geplakte
+   tekst. Uit een pdf met tekstlaag halen wij de tekst met `node:zlib`, zonder
+   externe bibliotheek. Een foto of een gescande pdf gaat er niet doorheen:
+   daar is tekstherkenning voor nodig, en dat zit er bewust niet in. De
+   aanvrager krijgt dan uitleg en de klassieke route aangeboden.
+2. **Herkennen** (`src/briefherkenning.js`) — instantie, soort zaak, naam,
+   adres, kenmerk, burgerservicenummer en de datums. Het belangrijkste is de
+   **uiterste beslisdatum die de instantie zelf noemt**; die gaat altijd voor
+   op onze standaardtermijnen. Een verlengingsbrief noemt twee datums; dan
+   telt de laatste. Een beslissing sluit de zaak.
+3. **Rekenen** — dezelfde rekenkern als altijd, en meteen een uitkomst op het
+   scherm vóór er één gegeven is gevraagd.
+4. **Aanvullen** — alleen wat niet uit de brief kwam. In de praktijk zijn dat
+   geboortedatum, BSN, IBAN en e-mailadres.
+5. **Machtigen** — één scherm, met een handtekening die met de vinger of muis
+   wordt gezet. Die komt rechtstreeks in het machtigingsdocument te staan.
+
+De herkenning is regelgebaseerd en gebruikt geen taalmodel: geen API-sleutel,
+geen kosten, geen gegevens die het pand verlaten. Wat niet wordt herkend,
+wordt niet geraden maar gevraagd.
+
+### Voorbeeldbrieven om mee te testen
+
+In `voorbeelden/` staan zes nagemaakte brieven, elk als `.txt` en als pdf met
+tekstlaag: een UWV-ontvangstbevestiging, een UWV-bezwaar, een gemeentelijke
+bijstandsaanvraag, een DUO-brief, een verlengingsbrief en een genomen
+beslissing. Upload ze in de funnel om alle routes te zien. Opnieuw maken kan
+met `node voorbeelden/maak-brieven.mjs`.
+
 ## Aanvraag of vooraanmelding
 
 Niet iedereen kan meteen iets vorderen. De rekenkern vertaalt de uitkomst daarom
@@ -105,6 +153,10 @@ een dossier vanzelf naar het juiste kopje zodra de tijd verstrijkt.
 `public/shared/dossier.js` bepaalt per zaak wat nodig is, zodat het formulier
 niet meer vraagt dan dat en de beheerder achteraf niets hoeft na te bellen:
 
+- **Identiteit.** Burgerservicenummer en IBAN worden narekend met de elfproef
+  en de mod-97-toets (`public/shared/identiteit.js`), zodat een typefout niet
+  pas weken later opvalt. Het BSN wordt in de beheeromgeving alleen als
+  laatste vier cijfers getoond.
 - **Gegevens.** Bij een vooraanmelding alleen naam en e-mail. Gaan wij namens
   iemand optreden, dan ook adres en woonplaats (die komen op de brieven) en bij
   een machtiging de geboortedatum. Een telefoonnummer is bewust nooit verplicht.

@@ -3,6 +3,7 @@
 import { euro } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
 import { labelBestuursorgaan } from '/shared/catalogus.js';
+import { maskeerBsn, toonIban } from '/shared/identiteit.js';
 
 const inloggenVak = document.getElementById('inloggen');
 const dashboardVak = document.getElementById('dashboard');
@@ -354,6 +355,8 @@ function rendereLade() {
       ['Adres', [a.contact.adres, a.contact.postcode].filter(Boolean).join(', ')],
       ['Woonplaats', a.contact.woonplaats],
       ['Geboortedatum', a.contact.geboortedatum],
+      ['Burgerservicenummer', maskeerBsn(a.contact.bsn)],
+      ['IBAN', a.contact.iban ? toonIban(a.contact.iban) : ''],
       ['Kenmerk', a.contact.kenmerk],
       ['Ontvangen op', datumTijd(a.aangemaaktOp)],
     ]),
@@ -394,6 +397,9 @@ function rendereLade() {
     (a.rapport && a.rapport.blokkades || []).map((w) =>
       el('div', { class: 'melding melding--fout', style: 'margin-top:12px' },
         el('strong', { tekst: w.titel }), el('p', { tekst: w.uitleg }))),
+
+    a.brief ? el('div', { class: 'kolomkop', tekst: 'Brief van de aanvrager' }) : null,
+    a.brief ? briefBlok(a) : null,
 
     el('div', { class: 'kolomkop', tekst: 'Stukken' }),
     stukkenBlok(a),
@@ -493,7 +499,18 @@ function machtigingBlok(a) {
         + `document: ${eigenGegevens.join(', ')}.` })));
   }
 
+  if (a.handtekening && a.handtekening.afbeelding) {
+    houder.append(el('div', { class: 'melding melding--goed' },
+      el('strong', {}, 'Digitaal ondertekend'),
+      el('p', { tekst: `De aanvrager heeft op ${datumTijd(a.handtekening.gezetOp)} getekend. `
+        + 'De handtekening staat al in het document.' })));
+    houder.append(el('img', {
+      src: a.handtekening.afbeelding, alt: 'Gezette handtekening', class: 'handtekening-voorbeeld',
+    }));
+  }
+
   const regels = [];
+  if (status.ondertekendOp) regels.push(`Digitaal getekend op ${datumTijd(status.ondertekendOp)}`);
   if (status.verstuurdOp) regels.push(`Verstuurd op ${datumTijd(status.verstuurdOp)}`);
   if (status.ontvangenOp) regels.push(`Ondertekend ontvangen op ${datumTijd(status.ontvangenOp)}`);
   houder.append(el('p', { class: 'subtiel', style: 'font-size:.9rem; margin:0 0 10px',
@@ -526,6 +543,24 @@ function machtigingBlok(a) {
     knoppen.append(maakKnop('Terugzetten', () => zet('ingetrokken'), 'knop--stil'));
   }
   houder.append(knoppen);
+  return houder;
+}
+
+/** De brief waarmee de aanvrager binnenkwam, met de tekst die wij eruit lazen. */
+function briefBlok(a) {
+  const brief = a.brief;
+  const bron = { pdf: 'pdf', geplakt: 'geplakte tekst', tekst: 'tekstbestand' }[brief.bron] || brief.bron;
+  const houder = el('div', {});
+  houder.append(gegevensLijst([
+    ['Bestand', brief.bestandsnaam || `(${bron})`],
+    ['Ingelezen als', bron],
+    ['Omvang', `${brief.tekens} tekens`],
+    ['Tweede brief', a.verlengbrief ? (a.verlengbrief.bestandsnaam || 'ja') : 'geen'],
+  ]));
+  const inklap = el('details', { style: 'margin-top:10px' },
+    el('summary', { class: 'subtiel', style: 'cursor:pointer; font-size:.9rem' }, 'Tekst uit de brief tonen'),
+    el('pre', { class: 'brieftekst', tekst: brief.tekst }));
+  houder.append(inklap);
   return houder;
 }
 

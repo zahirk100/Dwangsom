@@ -334,6 +334,28 @@ function bepaalRapport(ruweInvoer = {}) {
   const dagenTeLaat = verschilDagen(eindeTermijn, peildatum);
 
   // --- Stap 3: ingebrekestelling -----------------------------------------
+  if (!invoer.ingebrekeGesteld && invoer.besluitGenomen && invoer.besluitDatum) {
+    // Te laat beslist, maar er is nooit in gebreke gesteld. De dwangsom gaat
+    // dan niet met terugwerkende kracht lopen, en nu er een besluit ligt valt
+    // er ook niets meer af te dwingen.
+    rapport.uitkomst = UITKOMST.GEEN_RECHT;
+    rapport.kop = 'Er is alsnog beslist, maar zonder ingebrekestelling';
+    rapport.samenvatting = `Het besluit van ${toonDatum(invoer.besluitDatum)} kwam na het einde van de `
+      + `beslistermijn op ${toonDatum(eindeTermijn)}. Omdat het bestuursorgaan niet eerst in gebreke `
+      + 'is gesteld, is er geen dwangsom gaan lopen.';
+    blokkades.push(blokkade(
+      'geen-ingebrekestelling',
+      'Geen ingebrekestelling verstuurd',
+      'De dwangsom loopt pas vanaf twee weken na een schriftelijke ingebrekestelling (art. 4:17 lid 3 Awb). '
+      + 'Die kan niet met terugwerkende kracht worden gedaan.',
+    ));
+    rapport.volgendeStappen = [
+      'Bent u het niet eens met het besluit zelf? Dan kunt u daartegen bezwaar maken.',
+      'Wij kijken vrijblijvend of er in uw geval toch een route is.',
+    ];
+    return rapport;
+  }
+
   if (!invoer.ingebrekeGesteld) {
     const fictieveIgs = peildatum;
     rapport.uitkomst = UITKOMST.INGEBREKESTELLING_NODIG;

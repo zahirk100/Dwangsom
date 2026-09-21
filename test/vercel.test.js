@@ -47,7 +47,7 @@ function haal(pad, opties = {}) {
 test('de catalogus is bereikbaar via de serverloze functie', async () => {
   const data = await (await haal('/api/catalogus')).json();
   assert.ok(data.zaaktypen.length > 10);
-  assert.equal(data.bestuursorganen.length, 3);
+  assert.ok(data.bestuursorganen.length >= 6, 'UWV, gemeente, DUO, SVB, Belastingdienst en overig');
 });
 
 test('indienen werkt terwijl het platform de body al heeft ingelezen', async () => {

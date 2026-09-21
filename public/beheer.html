@@ -37,6 +37,15 @@
   .stuk-rij:last-child { border-bottom: none; }
   .stuk-rij input { margin-top: 3px; accent-color: var(--blauw-600); width: 16px; height: 16px; flex: none; }
   .stuk-rij__uitleg { font-size: .82rem; color: var(--tekst-zacht); }
+  .brieftekst {
+    white-space: pre-wrap; font-size: .82rem; line-height: 1.55; margin: 10px 0 0;
+    max-height: 320px; overflow-y: auto; background: var(--grijs-100);
+    padding: 12px 14px; border-radius: var(--radius-klein); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .handtekening-voorbeeld {
+    display: block; max-width: 260px; height: auto; margin: 10px 0;
+    background: #fff; border: 1px solid var(--rand); border-radius: var(--radius-klein); padding: 6px;
+  }
 
   .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
   .filters input[type="text"] { max-width: 260px; }

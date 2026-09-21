@@ -11,7 +11,8 @@
  */
 
 import { parseDatum, toonDatum, vandaag } from '../public/shared/datum.js';
-import { labelBestuursorgaan, zoekZaaktype } from '../public/shared/catalogus.js';
+import { labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '../public/shared/catalogus.js';
+import { normaliseerBsn, toonIban } from '../public/shared/identiteit.js';
 
 const INVULREGEL = '…'.repeat(28);
 
@@ -40,6 +41,10 @@ export function machtigingContext(aanvraag = {}, organisatie = {}) {
   const geboortedatum = parseDatum(contact.geboortedatum);
   if (!geboortedatum) ontbreekt.push('Geboortedatum');
 
+  const bsn = normaliseerBsn(contact.bsn);
+  const bsnNodig = vraagtBsn(invoer.bestuursorgaan);
+  if (bsnNodig && !bsn) ontbreekt.push('Burgerservicenummer');
+
   return {
     referentie: aanvraag.referentie || '',
     datum: toonDatum(vandaag()),
@@ -49,6 +54,9 @@ export function machtigingContext(aanvraag = {}, organisatie = {}) {
       adres: nodig(contact.adres, 'Adres'),
       postcodePlaats: [contact.postcode, contact.woonplaats].filter(Boolean).join('  ')
         || (ontbreekt.push('Postcode en woonplaats'), null),
+      bsn: bsnNodig ? (bsn || null) : null,
+      bsnNodig,
+      iban: contact.iban ? toonIban(contact.iban) : null,
     },
     gemachtigde: {
       naam: organisatie.naam || 'Dwangsomhulp',
@@ -64,6 +72,9 @@ export function machtigingContext(aanvraag = {}, organisatie = {}) {
       kenmerk: String(contact.kenmerk || '').trim() || null,
       aanvraagdatum: parseDatum(invoer.basisdatum) ? toonDatum(parseDatum(invoer.basisdatum)) : null,
     },
+    handtekening: aanvraag.handtekening && aanvraag.handtekening.afbeelding
+      ? { afbeelding: aanvraag.handtekening.afbeelding, gezetOp: aanvraag.handtekening.gezetOp }
+      : null,
     ontbreekt,
   };
 }
@@ -126,6 +137,7 @@ export function machtigingHtml(aanvraag, organisatie) {
   .handtekeningen { display: flex; gap: 40px; margin-top: 46px; page-break-inside: avoid; }
   .handtekening { flex: 1; }
   .handtekening .lijn { border-bottom: 1px solid #16202e; height: 54px; margin-bottom: 6px; }
+  .handtekening img.gezet { display: block; height: 54px; width: auto; max-width: 100%; border-bottom: 1px solid #16202e; margin-bottom: 6px; }
   .handtekening span { font-size: .84rem; color: #5a6472; }
   .voet { margin-top: 44px; padding-top: 14px; border-top: 1px solid #eef1f6; font-size: .82rem; color: #5a6472; }
   .let-op {
@@ -160,6 +172,7 @@ export function machtigingHtml(aanvraag, organisatie) {
     ${regel('Geboortedatum', c.gever.geboortedatum)}
     ${regel('Adres', c.gever.adres)}
     ${regel('Postcode en woonplaats', c.gever.postcodePlaats)}
+    ${c.gever.bsnNodig ? regel('Burgerservicenummer', c.gever.bsn) : ''}
 
     <h2>Machtigt</h2>
     ${regel('Naam', c.gemachtigde.naam)}
@@ -178,14 +191,18 @@ export function machtigingHtml(aanvraag, organisatie) {
 
     <p class="voorwaarde">
       Betalingen worden niet namens ondergetekende in ontvangst genomen: een toegekende
-      dwangsom wordt rechtstreeks aan ondergetekende uitbetaald. Deze machtiging geldt
-      tot ondergetekende haar schriftelijk intrekt.
+      dwangsom wordt rechtstreeks aan ondergetekende uitbetaald${c.gever.iban ? `, op rekeningnummer ${esc(c.gever.iban)}` : ''}.
+      Deze machtiging geldt tot ondergetekende haar schriftelijk intrekt.
     </p>
 
     <div class="handtekeningen">
       <div class="handtekening">
-        <div class="lijn"></div>
-        <span>Handtekening ondergetekende<br>Plaats en datum: ${INVULREGEL}</span>
+        ${c.handtekening
+          ? `<img class="gezet" src="${esc(c.handtekening.afbeelding)}" alt="Handtekening van ${esc(c.gever.naam || 'de ondergetekende')}">`
+          : '<div class="lijn"></div>'}
+        <span>Handtekening ondergetekende${c.handtekening
+          ? `<br>Digitaal gezet op ${esc(toonDatum(parseDatum(String(c.handtekening.gezetOp).slice(0, 10))))}`
+          : `<br>Plaats en datum: ${INVULREGEL}`}</span>
       </div>
       <div class="handtekening">
         <div class="lijn"></div>

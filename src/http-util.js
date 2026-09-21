@@ -19,6 +19,8 @@ const MIME = {
 };
 
 export const MAX_BODY_BYTES = 64 * 1024;
+/** Een geüploade brief mag groter zijn: een pdf van een paar pagina's in base64. */
+export const MAX_UPLOAD_BYTES = 9 * 1024 * 1024;
 
 export function stuurJson(res, statuscode, data, extraHeaders = {}) {
   const body = JSON.stringify(data);
@@ -61,7 +63,7 @@ export function stuurFout(res, statuscode, melding, details) {
   return stuurJson(res, statuscode, { fout: melding, details: details || undefined });
 }
 
-export async function leesJsonBody(req) {
+export async function leesJsonBody(req, maxBytes = MAX_BODY_BYTES) {
   // Serverloze platforms (Vercel) lezen de body zelf al en zetten die op
   // req.body; de stream is dan leeg. Daarom eerst daar kijken.
   if (req.body !== undefined && req.body !== null && req.body !== '') {
@@ -79,7 +81,7 @@ export async function leesJsonBody(req) {
   let lengte = 0;
   for await (const stuk of req) {
     lengte += stuk.length;
-    if (lengte > MAX_BODY_BYTES) {
+    if (lengte > maxBytes) {
       const err = new Error('Verzoek is te groot.');
       err.statuscode = 413;
       throw err;

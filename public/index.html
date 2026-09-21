@@ -19,6 +19,8 @@
   .held__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 18px; }
   .held__punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: .93rem; color: var(--tekst-zacht); }
   .held__punten li { display: flex; gap: 9px; align-items: flex-start; }
+  .instanties { margin-top: 20px; font-size: .88rem; color: var(--tekst-zacht); }
+  .instanties strong { color: var(--tekst); font-weight: 650; }
   .vink { color: var(--groen-600); font-weight: 800; flex: none; }
 
   .bedragkaart { padding: 28px; border-radius: 20px; background: var(--vlak); border: 1px solid var(--rand); box-shadow: var(--schaduw); }
@@ -93,21 +95,23 @@
     <div class="omhulsel held__raster">
       <div>
         <span class="held__oogmerk">⏱️ Artikel 4:17 Algemene wet bestuursrecht</span>
-        <h1>Beslist de overheid te laat? Dan heeft u recht op geld.</h1>
+        <h1>Overheid te laat met uw beslissing?</h1>
         <p class="lead">
-          Wacht u langer dan de wettelijke termijn op een beslissing van UWV of uw gemeente?
-          Dan kan het bestuursorgaan een dwangsom verschuldigd zijn van <strong>maximaal € 1.442</strong>.
-          Bereken het in twee minuten en laat ons de aanvraag voor u regelen.
+          Upload uw brief. Binnen een minuut weet u of wij voor u in actie kunnen komen —
+          en kan het bestuursorgaan een dwangsom verschuldigd zijn van
+          <strong>maximaal € 1.442</strong>.
         </p>
         <div class="held__knoppen">
-          <a class="knop knop--primair" href="/aanvraag">Bereken mijn dwangsom →</a>
+          <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief →</a>
           <a class="knop knop--zacht" href="/hoe-werkt-het">Eerst uitleg lezen</a>
         </div>
         <ul class="held__punten">
-          <li><span class="vink">✓</span> Geldt voor WIA, Wajong, WW, Ziektewet, bijstand, Wmo en bezwaarschriften</li>
-          <li><span class="vink">✓</span> U ziet direct welk bedrag is opgebouwd en tot wanneer het oploopt</li>
-          <li><span class="vink">✓</span> Wij stellen de ingebrekestelling op en bewaken alle termijnen</li>
+          <li><span class="vink">✓</span> Wij lezen zelf uit de brief om welke zaak en welke datum het gaat</li>
+          <li><span class="vink">✓</span> U beantwoordt hooguit een paar vragen en tekent één keer</li>
+          <li><span class="vink">✓</span> Geen vergoeding toegekend? Dan geen kosten</li>
         </ul>
+        <p class="instanties">Werkt voor <strong>UWV</strong> · <strong>DUO</strong> ·
+           <strong>Gemeente</strong> · <strong>SVB</strong> · <strong>Belastingdienst</strong></p>
       </div>
 
       <aside class="bedragkaart" aria-label="Opbouw van de dwangsom">
@@ -141,20 +145,20 @@
     </div>
     <div class="stappen">
       <article class="kaart stap">
-        <h3>Beantwoord een paar vragen</h3>
-        <p>U ziet alleen de vragen die bij uw soort aanvraag horen. Meestal zijn dat er vijf tot acht.</p>
+        <h3>Upload uw brief</h3>
+        <p>De brief waarin staat wanneer u een beslissing zou krijgen. Een pdf of een foto uit uw berichtenbox.</p>
       </article>
       <article class="kaart stap">
-        <h3>Zie meteen uw berekening</h3>
-        <p>Wij berekenen de beslistermijn, de eerste dwangsomdag en het bedrag dat nu is opgebouwd.</p>
+        <h3>Wij lezen hem uit</h3>
+        <p>Instantie, soort zaak, uw gegevens en de uiterste beslisdatum. U hoeft niets op te zoeken.</p>
       </article>
       <article class="kaart stap">
-        <h3>Dien uw aanvraag in</h3>
-        <p>Uw dossier komt bij ons binnen. Wij controleren de data en stellen de stukken op.</p>
+        <h3>U ziet het meteen</h3>
+        <p>Is de termijn voorbij, dan zegt het scherm dat direct — nog vóór u gegevens invult.</p>
       </article>
       <article class="kaart stap">
-        <h3>Wij claimen voor u</h3>
-        <p>Wij stellen in gebreke, bewaken de termijn van twee weken en vorderen de dwangsom.</p>
+        <h3>Eén keer tekenen</h3>
+        <p>U machtigt ons met uw handtekening. Daarna regelen wij het en bewaken wij de termijnen.</p>
       </article>
     </div>
   </section>
@@ -225,9 +229,9 @@
     </details>
 
     <div class="oproep">
-      <h2>Benieuwd of u recht heeft op een dwangsom?</h2>
-      <p>De berekening is gratis en vrijblijvend. U beslist zelf of u de aanvraag daarna indient.</p>
-      <a class="knop knop--primair" href="/aanvraag">Start de berekening →</a>
+      <h2>Wacht u te lang op een beslissing?</h2>
+      <p>Upload uw brief. De controle is gratis en vrijblijvend; u beslist zelf of u ons inschakelt.</p>
+      <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief →</a>
     </div>
   </section>
 </main>

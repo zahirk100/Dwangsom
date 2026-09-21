@@ -60,7 +60,7 @@ export class Store {
     return this.opslag.duurzaam;
   }
 
-  async nieuweAanvraag({ invoer, contact, rapport, stukken, meta }) {
+  async nieuweAanvraag({ invoer, contact, rapport, stukken, meta, brief, verlengbrief, handtekening }) {
     const nu = new Date().toISOString();
     const jaar = new Date().getUTCFullYear();
     const nummer = await this.opslag.volgendNummer(jaar);
@@ -78,6 +78,11 @@ export class Store {
       contact,
       rapport,
       stukken: stukken || {},
+      brief: brief || null,
+      verlengbrief: verlengbrief || null,
+      // Is er digitaal getekend, dan is de machtiging meteen binnen.
+      machtiging: handtekening ? { ondertekendOp: handtekening.gezetOp, digitaal: true } : {},
+      handtekening: handtekening || null,
       meta: meta || {},
       notities: [],
       historie: [{
