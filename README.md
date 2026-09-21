@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 127 tests, zonder netwerk
+npm test                        # 135 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -55,6 +55,7 @@ src/validatie.js       Servervalidatie van het aanvraagformulier
 src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
 public/                Landingspagina, wizard, beheeromgeving
 public/shared/         Rekenkern, catalogus, dossiereisen, brieven, datumhulpjes
+public/shared/funnelvragen.js  Welke velden de funnel nog vraagt, en waarom
 test/                  Unit- en integratietests (node:test)
 ```
 
@@ -113,7 +114,12 @@ bovendien als branch `backup/funnel-v1-klassiek` in de repository.
 3. **Rekenen** — dezelfde rekenkern als altijd, en meteen een uitkomst op het
    scherm vóór er één gegeven is gevraagd.
 4. **Aanvullen** — alleen wat niet uit de brief kwam. In de praktijk zijn dat
-   geboortedatum, BSN, IBAN en e-mailadres.
+   geboortedatum, BSN, IBAN en e-mailadres. Blijkt een gelezen waarde niet te
+   kloppen — een nummer bij het woord "burgerservicenummer" is niet altijd een
+   burgerservicenummer — dan verschijnt dat veld alsnog, voorgevuld en met de
+   reden erbij. Die regel staat in `public/shared/funnelvragen.js` en wordt
+   apart getest, want een foutmelding over een onzichtbaar veld is een
+   doodlopende weg.
 5. **Machtigen** — één scherm, met een handtekening die met de vinger of muis
    wordt gezet. Die komt rechtstreeks in het machtigingsdocument te staan.
 

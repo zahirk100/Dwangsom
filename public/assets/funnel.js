@@ -11,6 +11,7 @@ import { berekenDwangsom, euro, UITKOMST, DOSSIERSOORT } from '/shared/dwangsom.
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
 import { labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '/shared/catalogus.js';
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/identiteit.js';
+import { teVragenVelden } from '/shared/funnelvragen.js';
 
 const TOTAAL = 5;
 const form = document.getElementById('funnel');
@@ -356,8 +357,17 @@ const UIT_BRIEF_VELDEN = [
   { id: 'adres', label: 'Adres' },
   { id: 'postcode', label: 'Postcode' },
   { id: 'woonplaats', label: 'Woonplaats' },
+  { id: 'bsn', label: 'Burgerservicenummer' },
   { id: 'kenmerk', label: 'Kenmerk' },
 ];
+
+/**
+ * Velden die wij normaal niet vragen omdat ze al bekend zijn, maar die toch
+ * op het scherm moeten komen: omdat de waarde niet blijkt te kloppen, of
+ * omdat de server erover klaagde. Anders kan de aanvrager een fout niet
+ * herstellen die hij niet ziet.
+ */
+const geforceerdeVelden = new Set();
 
 function rendereControle() {
   const vak = document.getElementById('uitbrief');
@@ -366,8 +376,11 @@ function rendereControle() {
   const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
 
   if (!aanpasmodus) {
+    // Wat hieronder alsnog gevraagd wordt, hoort hier niet nog eens te staan.
+    const wordtGevraagd = new Set(ontbrekendeVelden().map((v) => v.id));
     const lijst = el('dl', {});
     for (const veld of UIT_BRIEF_VELDEN) {
+      if (wordtGevraagd.has(veld.id)) continue;
       if (!zaak.contact[veld.id] && !h[veld.id]) continue;
       lijst.append(el('div', {},
         el('dt', { tekst: veld.label }),
@@ -427,29 +440,14 @@ function datumveld(id, label, waarde, bijWijziging) {
   return el('div', { class: 'veld' }, el('label', { for: `veld-${id}`, tekst: label }), invoerveld);
 }
 
-/** Alleen wat nog niet bekend is. Nooit twee keer hetzelfde vragen. */
+/** Alleen wat nog niet bekend is - de regel zelf staat in shared/funnelvragen.js. */
 function ontbrekendeVelden() {
-  const h = zaak.herkenning;
-  const velden = [];
-  const heeft = (id) => Boolean(zaak.contact[id] || h[id]);
-
-  if (!heeft('naam')) velden.push({ id: 'naam', label: 'Uw naam', type: 'text', verplicht: true });
-  if (!heeft('adres')) velden.push({ id: 'adres', label: 'Straat en huisnummer', type: 'text', verplicht: true });
-  if (!heeft('postcode')) velden.push({ id: 'postcode', label: 'Postcode', type: 'text', verplicht: true });
-  if (!heeft('woonplaats')) velden.push({ id: 'woonplaats', label: 'Woonplaats', type: 'text', verplicht: true });
-
-  velden.push({ id: 'geboortedatum', label: 'Geboortedatum', type: 'date', verplicht: true,
-    hulp: 'Nodig op de machtiging, zodat de instantie u kan herkennen.' });
-  if (vraagtBsn(zaak.invoer.bestuursorgaan) && !heeft('bsn')) {
-    velden.push({ id: 'bsn', label: 'Burgerservicenummer', type: 'text', verplicht: true,
-      hulp: 'Vraagt de instantie om uw zaak te kunnen vinden.' });
-  }
-  velden.push({ id: 'iban', label: 'IBAN', type: 'text', verplicht: true,
-    hulp: 'Een eventuele vergoeding wordt rechtstreeks aan u uitbetaald.' });
-  velden.push({ id: 'email', label: 'E-mailadres', type: 'email', verplicht: true,
-    hulp: 'Hierop houden wij u op de hoogte.' });
-  velden.push({ id: 'telefoon', label: 'Telefoonnummer', type: 'tel', verplicht: false });
-  return velden;
+  return teVragenVelden({
+    herkenning: zaak.herkenning || {},
+    contact: zaak.contact,
+    bestuursorgaan: zaak.invoer ? zaak.invoer.bestuursorgaan : '',
+    geforceerd: [...geforceerdeVelden],
+  });
 }
 
 function rendereAanvullen() {
@@ -611,8 +609,18 @@ async function verzend() {
     });
     const data = await antwoord.json().catch(() => ({}));
     if (!antwoord.ok) {
-      const velden = data.velden ? Object.values(data.velden).join(' ') : '';
-      foutVak.append(melding('fout', data.fout || 'Indienen is niet gelukt', velden));
+      // Klaagt de server over een veld, breng de aanvrager dan terug naar dat
+      // veld in plaats van hem met een melding te laten zitten.
+      const velden = data.velden && typeof data.velden === 'object' ? data.velden : null;
+      if (velden && Object.keys(velden).length > 0) {
+        for (const id of Object.keys(velden)) geforceerdeVelden.add(id);
+        gaNaar(3);
+        for (const [id, tekst] of Object.entries(velden)) zetFout(id, tekst);
+        const eerste = form.querySelector('[data-fout]:not(.verborgen)');
+        if (eerste) eerste.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+      }
+      foutVak.append(melding('fout', data.fout || 'Indienen is niet gelukt', ''));
       return;
     }
     rendereKlaar(data);
