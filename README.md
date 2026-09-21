@@ -43,15 +43,14 @@ server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
 src/pdftekst.js        Tekst uit een pdf halen, met alleen node:zlib
 src/brieflezer.js      Upload aannemen: pdf, tekstbestand of geplakte tekst
 src/briefherkenning.js Uit de brieftekst de zaak, de datums en de persoon halen
-api/index.js           Ingang voor Vercel: /api/* naar dezelfde router
-api/ping.js            Diagnose-eindpunt, zonder imports; mag weg als alles draait
-vercel.json            cleanUrls en de rewrite van /api/* naar api/index.js
+vercel.json            cleanUrls en de route van al het verkeer naar server.js
 src/machtiging.js      Machtiging als afdrukbare pagina, uit de dossiergegevens
 src/organisatie.js     Onze eigen gegevens uit de omgeving
 src/store.js           Dossierregels: referenties, status, notities, historie
 src/opslag.js          Opslagdrivers: bestand, Redis via REST, geheugen
 src/sessie.js          Sessies als ondertekend cookie, zonder serverstatus
-src/validatie.js       Servervalidatie van het aanvraagformulier
+src/validatie.js       Servervalidatie van het formulier en van beheerwijzigingen
+voorbeelden/           Voorbeeldbrieven (txt en pdf) om de herkenning te testen
 src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
 public/                Landingspagina, wizard, beheeromgeving
 public/shared/         Rekenkern, catalogus, dossiereisen, brieven, datumhulpjes
@@ -182,6 +181,40 @@ niet meer vraagt dan dat en de beheerder achteraf niets hoeft na te bellen:
 De aanvrager vinkt aan wat hij heeft; de beheeromgeving toont per dossier wat
 nog ontbreekt, en de CSV-export zet die lijst in een kolom.
 
+## Een dossier behandelen
+
+De beheeromgeving is bedoeld als werkbank, niet als kijkdoos. Het uitgangspunt:
+alles wat een behandelaar aan een dossier moet doen, kan daar ook — zodat de
+aanvrager niet voor elk detail een mailtje krijgt.
+
+- **Werklijst.** Het kengetal *Actie nodig* is aanklikbaar en filtert op
+  dossiers waarvan de bewaakte datum is bereikt en die nog openstaan, oudste
+  eerst. Dat is de stapel van vandaag.
+- **Volgende stap.** Bovenaan het dossier staat wat er moet gebeuren, met de
+  knoppen om het meteen vast te leggen: *Ingebrekestelling verstuurd (door
+  ons)*, *Aanvrager stelde zelf in gebreke*, *Besluit ontvangen*. Elke knop
+  vraagt een datum, rekent de zaak opnieuw door, verzet de bewaakte datum en
+  schrijft een regel in de historie. Zonder dit blijft een dossier hangen: de
+  brief is verstuurd, maar het systeem weet er niets van.
+- **Gegevens corrigeren.** *Gegevens aanvullen of corrigeren* opent de
+  contactgegevens als formulier. Wat aan de telefoon bekend wordt, gaat er
+  direct in; BSN en IBAN worden ook hier nagerekend en een fout veld wijst
+  zichzelf aan. Velden die nog nodig zijn om te kunnen indienen krijgen een
+  label *nodig om in te dienen*.
+- **Wat nog ontbreekt.** Een dossier dat van vooraanmelding naar aanvraag
+  verschuift, heeft ineens meer nodig (BSN, geboortedatum, IBAN). Dat komt
+  bovenaan als melding te staan, en in de lijst als teller, in plaats van pas
+  bij het indienen op te vallen.
+- **Afhandelen.** Het blok *Afhandeling* legt het toegekende bedrag, de datum
+  van de beschikking, de uitbetaling en de eindstatus vast. Dat sluit het
+  dossier, haalt het uit de werklijst en telt mee in het kengetal *Toegekend*.
+
+Stukken die al binnen zijn, staan meteen aangevinkt: de brief die de aanvrager
+uploadde, de tweede brief bij verdaging en de digitaal ondertekende machtiging.
+Stelden wij zelf in gebreke, dan gelden die brief en het verzendbewijs als ons
+eigen stuk en worden ze niet bij de aanvrager opgevraagd — precies het onnodige
+mailtje dat dit moet voorkomen.
+
 ## De machtiging
 
 In het dossier maakt **Opstellen en afdrukken** de machtiging in één klik op uit
@@ -232,9 +265,11 @@ Beheer (sessiecookie vereist):
 | Route | Doel |
 | --- | --- |
 | `POST /api/beheer/login` · `/logout` · `GET /sessie` | Sessiebeheer |
-| `GET /api/beheer/aanvragen` | Lijst met filters `status`, `bestuursorgaan`, `zoek` |
-| `GET /api/beheer/aanvragen/:id` | Volledig dossier |
+| `GET /api/beheer/aanvragen` | Lijst met filters `status`, `bestuursorgaan`, `soort`, `zoek`, `actie=nodig` |
+| `GET /api/beheer/aanvragen/:id` | Volledig dossier, inclusief `eisen` |
 | `PATCH /api/beheer/aanvragen/:id` | Status wijzigen |
+| `POST /api/beheer/aanvragen/:id/bijwerken` | Gegevens corrigeren of een stap vastleggen; rekent meteen opnieuw door |
+| `POST /api/beheer/aanvragen/:id/afhandeling` | Toegekend bedrag, beschikking, uitbetaling en eindstatus |
 | `POST /api/beheer/aanvragen/:id/notities` | Interne notitie |
 | `POST /api/beheer/aanvragen/:id/herbereken` | Opnieuw rekenen op vandaag |
 | `POST /api/beheer/aanvragen/:id/stukken` | Aanvinken welke stukken binnen zijn |
@@ -244,8 +279,8 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
 Lokaal serveert `server.js` ook de pagina's. Op Vercel wordt diezelfde module
-geladen en via de **default export** aangeroepen; `api/index.js` doet hetzelfde
-voor `/api/*`. Beide wegen komen uit bij dezelfde `verwerk`-router, dus de
+geladen en via de **default export** aangeroepen, ook voor `/api/*`. Beide wegen
+komen uit bij dezelfde `verwerk`-router, dus de
 applicatie gedraagt zich overal gelijk. Er is geen bouwstap: wat in de
 repository staat, is wat er wordt geserveerd.
 

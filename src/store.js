@@ -66,6 +66,18 @@ export class Store {
     const nummer = await this.opslag.volgendNummer(jaar);
     const vervolg = (rapport && rapport.vervolg) || {};
     const soort = vervolg.soort || DOSSIERSOORT.BEOORDELING;
+    // Wat de aanvrager al heeft meegestuurd, staat meteen aangevinkt. Anders
+    // meldt het dossier "ontbreekt" over stukken die gewoon binnen zijn, en
+    // gaat de behandelaar daarover mailen.
+    const binnen = { ...(stukken || {}) };
+    if (brief) {
+      binnen.ontvangstbevestiging = true;
+      binnen.bezwaarschrift = true;
+      binnen.primair_besluit = binnen['primair-besluit'] || binnen.primair_besluit;
+      binnen.termijnbrief = true;
+    }
+    if (verlengbrief) binnen.verdagingsbrief = true;
+    if (handtekening) binnen.machtiging = true;
     const aanvraag = {
       id: randomUUID(),
       referentie: `DWS-${jaar}-${String(nummer).padStart(4, '0')}`,
@@ -77,7 +89,7 @@ export class Store {
       invoer,
       contact,
       rapport,
-      stukken: stukken || {},
+      stukken: binnen,
       brief: brief || null,
       verlengbrief: verlengbrief || null,
       // Is er digitaal getekend, dan is de machtiging meteen binnen.
@@ -97,8 +109,16 @@ export class Store {
     return aanvraag;
   }
 
-  async lijst({ status, zoek, bestuursorgaan, soort } = {}) {
+  async lijst({ status, zoek, bestuursorgaan, soort, actie } = {}) {
     let resultaat = (await this.opslag.haalAlle()).slice();
+    // De werklijst: alles waarvan de bewaakte datum is bereikt en dat nog
+    // open staat. Blijft samenwerken met zoeken en de overige filters.
+    const actieNodig = actie === 'nodig';
+    if (actieNodig) {
+      const vandaag = new Date().toISOString().slice(0, 10);
+      resultaat = resultaat.filter((a) => a.actiedatum && a.actiedatum <= vandaag
+        && !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status));
+    }
     resultaat.sort((a, b) => String(b.aangemaaktOp).localeCompare(String(a.aangemaaktOp)));
     if (soort && soort !== 'alle') {
       resultaat = resultaat.filter((a) => (a.soort || DOSSIERSOORT.BEOORDELING) === soort);
@@ -107,6 +127,9 @@ export class Store {
       if (soort === DOSSIERSOORT.VOORAANMELDING) {
         resultaat.sort((a, b) => String(a.actiedatum || '9999').localeCompare(String(b.actiedatum || '9999')));
       }
+    }
+    if (actieNodig) {
+      resultaat.sort((a, b) => String(a.actiedatum).localeCompare(String(b.actiedatum)));
     }
     if (status && status !== 'alle') {
       resultaat = resultaat.filter((a) => a.status === status);
@@ -191,6 +214,90 @@ export class Store {
     return aanvraag;
   }
 
+  /**
+   * Gegevens corrigeren of aanvullen vanuit de beheeromgeving. Bedoeld om
+   * niet voor elk ontbrekend veld de aanvrager te hoeven mailen: wat de
+   * behandelaar zelf weet of telefonisch hoort, gaat hier direct in.
+   *
+   * Wijzigt de invoer, dan verandert ook de berekening - en daarmee mogelijk
+   * het soort dossier en de datum die bewaakt wordt.
+   */
+  async werkDossierBij(id, { contact, invoer, rapport, door, toelichting, gewijzigd = [] }) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+
+    if (contact) aanvraag.contact = { ...aanvraag.contact, ...contact };
+    if (invoer) aanvraag.invoer = { ...aanvraag.invoer, ...invoer };
+
+    if (rapport) {
+      const vervolg = rapport.vervolg || {};
+      const oudeSoort = aanvraag.soort;
+      aanvraag.rapport = rapport;
+      if (vervolg.soort) aanvraag.soort = vervolg.soort;
+      aanvraag.actiedatum = vervolg.actiedatum || null;
+      if (oudeSoort !== aanvraag.soort) {
+        aanvraag.historie.push({
+          op: nu,
+          door: door || 'beheerder',
+          tekst: `Dossier verplaatst van ${labelVoorSoort(oudeSoort)} naar ${labelVoorSoort(aanvraag.soort)}.`,
+        });
+      }
+    }
+
+    // Alleen loggen als er iets te melden valt. Anders vult een paar keer
+    // "Opnieuw doorrekenen" de historie met regels waar niemand iets aan heeft.
+    const regel = toelichting || (gewijzigd.length ? `Gegevens bijgewerkt: ${gewijzigd.join(', ')}.` : '');
+    if (regel) aanvraag.historie.push({ op: nu, door: door || 'beheerder', tekst: regel });
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
+  /**
+   * De uitkomst van een zaak vastleggen: wat is toegekend, wanneer en of het
+   * is uitbetaald. Zonder deze afsluiting blijft een dossier hangen op een
+   * status zonder cijfers erachter.
+   */
+  async legAfhandelingVast(id, afhandeling, door) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+
+    aanvraag.afhandeling = {
+      ...(aanvraag.afhandeling || {}),
+      ...afhandeling,
+      vastgelegdOp: nu,
+      door: door || 'beheerder',
+    };
+
+    const delen = [];
+    if (Number.isFinite(afhandeling.bedragToegekend)) {
+      delen.push(`toegekend ${afhandeling.bedragToegekend.toFixed(2)} euro`);
+    }
+    if (afhandeling.beschikkingOp) delen.push(`beschikking ${afhandeling.beschikkingOp}`);
+    if (afhandeling.uitbetaaldOp) delen.push(`uitbetaald ${afhandeling.uitbetaaldOp}`);
+    aanvraag.historie.push({
+      op: nu,
+      door: door || 'beheerder',
+      tekst: `Afhandeling vastgelegd${delen.length ? ': ' + delen.join(', ') : ''}.`
+        + (afhandeling.toelichting ? ` ${afhandeling.toelichting}` : ''),
+    });
+
+    if (afhandeling.status && isGeldigeStatus(afhandeling.status) && afhandeling.status !== aanvraag.status) {
+      aanvraag.historie.push({
+        op: nu,
+        door: door || 'beheerder',
+        tekst: `Status gewijzigd van "${labelVoorStatus(aanvraag.status)}" naar "${labelVoorStatus(afhandeling.status)}".`,
+      });
+      aanvraag.status = afhandeling.status;
+    }
+
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
   /** Bijwerken welke stukken binnen zijn. */
   async werkStukkenBij(id, stukken, door) {
     const aanvraag = await this.vind(id);
@@ -241,19 +348,31 @@ export class Store {
     let totaalBedrag = 0;
     let metRecht = 0;
     let actieNodig = 0;
+    let toegekendBedrag = 0;
+    let toegekendAantal = 0;
     for (const a of alle) {
       const soort = a.soort || DOSSIERSOORT.BEOORDELING;
       if (perSoort[soort] !== undefined) perSoort[soort] += 1;
-      if (a.actiedatum && a.actiedatum <= vandaag
-        && !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)) actieNodig += 1;
+      const afgerond = ['toegekend', 'afgewezen', 'afgesloten'].includes(a.status);
+      if (a.actiedatum && a.actiedatum <= vandaag && !afgerond) actieNodig += 1;
       if (perStatus[a.status] !== undefined) perStatus[a.status] += 1;
       const berekening = a.rapport && a.rapport.berekening;
-      if (a.rapport && a.rapport.uitkomst === 'recht' && berekening) {
+      if (a.rapport && a.rapport.uitkomst === 'recht' && berekening && !afgerond) {
         totaalBedrag += berekening.totaal || 0;
         metRecht += 1;
       }
+      // Wat er daadwerkelijk uit kwam. Dat verdwijnt anders uit beeld zodra
+      // een dossier is afgehandeld en dus geen "opgebouwd recht" meer telt.
+      const toegekend = a.afhandeling && a.afhandeling.bedragToegekend;
+      if (Number.isFinite(toegekend) && toegekend > 0) {
+        toegekendBedrag += toegekend;
+        toegekendAantal += 1;
+      }
     }
     const open = alle.filter((a) => !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)).length;
-    return { totaal: alle.length, open, perStatus, perSoort, totaalBedrag, metRecht, actieNodig };
+    return {
+      totaal: alle.length, open, perStatus, perSoort,
+      totaalBedrag, metRecht, actieNodig, toegekendBedrag, toegekendAantal,
+    };
   }
 }

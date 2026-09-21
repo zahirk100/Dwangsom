@@ -58,7 +58,7 @@ test('indienen werkt terwijl het platform de body al heeft ingelezen', async () 
         bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: '2025-01-06',
         ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
       },
-      contact: { naam: 'V. Vercel', email: 'v@voorbeeld.nl', adres: 'Vercelweg 2', postcode: '2345 CD', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
+      contact: { naam: 'V. Vercel', email: 'v@voorbeeld.nl', iban: 'NL91ABNA0417164300', adres: 'Vercelweg 2', postcode: '2345 CD', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(antwoord.status, 201);

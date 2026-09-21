@@ -33,7 +33,7 @@ const geldigeAanvraag = {
     ingebrekeGesteld: true,
     ingebrekestellingDatum: '2025-04-01',
   },
-  contact: { naam: 'T. Tester', email: 'tester@voorbeeld.nl', adres: 'Teststraat 1', postcode: '1234 AB', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
+  contact: { naam: 'T. Tester', email: 'tester@voorbeeld.nl', iban: 'NL91ABNA0417164300', adres: 'Teststraat 1', postcode: '1234 AB', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
 };
 
 test('de landingspagina en de wizard worden geserveerd', async () => {
@@ -157,7 +157,7 @@ test('een zaak waarin nog niets te vorderen valt, wordt een vooraanmelding', asy
     method: 'POST',
     body: JSON.stringify({
       invoer: { bestuursorgaan: 'gemeente', zaaktype: 'gem-wmo', basisdatum: '2099-01-01' },
-      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', akkoordVoorwaarden: true },
+      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
     }),
   });
   // Een datum in de toekomst is onvolledig; neem een zaak die net loopt.
@@ -169,7 +169,7 @@ test('een zaak waarin nog niets te vorderen valt, wordt een vooraanmelding', asy
     method: 'POST',
     body: JSON.stringify({
       invoer: { bestuursorgaan: 'gemeente', zaaktype: 'gem-wmo', basisdatum: recent.toISOString().slice(0, 10) },
-      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', akkoordVoorwaarden: true },
+      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(tweede.status, 201);
@@ -187,7 +187,7 @@ test('een vooraanmelding vraagt geen adresgegevens, een aanvraag wel', async () 
     method: 'POST',
     body: JSON.stringify({
       invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: recent.toISOString().slice(0, 10) },
-      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', akkoordVoorwaarden: true },
+      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(vooraf.status, 201);
@@ -200,7 +200,7 @@ test('een vooraanmelding vraagt geen adresgegevens, een aanvraag wel', async () 
         bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06',
         ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
       },
-      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', akkoordVoorwaarden: true },
+      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(zonderAdres.status, 422);

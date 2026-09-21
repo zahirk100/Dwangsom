@@ -66,7 +66,7 @@ test('de default export handelt ook de API af', async () => {
         bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06',
         ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
       },
-      contact: { naam: 'I. Ingang', email: 'i@voorbeeld.nl', adres: 'Ingangslaan 3', postcode: '3456 EF', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
+      contact: { naam: 'I. Ingang', email: 'i@voorbeeld.nl', iban: 'NL91ABNA0417164300', adres: 'Ingangslaan 3', postcode: '3456 EF', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(ingediend.status, 201);

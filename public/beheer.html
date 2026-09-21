@@ -17,6 +17,9 @@
   .kengetallen { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 22px; }
   .kengetal { padding: 16px 18px; }
   .kengetal__label { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--tekst-zacht); font-weight: 680; }
+  .kengetal--knop { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .kengetal--knop:hover { border-color: var(--blauw-500); }
+  .kengetal--knop[aria-pressed="true"] { border-color: var(--blauw-600); box-shadow: inset 0 0 0 1px var(--blauw-600); }
   .kengetal__waarde { font-size: 1.75rem; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--rand); }
@@ -122,6 +125,7 @@
     </div>
 
     <div id="opslag-waarschuwing"></div>
+    <div id="werklijst-melding"></div>
 
     <div class="kengetallen" id="kengetallen"></div>
 

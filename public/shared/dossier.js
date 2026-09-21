@@ -11,7 +11,7 @@
  * van er achteraf achteraan te moeten bellen.
  */
 
-import { TERMIJN_VANAF, zoekZaaktype } from './catalogus.js';
+import { TERMIJN_VANAF, vraagtBsn, zoekZaaktype } from './catalogus.js';
 import { DOSSIERSOORT } from './dwangsom.js';
 
 /** Contactvelden die het formulier kent, met hun vaste label. */
@@ -23,6 +23,8 @@ export const CONTACTVELDEN = {
   postcode: 'Postcode',
   woonplaats: 'Woonplaats',
   geboortedatum: 'Geboortedatum',
+  bsn: 'Burgerservicenummer',
+  iban: 'IBAN',
   kenmerk: 'Kenmerk of zaaknummer',
 };
 
@@ -64,6 +66,12 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
     veld('geboortedatum', treedtOp && machtiging, treedtOp && machtiging
       ? 'Staat op de machtiging, zodat het bestuursorgaan u kan herkennen.'
       : 'Vragen wij pas als wij namens u gaan optreden.'),
+    // Zonder deze twee kan een zaak niet worden ingediend of uitbetaald.
+    // Ze horen daarom in het overzicht van wat ontbreekt, niet pas op het
+    // moment dat de behandelaar de machtiging opent.
+    veld('bsn', treedtOp && machtiging && vraagtBsn(invoer.bestuursorgaan),
+      'Staat op de machtiging; het bestuursorgaan vindt de zaak daarmee terug.'),
+    veld('iban', treedtOp, 'Hierop wordt een toegekende vergoeding uitbetaald.'),
     veld('kenmerk', false, invoer.bestuursorgaan === 'uwv'
       ? 'Het kenmerk of klantnummer uit de brief van UWV; daarmee vindt men uw zaak direct terug.'
       : 'Het zaaknummer uit de ontvangstbevestiging; daarmee vindt men uw zaak direct terug.'),
@@ -94,10 +102,23 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
       { uitleg: 'Daarmee controleren wij hoeveel dagen de termijn heeft stilgestaan.', verplicht: false }));
   }
   if (invoer.ingebrekeGesteld) {
-    stukken.push(stuk('ingebrekestelling', 'Uw ingebrekestelling',
-      { uitleg: 'De brief of e-mail waarin u om een besluit vroeg.' }));
+    // Hebben wij zelf in gebreke gesteld, dan zit dit stuk al in ons eigen
+    // dossier. Het dan bij de aanvrager opvragen is precies het onnodige
+    // mailtje dat we willen voorkomen.
+    const doorOns = Boolean(invoer.ingebrekestellingDoorOns);
+    stukken.push(stuk('ingebrekestelling',
+      doorOns ? 'De ingebrekestelling die wij verstuurden' : 'Uw ingebrekestelling',
+      {
+        door: doorOns ? 'wij' : 'klant',
+        uitleg: doorOns
+          ? 'Wij stelden zelf in gebreke; de brief zit in dit dossier.'
+          : 'De brief of e-mail waarin u om een besluit vroeg.',
+      }));
     stukken.push(stuk('verzendbewijs', 'Het verzendbewijs van die ingebrekestelling',
-      { uitleg: 'Dit is het belangrijkste bewijsstuk: het bepaalt vanaf welke dag de dwangsom telt.' }));
+      {
+        door: doorOns ? 'wij' : 'klant',
+        uitleg: 'Dit is het belangrijkste bewijsstuk: het bepaalt vanaf welke dag de dwangsom telt.',
+      }));
   }
   if (invoer.besluitGenomen) {
     stukken.push(stuk('besluit', 'Het besluit dat u inmiddels heeft ontvangen',

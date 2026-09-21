@@ -157,3 +157,73 @@ function normaliseerHandtekening(ruw) {
     gezetOp: parseDatum(String(ruw.gezetOp || '').slice(0, 10)) ? ruw.gezetOp : new Date().toISOString(),
   };
 }
+
+/**
+ * Wat de beheerder zelf bijwerkt aan een lopend dossier.
+ *
+ * Bedoeld om niet voor elk ontbrekend gegeven de aanvrager te hoeven mailen:
+ * wat telefonisch of uit de stukken bekend wordt, gaat hier direct in. Alleen
+ * velden die ook echt meegestuurd zijn worden aangeraakt, zodat een
+ * gedeeltelijke wijziging de rest niet leegmaakt.
+ */
+const BIJ_TE_WERKEN_CONTACT = [
+  'naam', 'email', 'telefoon', 'adres', 'postcode', 'woonplaats',
+  'geboortedatum', 'bsn', 'iban', 'kenmerk', 'toelichting',
+];
+
+const BIJ_TE_WERKEN_INVOER = [
+  'organisatienaam', 'basisdatum', 'termijnBekend', 'termijnEinddatum',
+  'verdaagd', 'verdagingEinddatum', 'opschortingDagen',
+  'ingebrekeGesteld', 'ingebrekestellingDatum', 'ingebrekestellingDoorOns',
+  'besluitGenomen', 'besluitDatum',
+];
+
+export function valideerBijwerking(aanvraag = {}, body = {}) {
+  const fouten = {};
+  const contact = {};
+  const invoer = {};
+  const gewijzigd = [];
+  const ruweContact = (body && typeof body.contact === 'object' && body.contact) || {};
+  const ruweInvoer = (body && typeof body.invoer === 'object' && body.invoer) || {};
+
+  for (const veld of BIJ_TE_WERKEN_CONTACT) {
+    if (!(veld in ruweContact)) continue;
+    let waarde = tekst(ruweContact[veld], veld === 'toelichting' ? 2000 : 160);
+    if (veld === 'bsn') waarde = normaliseerBsn(waarde);
+    if (veld === 'iban') waarde = normaliseerIban(waarde);
+    if (String((aanvraag.contact || {})[veld] || '') !== waarde) gewijzigd.push(veld);
+    contact[veld] = waarde;
+  }
+
+  if (contact.email && !EMAIL.test(contact.email)) fouten.email = 'Dit e-mailadres klopt niet.';
+  if (contact.bsn && !bsnKlopt(contact.bsn)) fouten.bsn = 'Dit burgerservicenummer klopt niet.';
+  if (contact.iban && !ibanKlopt(contact.iban)) fouten.iban = 'Dit IBAN klopt niet.';
+  if (contact.geboortedatum && !parseDatum(contact.geboortedatum)) {
+    fouten.geboortedatum = 'Vul de geboortedatum in als jjjj-mm-dd.';
+  }
+
+  for (const veld of BIJ_TE_WERKEN_INVOER) {
+    if (!(veld in ruweInvoer)) continue;
+    const huidig = (aanvraag.invoer || {})[veld];
+    if (['termijnBekend', 'verdaagd', 'ingebrekeGesteld', 'ingebrekestellingDoorOns', 'besluitGenomen'].includes(veld)) {
+      invoer[veld] = Boolean(ruweInvoer[veld]);
+    } else if (veld === 'opschortingDagen') {
+      const dagen = Number(ruweInvoer[veld]);
+      invoer[veld] = Number.isFinite(dagen) ? Math.max(0, Math.min(365, Math.round(dagen))) : 0;
+    } else {
+      invoer[veld] = tekst(ruweInvoer[veld], 120);
+    }
+    if (String(huidig ?? '') !== String(invoer[veld])) gewijzigd.push(veld);
+  }
+
+  // Een datum die bij een aangevinkt veld hoort, moet er ook echt zijn.
+  const samen = { ...(aanvraag.invoer || {}), ...invoer };
+  if (samen.ingebrekeGesteld && !parseDatum(samen.ingebrekestellingDatum)) {
+    fouten.ingebrekestellingDatum = 'Vul de datum van de ingebrekestelling in.';
+  }
+  if (samen.besluitGenomen && !parseDatum(samen.besluitDatum)) {
+    fouten.besluitDatum = 'Vul de datum van het besluit in.';
+  }
+
+  return { contact, invoer, fouten, gewijzigd };
+}

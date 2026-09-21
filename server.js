@@ -22,8 +22,9 @@ import {
 } from './src/http-util.js';
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
-import { valideerAanvraag } from './src/validatie.js';
+import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
+import { parseDatum } from './public/shared/datum.js';
 import { bepaalDossiereisen, dossierStatus } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
@@ -245,6 +246,7 @@ async function beheerApi(req, res, url) {
       zoek: url.searchParams.get('zoek'),
       bestuursorgaan: url.searchParams.get('bestuursorgaan'),
       soort: url.searchParams.get('soort'),
+      actie: url.searchParams.get('actie'),
     });
     return stuurJson(res, 200, {
       aanvragen: aanvragen.map(samenvatting),
@@ -317,6 +319,39 @@ async function beheerApi(req, res, url) {
       return stuurJson(res, 200, { aanvraag: await store.werkStukkenBij(aanvraag.id, stukken, 'beheerder') });
     }
 
+    if (subpad === '/bijwerken' && req.method === 'POST') {
+      const body = await leesJsonBody(req);
+      const { contact, invoer, fouten, gewijzigd } = valideerBijwerking(aanvraag, body);
+      if (Object.keys(fouten).length > 0) {
+        return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: fouten });
+      }
+      const nieuweInvoer = { ...aanvraag.invoer, ...invoer };
+      const bijgewerkt = await store.werkDossierBij(aanvraag.id, {
+        contact,
+        invoer: nieuweInvoer,
+        rapport: berekenDwangsom(nieuweInvoer),
+        door: 'beheerder',
+        toelichting: typeof body.toelichting === 'string' ? body.toelichting.slice(0, 300) : '',
+        gewijzigd,
+      });
+      return stuurJson(res, 200, { aanvraag: bijgewerkt, eisen: bepaalDossiereisen(bijgewerkt) });
+    }
+
+    if (subpad === '/afhandeling' && req.method === 'POST') {
+      const body = await leesJsonBody(req);
+      const bedrag = Number(body.bedragToegekend);
+      const afhandeling = {
+        bedragToegekend: Number.isFinite(bedrag) && bedrag >= 0 ? Math.round(bedrag * 100) / 100 : null,
+        beschikkingOp: parseDatum(body.beschikkingOp) ? String(body.beschikkingOp) : '',
+        uitbetaaldOp: parseDatum(body.uitbetaaldOp) ? String(body.uitbetaaldOp) : '',
+        toelichting: typeof body.toelichting === 'string' ? body.toelichting.trim().slice(0, 1000) : '',
+        status: isGeldigeStatus(body.status) ? body.status : null,
+      };
+      return stuurJson(res, 200, {
+        aanvraag: await store.legAfhandelingVast(aanvraag.id, afhandeling, 'beheerder'),
+      });
+    }
+
     if (subpad === '/herbereken' && req.method === 'POST') {
       const body = await leesJsonBody(req);
       const invoer = { ...aanvraag.invoer, ...(body.invoer || {}) };
@@ -355,6 +390,10 @@ function samenvatting(a) {
     actieLabel: vervolg.actieLabel || '',
     stukkenOntbreken: status.ontbreekt.length,
     dossierCompleet: status.compleet,
+    gegevensOntbreken: bepaalDossiereisen(a).gegevens
+      .filter((g) => g.verplicht && !String((a.contact || {})[g.id] || '').trim()).length,
+    bedragToegekend: a.afhandeling && Number.isFinite(a.afhandeling.bedragToegekend)
+      ? a.afhandeling.bedragToegekend : null,
     status: a.status,
     statusLabel: labelVoorStatus(a.status),
     aangemaaktOp: a.aangemaaktOp,
@@ -386,6 +425,7 @@ function naarCsv(aanvragen) {
     'referentie', 'soort', 'status', 'actiedatum', 'ontvangen op', 'naam', 'e-mail', 'telefoon',
     'woonplaats', 'bestuursorgaan', 'organisatie', 'zaaktype', 'uitkomst', 'dagen', 'bedrag',
     'eerste dwangsomdag', 'einde beslistermijn', 'ingebrekestelling', 'stukken ontbreken',
+    'toegekend bedrag', 'beschikking op', 'uitbetaald op',
   ];
   const regels = [kop.map(csvVeld).join(';')];
   for (const a of aanvragen) {
@@ -410,6 +450,10 @@ function naarCsv(aanvragen) {
       a.rapport && a.rapport.beslistermijn ? a.rapport.beslistermijn.einddatum : '',
       a.invoer.ingebrekestellingDatum || '',
       dossierStatus(a).ontbreekt.map((stuk) => stuk.label).join(' | '),
+      a.afhandeling && Number.isFinite(a.afhandeling.bedragToegekend)
+        ? a.afhandeling.bedragToegekend.toFixed(2).replace('.', ',') : '',
+      (a.afhandeling && a.afhandeling.beschikkingOp) || '',
+      (a.afhandeling && a.afhandeling.uitbetaaldOp) || '',
     ].map(csvVeld).join(';'));
   }
   return '﻿' + regels.join('\r\n');
