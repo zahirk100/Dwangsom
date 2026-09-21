@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 120 tests, zonder netwerk
+npm test                        # 127 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -123,11 +123,20 @@ wordt niet geraden maar gevraagd.
 
 ### Voorbeeldbrieven om mee te testen
 
-In `voorbeelden/` staan zes nagemaakte brieven, elk als `.txt` en als pdf met
-tekstlaag: een UWV-ontvangstbevestiging, een UWV-bezwaar, een gemeentelijke
-bijstandsaanvraag, een DUO-brief, een verlengingsbrief en een genomen
-beslissing. Upload ze in de funnel om alle routes te zien. Opnieuw maken kan
-met `node voorbeelden/maak-brieven.mjs`.
+In `voorbeelden/` staan zeven nagemaakte brieven, elk als `.txt` en als pdf
+met tekstlaag. Samen dekken ze alle routes van de funnel:
+
+| Brief | Wat je te zien krijgt |
+| --- | --- |
+| `uwv-wia-ontvangstbevestiging` | Termijn net verstreken; wij moeten eerst aanmanen |
+| `uwv-ww-termijn-lang-verstreken` | Termijn maanden voorbij; met "ja, zelf aangemaand" verschijnt € 1.442 |
+| `gemeente-bijstand-ontvangstbevestiging` | Gemeente Zwolle, datum uit de zin ervóór |
+| `duo-studiefinanciering-ontvangstbevestiging` | DUO, inclusief het BSN uit de brief |
+| `uwv-bezwaar-ontvangstbevestiging` | Lopend bezwaar in plaats van een aanvraag |
+| `uwv-verlenging-beslistermijn` | Twee datums in één brief; de nieuwe telt |
+| `uwv-beslissing-genomen` | Er is beslist: de procedure stopt |
+
+Opnieuw maken kan met `node voorbeelden/maak-brieven.mjs`.
 
 ## Aanvraag of vooraanmelding
 

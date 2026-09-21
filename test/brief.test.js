@@ -141,3 +141,30 @@ test('te weinig tekst levert geen gokwerk op', () => {
   assert.equal(herkenBrief('hallo').leesbaar, false);
   assert.equal(leesBrief({}).gelukt, false);
 });
+
+test('een brief met een lang verstreken termijn levert met een aanmaning het maximum op', () => {
+  const h = herkenBrief(tekstVan('uwv-ww-termijn-lang-verstreken.txt'));
+  assert.equal(h.beslisdatum, '2026-06-01');
+  assert.equal(h.zaaktype, 'uwv-ww');
+
+  const zonder = berekenDwangsom({ ...naarInvoer(h), peildatum: '2026-09-21' });
+  assert.equal(zonder.uitkomst, UITKOMST.INGEBREKESTELLING_NODIG);
+
+  // Wie zelf al heeft aangemaand, heeft al een dwangsom lopen. Dat moet de
+  // funnel kunnen zien, anders wordt de zaak te laag ingeschat.
+  const met = berekenDwangsom({
+    ...naarInvoer(h), ingebrekeGesteld: true, ingebrekestellingDatum: '2026-06-15', peildatum: '2026-09-21',
+  });
+  assert.equal(met.uitkomst, UITKOMST.RECHT);
+  assert.equal(met.berekening.totaal, 1442);
+  assert.equal(met.vervolg.soort, 'aanvraag');
+});
+
+test('een aanmaning van vóór het einde van de termijn telt niet te vroeg mee', () => {
+  const h = herkenBrief(tekstVan('uwv-wia-ontvangstbevestiging.txt'));
+  const rapport = berekenDwangsom({
+    ...naarInvoer(h), ingebrekeGesteld: true, ingebrekestellingDatum: '2026-08-20', peildatum: '2026-09-21',
+  });
+  assert.ok(rapport.waarschuwingen.some((w) => w.code === 'prematuur'));
+  assert.equal(rapport.berekening.dagen, 0, 'de dwangsom loopt pas na het einde van de termijn');
+});

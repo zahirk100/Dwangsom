@@ -163,6 +163,16 @@ function rendereUitslag() {
   const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan) || 'de instantie';
   const einddatum = datumTekst(r && r.beslistermijn ? r.beslistermijn.einddatum : zaak.invoer.termijnEinddatum);
 
+  // Ontbreekt er nog iets, dan blijft de vorige uitkomst staan en vragen wij
+  // alleen het ontbrekende; het scherm springt niet naar iets anders.
+  if (r && r.onvolledig) {
+    vak.append(el('div', { class: 'melding melding--info' },
+      el('strong', { tekst: r.kop }),
+      el('p', { tekst: r.samenvatting })));
+    navigatie.classList.add('verborgen');
+    return;
+  }
+
   if (!r) {
     vak.append(el('div', { class: 'uitslag' },
       el('div', { class: 'uitslag__icoon', tekst: '🔍' }),
@@ -182,9 +192,12 @@ function rendereUitslag() {
     [UITKOMST.HERSTELTERMIJN_LOOPT]: '⏳', [UITKOMST.TERMIJN_LOOPT]: '🕐',
     [UITKOMST.GEEN_RECHT]: 'ℹ️' }[r.uitkomst] || 'ℹ️';
 
+  const opgebouwd = r.berekening && r.berekening.dagen > 0 ? euro(r.berekening.totaal) : null;
+
   let titel;
   if (r.uitkomst === UITKOMST.GEEN_RECHT) titel = 'Hier kunnen wij niets mee claimen';
   else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) titel = `${orgaan} heeft nog even de tijd`;
+  else if (opgebouwd) titel = `${orgaan} is te laat: er staat ${opgebouwd} open`;
   else titel = `Het lijkt erop dat ${orgaan} te laat is`;
 
   vak.append(el('div', { class: 'uitslag' },
@@ -229,7 +242,36 @@ function rendereUitslag() {
     toonTweedeUpload(vak, true);
   }
 
-  const bedrag = r.berekening && r.berekening.dagen > 0 ? euro(r.berekening.totaal) : null;
+  // Wie zelf al heeft aangemaand, loopt al een dwangsom op. Dat is precies de
+  // situatie waarin er nu geld te halen valt, dus die vraag hoort hier - maar
+  // alleen als de termijn ook echt voorbij is, anders is hij verwarrend.
+  if (teLaat && !zaak.invoer.besluitGenomen) {
+    vak.append(vraag('Heeft u de organisatie zelf al schriftelijk aangemaand?', 'igs',
+      zaak.invoer.ingebrekeGesteld, (ja) => {
+        zaak.invoer.ingebrekeGesteld = ja;
+        if (!ja) zaak.invoer.ingebrekestellingDatum = '';
+        // Pas herrekenen als de datum er is; anders is de invoer onvolledig
+        // en zou het scherm omslaan naar een uitkomst die nergens op slaat.
+        if (!ja || zaak.invoer.ingebrekestellingDatum) herbereken();
+        rendereUitslag();
+      }, 'Een brief of e-mail waarin u om een beslissing vroeg. Vanaf dan gaat de dwangsom lopen.'));
+
+    if (zaak.invoer.ingebrekeGesteld) {
+      const datumvak = el('div', { class: 'veld', style: 'margin-top:12px' },
+        el('label', { for: 'igs-datum' }, 'Wanneer heeft u die verstuurd?'));
+      const invoerveld = el('input', { type: 'date', id: 'igs-datum' });
+      invoerveld.value = zaak.invoer.ingebrekestellingDatum || '';
+      invoerveld.addEventListener('change', () => {
+        zaak.invoer.ingebrekestellingDatum = invoerveld.value;
+        herbereken();
+        rendereUitslag();
+      });
+      datumvak.append(invoerveld);
+      vak.append(datumvak);
+    }
+  }
+
+  const bedrag = opgebouwd;
   if (teLaat) {
     vak.append(el('div', { class: 'melding melding--goed', style: 'margin-top:20px' },
       el('strong', {}, 'Wij kunnen dit voor u regelen'),
@@ -259,8 +301,9 @@ function rendereUitslag() {
   knopTerug.classList.remove('verborgen');
 }
 
-function vraag(tekst, naam, huidig, bijKeuze) {
-  const blok = el('div', { class: 'vraagblok' }, el('span', { tekst }));
+function vraag(tekst, naam, huidig, bijKeuze, uitleg) {
+  const blok = el('div', { class: 'vraagblok' }, el('span', { tekst }),
+    uitleg ? el('p', { class: 'veld__hulp', style: 'margin:-4px 0 8px', tekst: uitleg }) : null);
   const keuzes = el('div', { class: 'keuzes keuzes--twee' });
   for (const optie of [{ label: 'Nee', waarde: false }, { label: 'Ja', waarde: true }]) {
     const invoerveld = el('input', { type: 'radio', name: `vraag-${naam}` });
