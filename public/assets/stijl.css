@@ -104,6 +104,11 @@ a { color: var(--blauw-600); }
 }
 .balk nav a:hover { color: var(--tekst); background: var(--grijs-100); }
 .balk nav a.knop--primair { color: #fff; }
+.nav-kort { display: none; }
+@media (max-width: 720px) {
+  .nav-lang { display: none; }
+  .nav-kort { display: inline; }
+}
 .balk nav a.knop--primair:hover { color: #fff; background: var(--blauw-700); }
 
 /* ---------------------------------------------------------------- knoppen -- */
@@ -226,9 +231,18 @@ table.tabel tbody tr:hover { background: var(--blauw-50); }
 .voet a { color: var(--tekst-zacht); }
 
 /* --------------------------------------------------------------- mobiel -- */
+/* Op zeer smalle schermen wijkt de merknaam; het logo blijft de link naar huis. */
+@media (max-width: 380px) {
+  .merk__naam { display: none; }
+  .balk nav .knop--klein { padding: 8px 10px; font-size: .84rem; }
+}
+
 @media (max-width: 720px) {
-  .balk nav a:not(.knop) { display: none; }
-  .balk__inhoud { gap: 10px; }
+  /* Inhoudelijke links wijken; de beheerlink en de hoofdknop blijven staan. */
+  .balk nav a.nav-secundair { display: none; }
+  .balk__inhoud { gap: 8px; }
+  .balk nav { gap: 2px; }
+  .knop--klein { padding: 8px 11px; }
   .merk { font-size: .96rem; }
   .lade { padding: 20px 16px; }
   .kop-rij .rechts { width: 100%; margin-left: 0; }
