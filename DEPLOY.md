@@ -19,6 +19,11 @@ instelling), later de **database en het eigen domein** voor echt gebruik.
    | --- | --- |
    | `BEHEER_WACHTWOORD` | een wachtwoord dat je zelf kiest |
 
+   Wil je tijdens het testen helemaal niet inloggen, zet dan in plaats daarvan
+   `BEHEER_OPEN` op `1`. De beheeromgeving is dan met één klik bereikbaar en
+   waarschuwt bovenin dat ze niet is afgeschermd. **Haal die variabele weg
+   voordat er echte aanvragen binnenkomen**; dan geldt het wachtwoord weer.
+
    Dit is de enige instelling die je nu nodig hebt. Zonder die variabele kun
    je niet inloggen op `/beheer`; de pagina legt dan zelf uit wat er moet
    gebeuren, maar je kunt hem dus net zo goed meteen invullen.
@@ -188,7 +193,7 @@ zetten. Verder niets nodig: de applicatie gebruikt geen vaste URL's.
   er gaat geen mail uit — naar jullie niet en naar de aanvrager niet. Iemand
   moet dus in de beheeromgeving kijken.
 - **Eén gedeeld beheerwachtwoord.** Voor meerdere medewerkers wil je aparte
-  accounts met tweefactorauthenticatie.
+  accounts met tweefactorauthenticatie. Controleer ook dat `BEHEER_OPEN` weg is.
 - **Privacy.** Er worden persoonsgegevens verwerkt: regel een
   privacyverklaring, verwerkersovereenkomsten met Vercel en Upstash, een
   bewaartermijn en een back-up.

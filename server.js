@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
-import { Store, STATUSSEN, isGeldigeStatus, labelVoorStatus } from './src/store.js';
+import { Store, STATUSSEN, SOORTEN, isGeldigeStatus, labelVoorStatus, labelVoorSoort } from './src/store.js';
 import { kiesOpslag } from './src/opslag.js';
 import { maakToken, tokenIsGeldig, sessieCookie, sessieSleutel, COOKIE_NAAM } from './src/sessie.js';
 import {
@@ -22,6 +22,7 @@ import {
 } from './src/http-util.js';
 import { valideerAanvraag } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
+import { bepaalDossiereisen, dossierStatus } from './public/shared/dossier.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 
@@ -112,22 +113,26 @@ async function publiekeApi(req, res, url) {
       return stuurFout(res, 429, 'Te veel aanvragen vanaf dit adres. Probeer het later opnieuw.');
     }
     const body = await leesJsonBody(req);
-    const { geldig, fouten, invoer, contact } = valideerAanvraag(body);
+    const { geldig, fouten, invoer, contact, stukken, rapport } = valideerAanvraag(body);
     if (!geldig) {
       return stuurJson(res, 422, { fout: 'De aanvraag is niet compleet.', velden: fouten });
     }
-    // De server rekent zelf; wat de browser meestuurt is alleen voorbeeld.
-    const rapport = berekenDwangsom(invoer);
     const aanvraag = await store.nieuweAanvraag({
       invoer,
       contact,
       rapport,
+      stukken,
       meta: {
         ingediendVia: 'webformulier',
         userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
       },
     });
-    return stuurJson(res, 201, { referentie: aanvraag.referentie, status: aanvraag.status, rapport });
+    return stuurJson(res, 201, {
+      referentie: aanvraag.referentie,
+      status: aanvraag.status,
+      soort: aanvraag.soort,
+      rapport,
+    });
   }
 
   return false;
@@ -174,10 +179,12 @@ async function beheerApi(req, res, url) {
       status: url.searchParams.get('status'),
       zoek: url.searchParams.get('zoek'),
       bestuursorgaan: url.searchParams.get('bestuursorgaan'),
+      soort: url.searchParams.get('soort'),
     });
     return stuurJson(res, 200, {
       aanvragen: aanvragen.map(samenvatting),
       statussen: STATUSSEN,
+      soorten: SOORTEN,
       statistieken: await store.statistieken(),
       opslag: { soort: opslag.soort, duurzaam: opslag.duurzaam, omschrijving: opslag.omschrijving },
       open: BEHEER_OPEN,
@@ -198,7 +205,12 @@ async function beheerApi(req, res, url) {
     const subpad = detail[2];
 
     if (!subpad && req.method === 'GET') {
-      return stuurJson(res, 200, { aanvraag, statussen: STATUSSEN });
+      return stuurJson(res, 200, {
+        aanvraag,
+        statussen: STATUSSEN,
+        soorten: SOORTEN,
+        eisen: bepaalDossiereisen(aanvraag),
+      });
     }
 
     if (!subpad && req.method === 'PATCH') {
@@ -212,6 +224,16 @@ async function beheerApi(req, res, url) {
       const tekst = String(body.tekst || '').trim().slice(0, 2000);
       if (!tekst) return stuurFout(res, 400, 'Notitie is leeg.');
       return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, 'beheerder') });
+    }
+
+    if (subpad === '/stukken' && req.method === 'POST') {
+      const body = await leesJsonBody(req);
+      const ingestuurd = (body && typeof body.stukken === 'object' && body.stukken) || {};
+      const toegestaan = new Set(bepaalDossiereisen(aanvraag).stukken.map((stuk) => stuk.id));
+      const stukken = Object.fromEntries(
+        Object.entries(ingestuurd).filter(([id]) => toegestaan.has(id)).map(([id, aan]) => [id, Boolean(aan)]),
+      );
+      return stuurJson(res, 200, { aanvraag: await store.werkStukkenBij(aanvraag.id, stukken, 'beheerder') });
     }
 
     if (subpad === '/herbereken' && req.method === 'POST') {
@@ -241,9 +263,17 @@ async function beheerApi(req, res, url) {
 
 function samenvatting(a) {
   const b = a.rapport && a.rapport.berekening;
+  const vervolg = (a.rapport && a.rapport.vervolg) || {};
+  const status = dossierStatus(a);
   return {
     id: a.id,
     referentie: a.referentie,
+    soort: a.soort || 'beoordeling',
+    soortLabel: labelVoorSoort(a.soort),
+    actiedatum: a.actiedatum || null,
+    actieLabel: vervolg.actieLabel || '',
+    stukkenOntbreken: status.ontbreekt.length,
+    dossierCompleet: status.compleet,
     status: a.status,
     statusLabel: labelVoorStatus(a.status),
     aangemaaktOp: a.aangemaaktOp,
@@ -272,16 +302,18 @@ function csvVeld(input) {
 
 function naarCsv(aanvragen) {
   const kop = [
-    'referentie', 'status', 'ontvangen op', 'naam', 'e-mail', 'telefoon', 'woonplaats',
-    'bestuursorgaan', 'organisatie', 'zaaktype', 'uitkomst', 'dagen', 'bedrag',
-    'eerste dwangsomdag', 'einde beslistermijn', 'ingebrekestelling',
+    'referentie', 'soort', 'status', 'actiedatum', 'ontvangen op', 'naam', 'e-mail', 'telefoon',
+    'woonplaats', 'bestuursorgaan', 'organisatie', 'zaaktype', 'uitkomst', 'dagen', 'bedrag',
+    'eerste dwangsomdag', 'einde beslistermijn', 'ingebrekestelling', 'stukken ontbreken',
   ];
   const regels = [kop.map(csvVeld).join(';')];
   for (const a of aanvragen) {
     const b = (a.rapport && a.rapport.berekening) || {};
     regels.push([
       a.referentie,
+      labelVoorSoort(a.soort),
       labelVoorStatus(a.status),
+      a.actiedatum || '',
       a.aangemaaktOp,
       a.contact.naam,
       a.contact.email,
@@ -296,6 +328,7 @@ function naarCsv(aanvragen) {
       b.eersteDag || '',
       a.rapport && a.rapport.beslistermijn ? a.rapport.beslistermijn.einddatum : '',
       a.invoer.ingebrekestellingDatum || '',
+      dossierStatus(a).ontbreekt.map((stuk) => stuk.label).join(' | '),
     ].map(csvVeld).join(';'));
   }
   return '﻿' + regels.join('\r\n');

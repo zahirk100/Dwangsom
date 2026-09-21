@@ -42,6 +42,17 @@ export const HERSTELTERMIJN_DAGEN = 14;
 /** Na hoeveel dagen een ingebrekestelling in beginsel als 'onredelijk laat' geldt (art. 4:17 lid 6 sub a). */
 export const ONREDELIJK_LAAT_DAGEN = 365;
 
+/**
+ * Wat voor dossier een uitkomst oplevert. De aanvrager die nog niet kan
+ * claimen wordt niet weggestuurd: die doet een vooraanmelding, en wij
+ * bewaken de datum waarop er iets moet gebeuren.
+ */
+export const DOSSIERSOORT = {
+  AANVRAAG: 'aanvraag',            // er is iets te vorderen, nu
+  VOORAANMELDING: 'vooraanmelding', // nog niet, maar de klok loopt
+  BEOORDELING: 'beoordeling',       // waarschijnlijk geen recht; wij kijken mee
+};
+
 export const UITKOMST = {
   GEEN_RECHT: 'geen-recht',
   TERMIJN_LOOPT: 'termijn-loopt',
@@ -109,9 +120,78 @@ function normaliseerInvoer(ruw = {}) {
 
 /**
  * Hoofdfunctie. Geeft een volledig rapport terug: uitkomst, tijdlijn, bedrag
- * en de eerstvolgende stap voor de aanvrager.
+ * en wat er vervolgens moet gebeuren.
  */
 export function berekenDwangsom(ruweInvoer = {}) {
+  const rapport = bepaalRapport(ruweInvoer);
+  rapport.vervolg = bepaalVervolg(rapport);
+  return rapport;
+}
+
+/**
+ * Vertaalt de uitkomst naar het soort dossier en de datum die bewaakt moet
+ * worden. Dat is wat de beheeromgeving nodig heeft om te weten wanneer er
+ * actie nodig is, en wat de aanvrager te zien krijgt als knop.
+ */
+function bepaalVervolg(rapport) {
+  const leeg = { soort: null, kanNuIndienen: false, actiedatum: null, actieLabel: '', actieUitleg: '' };
+  if (rapport.onvolledig || !rapport.uitkomst) return leeg;
+
+  const berekening = rapport.berekening;
+  const eindeTermijn = rapport.beslistermijn ? parseDatum(rapport.beslistermijn.einddatum) : null;
+
+  switch (rapport.uitkomst) {
+    case UITKOMST.RECHT:
+      // Er valt nu iets te vorderen, dus dit dossier is vandaag aan de beurt.
+      return {
+        soort: DOSSIERSOORT.AANVRAAG,
+        kanNuIndienen: true,
+        actiedatum: formatDatum(rapport.invoer.peildatum),
+        actieLabel: 'Dwangsom vorderen',
+        actieUitleg: berekening && berekening.doorlopend
+          ? `Het bedrag loopt nog op tot ${toonDatum(parseDatum(berekening.maximumOp))}; eerder vorderen kan wel.`
+          : 'Het bedrag staat vast en kan gevorderd worden.',
+      };
+
+    case UITKOMST.HERSTELTERMIJN_LOOPT:
+      return {
+        soort: DOSSIERSOORT.VOORAANMELDING,
+        kanNuIndienen: false,
+        actiedatum: berekening ? berekening.eersteDag : null,
+        actieLabel: 'Eerste dwangsomdag',
+        actieUitleg: 'Vanaf deze dag telt de dwangsom en kunnen wij vorderen.',
+      };
+
+    case UITKOMST.INGEBREKESTELLING_NODIG:
+      return {
+        soort: DOSSIERSOORT.VOORAANMELDING,
+        kanNuIndienen: false,
+        actiedatum: formatDatum(rapport.invoer.peildatum),
+        actieLabel: 'Ingebrekestelling versturen',
+        actieUitleg: 'De beslistermijn is verstreken; dit kan direct.',
+      };
+
+    case UITKOMST.TERMIJN_LOOPT:
+      return {
+        soort: DOSSIERSOORT.VOORAANMELDING,
+        kanNuIndienen: false,
+        actiedatum: eindeTermijn ? formatDatum(plusDagen(eindeTermijn, 1)) : null,
+        actieLabel: 'Beslistermijn verstreken',
+        actieUitleg: 'Vanaf deze dag kan het bestuursorgaan in gebreke worden gesteld.',
+      };
+
+    default:
+      return {
+        soort: DOSSIERSOORT.BEOORDELING,
+        kanNuIndienen: false,
+        actiedatum: null,
+        actieLabel: 'Handmatig beoordelen',
+        actieUitleg: 'De automatische toets ziet geen recht; een mens kijkt ernaar.',
+      };
+  }
+}
+
+function bepaalRapport(ruweInvoer = {}) {
   const invoer = normaliseerInvoer(ruweInvoer);
   const zaaktype = zoekZaaktype(invoer.zaaktype);
   const waarschuwingen = [];

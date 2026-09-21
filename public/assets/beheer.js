@@ -1,7 +1,7 @@
 /** Beheeromgeving: overzicht, detaillade, statusbeheer en notities. */
 
 import { euro } from '/shared/dwangsom.js';
-import { parseDatum, toonDatum } from '/shared/datum.js';
+import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
 import { labelBestuursorgaan } from '/shared/catalogus.js';
 
 const inloggenVak = document.getElementById('inloggen');
@@ -11,7 +11,10 @@ const leegVak = document.getElementById('leeg');
 const ladeHouder = document.getElementById('lade-houder');
 
 let statussen = [];
+let soorten = [];
+let huidigSoort = 'alle';
 let actieveAanvraag = null;
+let actieveEisen = null;
 
 const UITKOMST_LABEL = {
   'recht': { tekst: 'Recht opgebouwd', kleur: 'groen' },
@@ -108,13 +111,16 @@ function filterQuery() {
   if (zoek) params.set('zoek', zoek);
   params.set('status', document.getElementById('filter-status').value);
   params.set('bestuursorgaan', document.getElementById('filter-orgaan').value);
+  params.set('soort', huidigSoort);
   return params.toString();
 }
 
 async function laadLijst() {
   const data = await api(`/api/beheer/aanvragen?${filterQuery()}`);
   statussen = data.statussen;
+  soorten = data.soorten || [];
   vulStatusfilter();
+  rendereTabs(data.statistieken);
   rendereOpslagwaarschuwing(data.opslag, data.open);
   rendereKengetallen(data.statistieken);
   rendereTabel(data.aanvragen);
@@ -154,12 +160,55 @@ function rendereOpslagwaarschuwing(opslag, open) {
       + '(KV_REST_API_URL en KV_REST_API_TOKEN) voordat u klanten naar deze site verwijst.')));
 }
 
+/**
+ * Aanvragen en vooraanmeldingen zijn verschillend werk: het ene is vorderen,
+ * het andere is een datum bewaken. Daarom staan ze uit elkaar.
+ */
+function rendereTabs(stats) {
+  const houder = document.getElementById('soort-tabs');
+  houder.textContent = '';
+  const perSoort = (stats && stats.perSoort) || {};
+  const alles = [{ id: 'alle', label: 'Alle dossiers', uitleg: '' }, ...soorten];
+
+  for (const soort of alles) {
+    const aantal = soort.id === 'alle'
+      ? Object.values(perSoort).reduce((som, n) => som + n, 0)
+      : (perSoort[soort.id] || 0);
+    // Geen role="tab": dit zijn filterknoppen die de tabel opnieuw laden, geen
+    // tabbladen met panelen. aria-pressed beschrijft dat eerlijk.
+    const knop = el('button', {
+      class: 'tab', type: 'button',
+      'aria-pressed': String(soort.id === huidigSoort),
+    }, soort.label, el('span', { class: 'tab__aantal', tekst: String(aantal) }));
+    knop.addEventListener('click', () => {
+      huidigSoort = soort.id;
+      laadLijst();
+    });
+    houder.append(knop);
+  }
+
+  const gekozen = alles.find((s) => s.id === huidigSoort);
+  const uitleg = document.getElementById('tab-uitleg') || el('p', { class: 'tab__uitleg', id: 'tab-uitleg' });
+  uitleg.textContent = gekozen && gekozen.uitleg ? gekozen.uitleg : '';
+  houder.after(uitleg);
+}
+
+/** Hoe dringend is de bewaakte datum? */
+function termijn(datum) {
+  if (!datum) return { tekst: '', kleur: '', titel: '' };
+  const dagen = verschilDagen(vandaag(), parseDatum(datum));
+  if (dagen < 0) return { tekst: `${-dagen} d te laat`, kleur: 'rood', titel: toonDatum(parseDatum(datum)) };
+  if (dagen === 0) return { tekst: 'vandaag', kleur: 'oranje', titel: toonDatum(parseDatum(datum)) };
+  if (dagen <= 7) return { tekst: `over ${dagen} d`, kleur: 'oranje', titel: toonDatum(parseDatum(datum)) };
+  return { tekst: `over ${dagen} d`, kleur: '', titel: toonDatum(parseDatum(datum)) };
+}
+
 function rendereKengetallen(stats) {
   const vak = document.getElementById('kengetallen');
   vak.textContent = '';
   const items = [
-    { label: 'Totaal aanvragen', waarde: String(stats.totaal) },
     { label: 'Open dossiers', waarde: String(stats.open) },
+    { label: 'Actie nodig', waarde: String(stats.actieNodig || 0) },
     { label: 'Met opgebouwd recht', waarde: String(stats.metRecht) },
     { label: 'Totale claimwaarde', waarde: euro(stats.totaalBedrag) },
   ];
@@ -174,17 +223,29 @@ function rendereTabel(aanvragen) {
   tabelBody.textContent = '';
   leegVak.classList.toggle('verborgen', aanvragen.length > 0);
   for (const a of aanvragen) {
-    const uitkomst = UITKOMST_LABEL[a.uitkomst] || { tekst: a.uitkomst || '–', kleur: '' };
+    const uitkomst = UITKOMST_LABEL[a.uitkomst] || { tekst: a.uitkomst || '\u2013', kleur: '' };
     const status = statussen.find((s) => s.id === a.status);
+    const klok = termijn(a.actiedatum);
+
     const rij = el('tr', { tabindex: '0' },
-      el('td', {}, el('strong', { tekst: a.referentie })),
+      el('td', {},
+        el('strong', { tekst: a.referentie }),
+        el('div', { class: 'subtiel', style: 'font-size:.78rem', tekst: a.soortLabel })),
       el('td', {}, el('div', { tekst: a.naam }), el('div', { class: 'subtiel', style: 'font-size:.82rem', tekst: a.email })),
-      el('td', { tekst: a.organisatienaam || labelBestuursorgaan(a.bestuursorgaan) }),
-      el('td', { tekst: a.zaaktype }),
+      el('td', {},
+        el('div', { tekst: a.zaaktype }),
+        el('div', { class: 'subtiel', style: 'font-size:.82rem', tekst: a.organisatienaam || labelBestuursorgaan(a.bestuursorgaan) })),
       el('td', {}, chip(uitkomst.tekst, uitkomst.kleur)),
-      el('td', { class: 'bedrag', tekst: a.bedrag ? euro(a.bedrag) + (a.doorlopend ? ' ↑' : '') : '–' }),
+      el('td', { class: 'bedrag', tekst: a.bedrag ? euro(a.bedrag) + (a.doorlopend ? ' \u2191' : '') : '\u2013' }),
+      el('td', { title: klok.titel },
+        a.actiedatum
+          ? el('div', {}, chip(klok.tekst, klok.kleur),
+              el('div', { class: 'subtiel', style: 'font-size:.78rem', tekst: a.actieLabel }))
+          : el('span', { class: 'subtiel', tekst: '\u2013' })),
+      el('td', {}, a.dossierCompleet
+        ? chip('Compleet', 'groen')
+        : chip(`${a.stukkenOntbreken} ontbreekt`, 'oranje')),
       el('td', {}, chip(a.statusLabel, status ? status.kleur : '')),
-      el('td', { class: 'subtiel', style: 'white-space:nowrap', tekst: datumTijd(a.aangemaaktOp) }),
     );
     rij.addEventListener('click', () => openLade(a.id));
     rij.addEventListener('keydown', (e) => { if (e.key === 'Enter') openLade(a.id); });
@@ -215,6 +276,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') sluitLade(
 async function openLade(id) {
   const data = await api(`/api/beheer/aanvragen/${id}`);
   actieveAanvraag = data.aanvraag;
+  actieveEisen = data.eisen || { gegevens: [], stukken: [] };
   rendereLade();
 }
 
@@ -301,6 +363,10 @@ function rendereLade() {
 
     el('div', { class: 'kolomkop', tekst: 'Zaak' }),
     gegevensLijst([
+      ['Soort dossier', a.soortLabel || (a.soort === 'vooraanmelding' ? 'Vooraanmelding' : 'Aanvraag')],
+      ['Actie op', a.actiedatum
+        ? `${toonDatum(parseDatum(a.actiedatum))} (${termijn(a.actiedatum).tekst})`
+        : 'geen datum te bewaken'],
       ['Organisatie', a.invoer.organisatienaam || labelBestuursorgaan(a.invoer.bestuursorgaan)],
       ['Zaaktype', a.rapport && a.rapport.zaaktype ? a.rapport.zaaktype.label : a.invoer.zaaktype],
       ['Aanvraagdatum', toonDatum(parseDatum(a.invoer.basisdatum))],
@@ -326,6 +392,13 @@ function rendereLade() {
     (a.rapport && a.rapport.blokkades || []).map((w) =>
       el('div', { class: 'melding melding--fout', style: 'margin-top:12px' },
         el('strong', { tekst: w.titel }), el('p', { tekst: w.uitleg }))),
+
+    el('div', { class: 'kolomkop', tekst: 'Stukken' }),
+    stukkenBlok(a),
+
+    ontbrekendeGegevens(a).length ? el('div', { class: 'melding melding--let-op', style: 'margin-top:12px' },
+      el('strong', {}, 'Nog op te vragen bij de aanvrager'),
+      el('p', { tekst: ontbrekendeGegevens(a).map((g) => g.label).join(', ') })) : null,
 
     el('div', { class: 'kolomkop', tekst: 'Documenten' }),
     el('div', { class: 'knoprij' },
@@ -355,6 +428,47 @@ function rendereLade() {
   ladeHouder.append(overlay, lade);
   lade.querySelector('#sluit-lade').addEventListener('click', sluitLade);
   lade.scrollTop = 0;
+}
+
+/**
+ * De stukken die bij deze zaak horen, met een vinkje per stuk. Zo houdt de
+ * behandelaar bij wat binnen is, en ziet iedereen in een oogopslag waar het
+ * dossier op wacht.
+ */
+function stukkenBlok(a) {
+  const stukken = (actieveEisen && actieveEisen.stukken) || [];
+  if (stukken.length === 0) {
+    return el('p', { class: 'subtiel', style: 'font-size:.9rem', tekst: 'Voor deze zaak zijn geen stukken nodig.' });
+  }
+
+  const houder = el('div', {});
+  for (const stuk of stukken) {
+    const aangevinkt = Boolean(a.stukken && a.stukken[stuk.id]);
+    const vakje = el('input', { type: 'checkbox', checked: aangevinkt });
+    vakje.checked = aangevinkt;
+    vakje.addEventListener('change', async () => {
+      const data = await api(`/api/beheer/aanvragen/${a.id}/stukken`, {
+        method: 'POST', body: JSON.stringify({ stukken: { [stuk.id]: vakje.checked } }),
+      });
+      actieveAanvraag = data.aanvraag;
+      rendereLade();
+      laadLijst();
+    });
+    houder.append(el('label', { class: 'stuk-rij' }, vakje,
+      el('span', {},
+        el('span', { tekst: stuk.label }),
+        stuk.door === 'wij' ? chip('wij regelen dit', 'blauw') : null,
+        stuk.verplicht ? null : chip('optioneel', ''),
+        el('span', { class: 'stuk-rij__uitleg', style: 'display:block', tekst: stuk.uitleg }),
+      )));
+  }
+  return houder;
+}
+
+/** Verplichte contactgegevens die nog niet zijn ingevuld. */
+function ontbrekendeGegevens(a) {
+  const gegevens = (actieveEisen && actieveEisen.gegevens) || [];
+  return gegevens.filter((g) => g.verplicht && !String((a.contact || {})[g.id] || '').trim());
 }
 
 // ------------------------------------------------------------- opstart ----

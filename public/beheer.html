@@ -19,6 +19,25 @@
   .kengetal__label { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--tekst-zacht); font-weight: 680; }
   .kengetal__waarde { font-size: 1.75rem; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--rand); }
+  .tab {
+    appearance: none; background: none; border: none; border-bottom: 2px solid transparent;
+    font: inherit; font-size: .95rem; font-weight: 600; color: var(--tekst-zacht);
+    padding: 9px 14px; cursor: pointer; margin-bottom: -1px; display: flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--tekst); }
+  .tab[aria-pressed="true"] { color: var(--blauw-600); border-bottom-color: var(--blauw-600); }
+  .tab__aantal {
+    font-size: .76rem; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+    background: var(--grijs-100); color: var(--tekst-zacht);
+  }
+  .tab[aria-pressed="true"] .tab__aantal { background: var(--blauw-100); color: var(--blauw-600); }
+  .tab__uitleg { font-size: .85rem; color: var(--tekst-zacht); margin: -8px 0 18px; }
+  .stuk-rij { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rand); font-size: .92rem; }
+  .stuk-rij:last-child { border-bottom: none; }
+  .stuk-rij input { margin-top: 3px; accent-color: var(--blauw-600); width: 16px; height: 16px; flex: none; }
+  .stuk-rij__uitleg { font-size: .82rem; color: var(--tekst-zacht); }
+
   .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
   .filters input[type="text"] { max-width: 260px; }
   .filters select { max-width: 210px; }
@@ -97,6 +116,8 @@
 
     <div class="kengetallen" id="kengetallen"></div>
 
+    <div class="tabs" id="soort-tabs" role="group" aria-label="Filter op soort dossier"></div>
+
     <div class="filters">
       <input type="text" id="zoek" placeholder="Zoek op naam, e-mail of referentie…" autocomplete="off">
       <select id="filter-status"><option value="alle">Alle statussen</option></select>
@@ -113,8 +134,8 @@
       <table class="tabel">
         <thead>
           <tr>
-            <th>Referentie</th><th>Aanvrager</th><th>Organisatie</th><th>Zaaktype</th>
-            <th>Uitkomst</th><th>Bedrag</th><th>Status</th><th>Ontvangen</th>
+            <th>Referentie</th><th>Aanvrager</th><th>Zaak</th><th>Uitkomst</th>
+            <th>Bedrag</th><th>Actie op</th><th>Dossier</th><th>Status</th>
           </tr>
         </thead>
         <tbody id="tabel-body"></tbody>

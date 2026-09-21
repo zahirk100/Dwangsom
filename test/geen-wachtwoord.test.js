@@ -52,7 +52,7 @@ test('het aanvraagdeel werkt ondertussen volledig', async () => {
         bestuursorgaan: 'gemeente', zaaktype: 'gem-wmo', basisdatum: '2025-01-06',
         ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
       },
-      contact: { naam: 'T. Test', email: 't@voorbeeld.nl', akkoordVoorwaarden: true },
+      contact: { naam: 'T. Test', email: 't@voorbeeld.nl', adres: 'Testpad 4', postcode: '4567 GH', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
     }),
   });
   assert.equal(antwoord.status, 201);

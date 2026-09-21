@@ -246,51 +246,62 @@
     <!-- ============================================== 6. Gegevens -->
     <section class="stap verborgen" data-stap="6">
       <h1 class="stap-titel">Uw gegevens</h1>
-      <p class="stap-intro">Wij nemen binnen twee werkdagen contact op. Vul geen burgerservicenummer in; dat hebben wij nu niet nodig.</p>
+      <p class="stap-intro" id="gegevens-intro">Wij vragen alleen wat wij voor deze zaak nodig hebben.</p>
 
       <div class="rij">
-        <div class="veld">
-          <label for="naam">Naam</label>
+        <div class="veld" data-veld="naam">
+          <label for="naam">Naam <span class="veld__vereist"></span></label>
           <input type="text" id="naam" name="naam" autocomplete="name" maxlength="120">
+          <p class="veld__hulp veld__reden"></p>
           <p class="veld__fout verborgen" data-fout="naam"></p>
         </div>
-        <div class="veld">
-          <label for="geboortedatum">Geboortedatum <span class="subtiel">(optioneel)</span></label>
-          <input type="date" id="geboortedatum" name="geboortedatum">
-        </div>
-      </div>
-
-      <div class="rij">
-        <div class="veld">
-          <label for="email">E-mailadres</label>
+        <div class="veld" data-veld="email">
+          <label for="email">E-mailadres <span class="veld__vereist"></span></label>
           <input type="email" id="email" name="email" autocomplete="email" maxlength="160">
+          <p class="veld__hulp veld__reden"></p>
           <p class="veld__fout verborgen" data-fout="email"></p>
         </div>
-        <div class="veld">
-          <label for="telefoon">Telefoonnummer <span class="subtiel">(optioneel)</span></label>
-          <input type="tel" id="telefoon" name="telefoon" autocomplete="tel" maxlength="40">
-        </div>
-      </div>
-
-      <div class="veld">
-        <label for="adres">Adres <span class="subtiel">(optioneel, voor de brieven)</span></label>
-        <input type="text" id="adres" name="adres" autocomplete="street-address" maxlength="120">
       </div>
 
       <div class="rij">
-        <div class="veld">
-          <label for="postcode">Postcode <span class="subtiel">(optioneel)</span></label>
-          <input type="text" id="postcode" name="postcode" autocomplete="postal-code" maxlength="12">
+        <div class="veld" data-veld="telefoon">
+          <label for="telefoon">Telefoonnummer <span class="veld__vereist"></span></label>
+          <input type="tel" id="telefoon" name="telefoon" autocomplete="tel" maxlength="40">
+          <p class="veld__hulp veld__reden"></p>
+          <p class="veld__fout verborgen" data-fout="telefoon"></p>
         </div>
-        <div class="veld">
-          <label for="woonplaats">Woonplaats <span class="subtiel">(optioneel)</span></label>
-          <input type="text" id="woonplaats" name="woonplaats" autocomplete="address-level2" maxlength="80">
+        <div class="veld" data-veld="geboortedatum">
+          <label for="geboortedatum">Geboortedatum <span class="veld__vereist"></span></label>
+          <input type="date" id="geboortedatum" name="geboortedatum">
+          <p class="veld__hulp veld__reden"></p>
+          <p class="veld__fout verborgen" data-fout="geboortedatum"></p>
         </div>
       </div>
 
-      <div class="veld">
-        <label for="kenmerk">Kenmerk of zaaknummer van de organisatie <span class="subtiel">(optioneel)</span></label>
+      <div class="veld" data-veld="adres">
+        <label for="adres">Adres <span class="veld__vereist"></span></label>
+        <input type="text" id="adres" name="adres" autocomplete="street-address" maxlength="120">
+        <p class="veld__hulp veld__reden"></p>
+        <p class="veld__fout verborgen" data-fout="adres"></p>
+      </div>
+
+      <div class="rij">
+        <div class="veld" data-veld="postcode">
+          <label for="postcode">Postcode <span class="veld__vereist"></span></label>
+          <input type="text" id="postcode" name="postcode" autocomplete="postal-code" maxlength="12">
+          <p class="veld__fout verborgen" data-fout="postcode"></p>
+        </div>
+        <div class="veld" data-veld="woonplaats">
+          <label for="woonplaats">Woonplaats <span class="veld__vereist"></span></label>
+          <input type="text" id="woonplaats" name="woonplaats" autocomplete="address-level2" maxlength="80">
+          <p class="veld__fout verborgen" data-fout="woonplaats"></p>
+        </div>
+      </div>
+
+      <div class="veld" data-veld="kenmerk">
+        <label for="kenmerk">Kenmerk of zaaknummer <span class="veld__vereist"></span></label>
         <input type="text" id="kenmerk" name="kenmerk" maxlength="60">
+        <p class="veld__hulp veld__reden"></p>
       </div>
 
       <div class="veld">
@@ -301,30 +312,37 @@
 
       <div class="veld">
         <div class="keuzes">
-          <label class="keuze"><input type="checkbox" name="machtiging">
-            <span class="keuze__tekst">Ik wil dat Dwangsomhulp namens mij optreedt
-              <span class="keuze__uitleg">Wij sturen u dan een machtiging ter ondertekening</span></span></label>
+          <label class="keuze"><input type="checkbox" name="machtiging" checked>
+            <span class="keuze__tekst">Dwangsomhulp mag namens mij optreden
+              <span class="keuze__uitleg">Wij stellen de machtiging op en sturen die ter ondertekening toe</span></span></label>
           <label class="keuze"><input type="checkbox" name="akkoordVoorwaarden">
-            <span class="keuze__tekst">Ik ga ermee akkoord dat mijn gegevens worden gebruikt om deze aanvraag te beoordelen
+            <span class="keuze__tekst">Ik ga ermee akkoord dat mijn gegevens worden gebruikt om deze zaak te behandelen
               <span class="keuze__uitleg">Wij bewaren uw gegevens alleen voor dit dossier</span></span></label>
         </div>
         <p class="veld__fout verborgen" data-fout="akkoordVoorwaarden"></p>
       </div>
+    </section>
 
+    <!-- ============================================== 7. Stukken -->
+    <section class="stap verborgen" data-stap="7">
+      <h1 class="stap-titel">Wat wij van u nodig hebben</h1>
+      <p class="stap-intro">Op basis van uw antwoorden hebben wij onderstaande stukken nodig. Vink aan
+         wat u heeft; wat ontbreekt zoeken wij samen met u uit. U hoeft nu nog niets te uploaden.</p>
+      <div id="stukkenlijst"></div>
       <div id="indien-fout"></div>
     </section>
 
-    <!-- ============================================== 7. Bevestiging -->
-    <section class="stap verborgen" data-stap="7">
+    <!-- ============================================== 8. Bevestiging -->
+    <section class="stap verborgen" data-stap="8">
       <div class="bevestiging">
         <div style="font-size:2.6rem">✅</div>
-        <h1 class="stap-titel">Uw aanvraag is ontvangen</h1>
+        <h1 class="stap-titel" id="bevestiging-titel">Uw aanvraag is ontvangen</h1>
         <p class="subtiel">Uw referentienummer</p>
         <div class="referentie" id="referentienummer"></div>
-        <p class="subtiel">Bewaar dit nummer. Wij nemen binnen twee werkdagen contact met u op via het opgegeven e-mailadres.</p>
+        <p class="subtiel" id="bevestiging-tekst"></p>
+        <div id="bevestiging-extra"></div>
         <div style="margin-top:22px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
           <a class="knop knop--zacht" href="/">Terug naar de startpagina</a>
-          <button type="button" class="knop knop--primair" id="download-brief-bevestiging">Conceptbrief downloaden</button>
         </div>
       </div>
     </section>

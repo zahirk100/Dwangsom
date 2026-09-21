@@ -18,7 +18,7 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 69 tests, zonder netwerk
+npm test                        # 92 tests, zonder netwerk
 ```
 
 Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
@@ -28,6 +28,7 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 | --- | --- | --- |
 | `PORT` | `3000` | Poort van de webserver |
 | `BEHEER_WACHTWOORD` | willekeurig, wordt geprint | Wachtwoord voor `/beheer` |
+| `BEHEER_OPEN` | uit | `1` opent `/beheer` zonder wachtwoord, om te proefdraaien. De omgeving waarschuwt er zelf over. Weghalen vóór livegang. |
 | `SESSIE_GEHEIM` | het beheerwachtwoord | Sleutel waarmee sessiecookies worden ondertekend |
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | leeg | Redis via REST; verplicht op serverloze hosting |
@@ -46,7 +47,7 @@ src/sessie.js          Sessies als ondertekend cookie, zonder serverstatus
 src/validatie.js       Servervalidatie van het aanvraagformulier
 src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
 public/                Landingspagina, wizard, beheeromgeving
-public/shared/         Rekenkern, catalogus, brieven en datumhulpjes
+public/shared/         Rekenkern, catalogus, dossiereisen, brieven, datumhulpjes
 test/                  Unit- en integratietests (node:test)
 ```
 
@@ -76,6 +77,48 @@ wat de browser meestuurt is nooit leidend.
 
 Mogelijke uitkomsten: `termijn-loopt`, `ingebrekestelling-nodig`, `hersteltermijn-loopt`,
 `recht`, `geen-recht`.
+
+## Aanvraag of vooraanmelding
+
+Niet iedereen kan meteen iets vorderen. De rekenkern vertaalt de uitkomst daarom
+naar een soort dossier en de datum die bewaakt moet worden (`rapport.vervolg`):
+
+| Uitkomst | Soort | Bewaakte datum |
+| --- | --- | --- |
+| `recht` | **aanvraag** | vandaag — er valt nu te vorderen |
+| `hersteltermijn-loopt` | **vooraanmelding** | de eerste dwangsomdag |
+| `ingebrekestelling-nodig` | **vooraanmelding** | vandaag — de brief kan direct |
+| `termijn-loopt` | **vooraanmelding** | de dag na het einde van de beslistermijn |
+| `geen-recht` | **beoordeling** | geen |
+
+Wie nog niet kan claimen wordt dus niet weggestuurd, maar doet een
+vooraanmelding. In de beheeromgeving staan die onder een eigen kopje,
+gesorteerd op de datum waarop er iets moet gebeuren, met een teller erbij
+("over 12 dagen", "vandaag", "5 dagen te laat"). Een herberekening verplaatst
+een dossier vanzelf naar het juiste kopje zodra de tijd verstrijkt.
+
+## Welke gegevens vragen wij?
+
+`public/shared/dossier.js` bepaalt per zaak wat nodig is, zodat het formulier
+niet meer vraagt dan dat en de beheerder achteraf niets hoeft na te bellen:
+
+- **Gegevens.** Bij een vooraanmelding alleen naam en e-mail. Gaan wij namens
+  iemand optreden, dan ook adres en woonplaats (die komen op de brieven) en bij
+  een machtiging de geboortedatum. Een telefoonnummer is bewust nooit verplicht.
+- **Stukken.** Bij bezwaar het primaire besluit en het bezwaarschrift; bij een
+  verstuurde ingebrekestelling het verzendbewijs; bij verdaging of opschorting
+  de bijbehorende brief. Wat wij zelf aanleveren (de machtiging) staat apart.
+
+De aanvrager vinkt aan wat hij heeft; de beheeromgeving toont per dossier wat
+nog ontbreekt, en de CSV-export zet die lijst in een kolom.
+
+## Wat de aanvrager wél en niet te zien krijgt
+
+De wizard toont de uitkomst, het bedrag en de data uit de eigen zaak, plus wat
+wij overnemen. Wat er niet in staat: het stappenplan om het zelf te doen, de
+kant-en-klare brieven en de rekenregels achter de termijnen. Die zitten in de
+beheeromgeving, waar ze thuishoren. De publieke uitlegpagina beschrijft de
+regeling in algemene termen, want dat is openbaar recht en het wekt vertrouwen.
 
 ### Aanpassen van termijnen en bedragen
 

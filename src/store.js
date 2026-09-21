@@ -5,6 +5,16 @@
 
 import { randomUUID } from 'node:crypto';
 import { kiesOpslag } from './opslag.js';
+import { DOSSIERSOORT } from '../public/shared/dwangsom.js';
+
+export const SOORTEN = [
+  { id: DOSSIERSOORT.AANVRAAG, label: 'Aanvragen', enkelvoud: 'Aanvraag',
+    uitleg: 'Er is een dwangsom opgebouwd; deze kan gevorderd worden.' },
+  { id: DOSSIERSOORT.VOORAANMELDING, label: 'Vooraanmeldingen', enkelvoud: 'Vooraanmelding',
+    uitleg: 'Nog niet te vorderen; wij bewaken de datum waarop er iets moet gebeuren.' },
+  { id: DOSSIERSOORT.BEOORDELING, label: 'Beoordelingen', enkelvoud: 'Beoordeling',
+    uitleg: 'De automatische toets ziet geen recht; handmatig bekijken.' },
+];
 
 export const STATUSSEN = [
   { id: 'nieuw', label: 'Nieuw', kleur: 'blauw' },
@@ -21,6 +31,11 @@ const STATUS_IDS = new Set(STATUSSEN.map((s) => s.id));
 
 export function isGeldigeStatus(id) {
   return STATUS_IDS.has(id);
+}
+
+export function labelVoorSoort(id) {
+  const soort = SOORTEN.find((s) => s.id === id);
+  return soort ? soort.enkelvoud : 'Dossier';
 }
 
 export function labelVoorStatus(id) {
@@ -45,30 +60,49 @@ export class Store {
     return this.opslag.duurzaam;
   }
 
-  async nieuweAanvraag({ invoer, contact, rapport, meta }) {
+  async nieuweAanvraag({ invoer, contact, rapport, stukken, meta }) {
     const nu = new Date().toISOString();
     const jaar = new Date().getUTCFullYear();
     const nummer = await this.opslag.volgendNummer(jaar);
+    const vervolg = (rapport && rapport.vervolg) || {};
+    const soort = vervolg.soort || DOSSIERSOORT.BEOORDELING;
     const aanvraag = {
       id: randomUUID(),
       referentie: `DWS-${jaar}-${String(nummer).padStart(4, '0')}`,
+      soort,
       status: 'nieuw',
+      actiedatum: vervolg.actiedatum || null,
       aangemaaktOp: nu,
       gewijzigdOp: nu,
       invoer,
       contact,
       rapport,
+      stukken: stukken || {},
       meta: meta || {},
       notities: [],
-      historie: [{ op: nu, door: 'systeem', tekst: 'Aanvraag ontvangen via het aanvraagformulier.' }],
+      historie: [{
+        op: nu,
+        door: 'systeem',
+        tekst: soort === DOSSIERSOORT.VOORAANMELDING
+          ? `Vooraanmelding ontvangen. Bewaken tot ${vervolg.actiedatum || 'nader te bepalen'}: ${vervolg.actieLabel || ''}`.trim()
+          : 'Aanvraag ontvangen via het aanvraagformulier.',
+      }],
     };
     await this.opslag.voegToe(aanvraag);
     return aanvraag;
   }
 
-  async lijst({ status, zoek, bestuursorgaan } = {}) {
+  async lijst({ status, zoek, bestuursorgaan, soort } = {}) {
     let resultaat = (await this.opslag.haalAlle()).slice();
     resultaat.sort((a, b) => String(b.aangemaaktOp).localeCompare(String(a.aangemaaktOp)));
+    if (soort && soort !== 'alle') {
+      resultaat = resultaat.filter((a) => (a.soort || DOSSIERSOORT.BEOORDELING) === soort);
+      // Vooraanmeldingen zijn een wachtlijst: wie het eerst aan de beurt is,
+      // hoort bovenaan te staan.
+      if (soort === DOSSIERSOORT.VOORAANMELDING) {
+        resultaat.sort((a, b) => String(a.actiedatum || '9999').localeCompare(String(b.actiedatum || '9999')));
+      }
+    }
     if (status && status !== 'alle') {
       resultaat = resultaat.filter((a) => a.status === status);
     }
@@ -119,13 +153,38 @@ export class Store {
     return aanvraag;
   }
 
+  /** Bijwerken welke stukken binnen zijn. */
+  async werkStukkenBij(id, stukken, door) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+    aanvraag.stukken = { ...(aanvraag.stukken || {}), ...stukken };
+    aanvraag.gewijzigdOp = nu;
+    aanvraag.historie.push({ op: nu, door: door || 'beheerder', tekst: 'Ontvangen stukken bijgewerkt.' });
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
   /** Herberekening opslaan, bijvoorbeeld nadat de beheerder data heeft gecorrigeerd. */
   async werkRapportBij(id, { invoer, rapport, door, toelichting }) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const nu = new Date().toISOString();
+    const vervolg = (rapport && rapport.vervolg) || {};
     aanvraag.invoer = invoer;
     aanvraag.rapport = rapport;
+    // Een herberekening kan een vooraanmelding in een aanvraag veranderen:
+    // de termijn is inmiddels verstreken, of de dwangsom is gaan lopen.
+    const oudeSoort = aanvraag.soort;
+    if (vervolg.soort) aanvraag.soort = vervolg.soort;
+    aanvraag.actiedatum = vervolg.actiedatum || null;
+    if (oudeSoort !== aanvraag.soort) {
+      aanvraag.historie.push({
+        op: nu,
+        door: door || 'systeem',
+        tekst: `Dossier verplaatst van ${labelVoorSoort(oudeSoort)} naar ${labelVoorSoort(aanvraag.soort)}.`,
+      });
+    }
     aanvraag.gewijzigdOp = nu;
     aanvraag.historie.push({
       op: nu,
@@ -139,9 +198,16 @@ export class Store {
   async statistieken() {
     const alle = await this.opslag.haalAlle();
     const perStatus = Object.fromEntries(STATUSSEN.map((s) => [s.id, 0]));
+    const perSoort = Object.fromEntries(SOORTEN.map((s) => [s.id, 0]));
+    const vandaag = new Date().toISOString().slice(0, 10);
     let totaalBedrag = 0;
     let metRecht = 0;
+    let actieNodig = 0;
     for (const a of alle) {
+      const soort = a.soort || DOSSIERSOORT.BEOORDELING;
+      if (perSoort[soort] !== undefined) perSoort[soort] += 1;
+      if (a.actiedatum && a.actiedatum <= vandaag
+        && !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)) actieNodig += 1;
       if (perStatus[a.status] !== undefined) perStatus[a.status] += 1;
       const berekening = a.rapport && a.rapport.berekening;
       if (a.rapport && a.rapport.uitkomst === 'recht' && berekening) {
@@ -150,6 +216,6 @@ export class Store {
       }
     }
     const open = alle.filter((a) => !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)).length;
-    return { totaal: alle.length, open, perStatus, totaalBedrag, metRecht };
+    return { totaal: alle.length, open, perStatus, perSoort, totaalBedrag, metRecht, actieNodig };
   }
 }

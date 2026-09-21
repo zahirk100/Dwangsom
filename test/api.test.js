@@ -33,7 +33,7 @@ const geldigeAanvraag = {
     ingebrekeGesteld: true,
     ingebrekestellingDatum: '2025-04-01',
   },
-  contact: { naam: 'T. Tester', email: 'tester@voorbeeld.nl', akkoordVoorwaarden: true },
+  contact: { naam: 'T. Tester', email: 'tester@voorbeeld.nl', adres: 'Teststraat 1', postcode: '1234 AB', woonplaats: 'Testdorp', akkoordVoorwaarden: true },
 };
 
 test('de landingspagina en de wizard worden geserveerd', async () => {
@@ -150,4 +150,94 @@ test('de opgeslagen gegevens overleven een herstart van de applicatie', async ()
 test('een onbekend API-pad geeft 404', async () => {
   const antwoord = await haal('/api/bestaat-niet');
   assert.equal(antwoord.status, 404);
+});
+
+test('een zaak waarin nog niets te vorderen valt, wordt een vooraanmelding', async () => {
+  const antwoord = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: { bestuursorgaan: 'gemeente', zaaktype: 'gem-wmo', basisdatum: '2099-01-01' },
+      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', akkoordVoorwaarden: true },
+    }),
+  });
+  // Een datum in de toekomst is onvolledig; neem een zaak die net loopt.
+  assert.equal(antwoord.status, 422);
+
+  const recent = new Date();
+  recent.setUTCDate(recent.getUTCDate() - 7);
+  const tweede = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: { bestuursorgaan: 'gemeente', zaaktype: 'gem-wmo', basisdatum: recent.toISOString().slice(0, 10) },
+      contact: { naam: 'V. Vooraf', email: 'vooraf@voorbeeld.nl', akkoordVoorwaarden: true },
+    }),
+  });
+  assert.equal(tweede.status, 201);
+  const data = await tweede.json();
+  assert.equal(data.soort, 'vooraanmelding');
+  assert.equal(data.rapport.vervolg.kanNuIndienen, false);
+});
+
+test('een vooraanmelding vraagt geen adresgegevens, een aanvraag wel', async () => {
+  const recent = new Date();
+  recent.setUTCDate(recent.getUTCDate() - 7);
+
+  // Zonder adres mag een vooraanmelding gewoon binnenkomen.
+  const vooraf = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: recent.toISOString().slice(0, 10) },
+      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', akkoordVoorwaarden: true },
+    }),
+  });
+  assert.equal(vooraf.status, 201);
+
+  // Bij een lopende dwangsom is het adres wel nodig; dat hoort de server te zeggen.
+  const zonderAdres = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: {
+        bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06',
+        ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
+      },
+      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', akkoordVoorwaarden: true },
+    }),
+  });
+  assert.equal(zonderAdres.status, 422);
+  const fouten = (await zonderAdres.json()).velden;
+  assert.ok(fouten.adres && fouten.postcode && fouten.woonplaats);
+});
+
+test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
+  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
+  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const metCookie = { headers: { cookie } };
+
+  const alles = await (await haal('/api/beheer/aanvragen', metCookie)).json();
+  assert.ok(alles.soorten.length === 3);
+  assert.ok(alles.statistieken.perSoort.vooraanmelding >= 2);
+
+  const alleenVooraf = await (await haal('/api/beheer/aanvragen?soort=vooraanmelding', metCookie)).json();
+  assert.ok(alleenVooraf.aanvragen.length >= 2);
+  assert.ok(alleenVooraf.aanvragen.every((a) => a.soort === 'vooraanmelding'));
+  assert.ok(alleenVooraf.aanvragen.every((a) => a.actiedatum), 'een vooraanmelding zonder datum is stuurloos');
+
+  const aanvragen = await (await haal('/api/beheer/aanvragen?soort=aanvraag', metCookie)).json();
+  const dossier = aanvragen.aanvragen[0];
+  assert.equal(dossier.dossierCompleet, false);
+  assert.ok(dossier.stukkenOntbreken > 0);
+
+  const detail = await (await haal(`/api/beheer/aanvragen/${dossier.id}`, metCookie)).json();
+  assert.ok(detail.eisen.stukken.length > 0, 'de beheerder moet zien wat er nodig is');
+
+  const bijgewerkt = await (await haal(`/api/beheer/aanvragen/${dossier.id}/stukken`, {
+    ...metCookie, method: 'POST',
+    body: JSON.stringify({ stukken: { ontvangstbevestiging: true, verzonnen: true } }),
+  })).json();
+  assert.equal(bijgewerkt.aanvraag.stukken.ontvangstbevestiging, true);
+  assert.equal(bijgewerkt.aanvraag.stukken.verzonnen, undefined, 'onbekende stukken worden genegeerd');
+
+  const csv = await (await haal('/api/beheer/export.csv', metCookie)).text();
+  assert.match(csv, /soort/);
+  assert.match(csv, /Vooraanmelding/);
 });
