@@ -25,14 +25,19 @@ instelling), later de **database en het eigen domein** voor echt gebruik.
 
 4. Klik op **Deploy**. Je krijgt een URL als `https://dwangsom-xxx.vercel.app`.
 
-### 2. De branch klopt al
+### 2. Controleer welke branch Vercel bouwt
 
-Vercel bouwt de production branch van de repository. De standaardbranch is
-`main`, en daar staat dezelfde code als op `claude/dwangsom-aanvraag-app-25bcb1`.
-Je hoeft dus niets te mergen.
+De code staat op twee branches met exact dezelfde inhoud: `main` en de
+werkbranch `claude/dwangsom-aanvraag-app-25bcb1`. Je hoeft dus niets te mergen,
+maar Vercel bouwt standaard de *default branch* van de repository, en die staat
+op GitHub nog op de werkbranch. Kies één van beide:
 
-Staat er in Vercel onder *Settings → Git → Production Branch* toch een andere
-branch, zet hem dan op `main`.
+- **In Vercel** (snelst): *Settings → Git → Production Branch* op `main` zetten
+  en opnieuw deployen; of
+- **Op GitHub**: *Settings → General → Default branch* omzetten naar `main`.
+
+Doe je geen van beide, dan werkt de site ook gewoon — hij wordt dan alleen
+vanaf de werkbranch gebouwd.
 
 ### 3. Uitproberen
 
