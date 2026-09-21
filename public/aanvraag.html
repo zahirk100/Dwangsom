@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bereken uw dwangsom — Dwangsomhulp</title>
+<meta name="description" content="Beantwoord een paar vragen en zie direct of u recht heeft op een dwangsom wegens niet tijdig beslissen.">
+<link rel="stylesheet" href="/assets/stijl.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+<style>
+  .wizard { max-width: 760px; margin: 0 auto; padding: 32px 16px 80px; }
+  .voortgang { display: flex; gap: 6px; margin-bottom: 10px; }
+  .voortgang span { height: 5px; flex: 1; border-radius: 3px; background: var(--rand); transition: background .25s; }
+  .voortgang span.actief { background: var(--blauw-600); }
+  .voortgang-tekst { font-size: .84rem; color: var(--tekst-zacht); margin-bottom: 22px; display: flex; justify-content: space-between; }
+  .stap-titel { margin-bottom: 4px; }
+  .stap-intro { color: var(--tekst-zacht); margin-bottom: 26px; }
+  .paneel { padding: 26px; }
+  @media (max-width: 560px) { .paneel { padding: 20px 16px; } }
+  .navigatie { display: flex; gap: 12px; align-items: center; margin-top: 26px; }
+  .navigatie .rechts { margin-left: auto; display: flex; gap: 10px; }
+
+  .uitkomstkop { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 4px; }
+  .uitkomstkop__icoon { font-size: 2rem; line-height: 1; }
+  .groot-bedrag { font-size: 2.9rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin: 10px 0 0; }
+  .subtiel { color: var(--tekst-zacht); font-size: .92rem; }
+  .opbouwtabel { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: 8px; }
+  .opbouwtabel th { text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tekst-zacht); padding-bottom: 8px; }
+  .opbouwtabel td { padding: 7px 0; border-top: 1px solid var(--rand); font-variant-numeric: tabular-nums; }
+  .opbouwtabel td:last-child, .opbouwtabel th:last-child { text-align: right; }
+  .opbouwtabel tr.totaal td { font-weight: 760; border-top: 2px solid var(--rand-sterk); }
+  .blok-titel { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--tekst-zacht); font-weight: 700; margin: 28px 0 12px; }
+  .stappenlijst { margin: 0; padding-left: 20px; font-size: .94rem; }
+  .stappenlijst li { margin-bottom: 7px; }
+  .samenvatting-rij { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--rand); font-size: .93rem; }
+  .samenvatting-rij:last-child { border-bottom: none; }
+  .samenvatting-rij dt { color: var(--tekst-zacht); }
+  .samenvatting-rij dd { margin: 0; font-weight: 600; text-align: right; }
+  .bevestiging { text-align: center; padding: 44px 26px; }
+  .bevestiging .referentie { font-size: 1.6rem; font-weight: 780; letter-spacing: .02em; margin: 10px 0 6px; }
+</style>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/"><span class="merk__teken">D</span> Dwangsomhulp</a>
+    <nav><a href="/hoe-werkt-het">Hoe werkt het</a></nav>
+  </div>
+</header>
+
+<main class="wizard">
+  <div class="voortgang" id="voortgang" aria-hidden="true"></div>
+  <div class="voortgang-tekst">
+    <span id="stap-teller"></span>
+    <span id="stap-hint"></span>
+  </div>
+
+  <form id="wizard" class="kaart paneel" novalidate>
+
+    <!-- ============================================ 1. Soort aanvraag -->
+    <section class="stap" data-stap="1">
+      <h1 class="stap-titel">Waar wacht u op?</h1>
+      <p class="stap-intro">Wij bepalen aan de hand van uw antwoord welke beslistermijn geldt.</p>
+
+      <div class="veld">
+        <span class="veld__kop">Bij welke organisatie heeft u de aanvraag ingediend?</span>
+        <div class="keuzes keuzes--twee" id="keuze-bestuursorgaan"></div>
+        <p class="veld__fout verborgen" data-fout="bestuursorgaan"></p>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="bestuursorgaan">
+        <label for="zaaktype">Wat voor aanvraag of bezwaar is het?</label>
+        <select id="zaaktype" name="zaaktype"></select>
+        <p class="veld__hulp" id="zaaktype-toelichting"></p>
+        <p class="veld__fout verborgen" data-fout="zaaktype"></p>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="organisatienaam">
+        <label for="organisatienaam">Naam van de organisatie</label>
+        <p class="veld__hulp">Bijvoorbeeld "Gemeente Rotterdam". Gebruiken wij in de brieven.</p>
+        <input type="text" id="organisatienaam" name="organisatienaam" autocomplete="off" maxlength="120">
+      </div>
+
+      <div class="veld verborgen" data-toon-als="bestuursorgaan">
+        <span class="veld__kop">Gaat het om een van deze bijzondere gevallen?</span>
+        <p class="veld__hulp">Voor deze twee soorten verzoeken geldt de dwangsomregeling niet.</p>
+        <div class="keuzes">
+          <label class="keuze"><input type="radio" name="bijzonder" value="geen" checked>
+            <span class="keuze__tekst">Nee, geen van beide</span></label>
+          <label class="keuze"><input type="radio" name="bijzonder" value="woo">
+            <span class="keuze__tekst">Het is een Woo-verzoek
+              <span class="keuze__uitleg">Een verzoek om openbaarmaking van informatie</span></span></label>
+          <label class="keuze"><input type="radio" name="bijzonder" value="asiel">
+            <span class="keuze__tekst">Het is een asielaanvraag
+              <span class="keuze__uitleg">Aanvraag om een verblijfsvergunning asiel bij de IND</span></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================== 2. Termijn -->
+    <section class="stap verborgen" data-stap="2">
+      <h1 class="stap-titel">Wanneer is het gaan lopen?</h1>
+      <p class="stap-intro">Met deze datums rekenen wij uit wanneer de beslistermijn afliep.</p>
+
+      <div class="veld">
+        <label for="basisdatum" id="basisdatum-label">Datum van uw aanvraag</label>
+        <p class="veld__hulp" id="basisdatum-hulp">De datum waarop de organisatie uw aanvraag heeft ontvangen.</p>
+        <input type="date" id="basisdatum" name="basisdatum">
+        <p class="veld__fout verborgen" data-fout="basisdatum"></p>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="adviescommissie">
+        <span class="veld__kop">Is er een bezwaarschriftencommissie ingeschakeld?</span>
+        <p class="veld__hulp">Dan is de beslistermijn twaalf weken in plaats van zes weken. Staat meestal in de ontvangstbevestiging.</p>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="adviescommissie" value="nee" checked>
+            <span class="keuze__tekst">Nee / weet ik niet</span></label>
+          <label class="keuze"><input type="radio" name="adviescommissie" value="ja">
+            <span class="keuze__tekst">Ja, er is een commissie</span></label>
+        </div>
+      </div>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft de organisatie u een datum genoemd waarop u een besluit krijgt?</span>
+        <p class="veld__hulp">Kijk in de ontvangstbevestiging. Een genoemde datum gaat altijd vóór op de standaardtermijn.</p>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="termijnBekend" value="nee" checked>
+            <span class="keuze__tekst">Nee / weet ik niet
+              <span class="keuze__uitleg">Wij rekenen met de wettelijke termijn</span></span></label>
+          <label class="keuze"><input type="radio" name="termijnBekend" value="ja">
+            <span class="keuze__tekst">Ja, er is een datum genoemd</span></label>
+        </div>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="termijnEinddatum">
+        <label for="termijnEinddatum">Uiterste beslisdatum volgens de organisatie</label>
+        <input type="date" id="termijnEinddatum" name="termijnEinddatum">
+        <p class="veld__fout verborgen" data-fout="termijnEinddatum"></p>
+      </div>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft u bericht gekregen dat de beslissing is uitgesteld?</span>
+        <p class="veld__hulp">Ook wel "verdaging" of "verlenging van de beslistermijn".</p>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="verdaagd" value="nee" checked>
+            <span class="keuze__tekst">Nee</span></label>
+          <label class="keuze"><input type="radio" name="verdaagd" value="ja">
+            <span class="keuze__tekst">Ja, uitgesteld</span></label>
+        </div>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="verdagingEinddatum">
+        <label for="verdagingEinddatum">Tot welke datum is uitgesteld? <span class="subtiel">(mag leeg blijven)</span></label>
+        <input type="date" id="verdagingEinddatum" name="verdagingEinddatum">
+      </div>
+
+      <details>
+        <summary class="subtiel" style="cursor:pointer">Is uw aanvraag tussendoor stilgelegd? (opschorting)</summary>
+        <div class="veld" style="margin-top:14px">
+          <label for="opschortingDagen">Aantal dagen opschorting</label>
+          <p class="veld__hulp">Bijvoorbeeld de periode waarin u gevraagde gegevens moest aanleveren. De beslistermijn staat dan stil (art. 4:15 Awb). Weet u het niet zeker? Laat 0 staan; wij controleren het.</p>
+          <input type="number" id="opschortingDagen" name="opschortingDagen" min="0" max="365" step="1" value="0">
+        </div>
+      </details>
+    </section>
+
+    <!-- ========================================= 3. Ingebrekestelling -->
+    <section class="stap verborgen" data-stap="3">
+      <h1 class="stap-titel">Wat is er daarna gebeurd?</h1>
+      <p class="stap-intro">De dwangsom gaat pas lopen nadat u de organisatie schriftelijk in gebreke heeft gesteld.</p>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft u de organisatie al in gebreke gesteld?</span>
+        <p class="veld__hulp">Een ingebrekestelling is een brief of e-mail waarin u schrijft dat de termijn is verstreken en om een besluit vraagt.</p>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="ingebrekeGesteld" value="nee" checked>
+            <span class="keuze__tekst">Nog niet
+              <span class="keuze__uitleg">Wij kunnen dit voor u doen</span></span></label>
+          <label class="keuze"><input type="radio" name="ingebrekeGesteld" value="ja">
+            <span class="keuze__tekst">Ja, dat heb ik gedaan</span></label>
+        </div>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="ingebrekestellingDatum">
+        <label for="ingebrekestellingDatum">Datum waarop de organisatie de ingebrekestelling ontving</label>
+        <p class="veld__hulp">Weet u dat niet precies? Neem de verzenddatum plus twee dagen.</p>
+        <input type="date" id="ingebrekestellingDatum" name="ingebrekestellingDatum">
+        <p class="veld__fout verborgen" data-fout="ingebrekestellingDatum"></p>
+      </div>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft u inmiddels een besluit ontvangen?</span>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="besluitGenomen" value="nee" checked>
+            <span class="keuze__tekst">Nee, nog steeds niet</span></label>
+          <label class="keuze"><input type="radio" name="besluitGenomen" value="ja">
+            <span class="keuze__tekst">Ja, er is beslist</span></label>
+        </div>
+      </div>
+
+      <div class="veld verborgen" data-toon-als="besluitDatum">
+        <label for="besluitDatum">Datum van het besluit</label>
+        <p class="veld__hulp">De datum die op de beslisbrief staat.</p>
+        <input type="date" id="besluitDatum" name="besluitDatum">
+        <p class="veld__fout verborgen" data-fout="besluitDatum"></p>
+      </div>
+    </section>
+
+    <!-- ============================================== 4. Controle -->
+    <section class="stap verborgen" data-stap="4">
+      <h1 class="stap-titel">Nog twee controlevragen</h1>
+      <p class="stap-intro">In een paar situaties sluit de wet de dwangsom uit. Dat checken we even.</p>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft u de aanvraag zelf ingediend, of bent u direct belanghebbende?</span>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="belanghebbende" value="ja" checked>
+            <span class="keuze__tekst">Ja</span></label>
+          <label class="keuze"><input type="radio" name="belanghebbende" value="nee">
+            <span class="keuze__tekst">Nee</span></label>
+        </div>
+      </div>
+
+      <div class="veld">
+        <span class="veld__kop">Heeft u bericht gekregen dat uw aanvraag <em>buiten behandeling</em> is gesteld?</span>
+        <p class="veld__hulp">Dat gebeurt bijvoorbeeld als gevraagde gegevens niet op tijd zijn aangeleverd.</p>
+        <div class="keuzes keuzes--twee">
+          <label class="keuze"><input type="radio" name="buitenBehandeling" value="nee" checked>
+            <span class="keuze__tekst">Nee</span></label>
+          <label class="keuze"><input type="radio" name="buitenBehandeling" value="ja">
+            <span class="keuze__tekst">Ja</span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== 5. Uitkomst -->
+    <section class="stap verborgen" data-stap="5">
+      <h1 class="stap-titel alleen-schermlezer">Uw uitkomst</h1>
+      <div id="uitkomst"></div>
+    </section>
+
+    <!-- ============================================== 6. Gegevens -->
+    <section class="stap verborgen" data-stap="6">
+      <h1 class="stap-titel">Uw gegevens</h1>
+      <p class="stap-intro">Wij nemen binnen twee werkdagen contact op. Vul geen burgerservicenummer in; dat hebben wij nu niet nodig.</p>
+
+      <div class="rij">
+        <div class="veld">
+          <label for="naam">Naam</label>
+          <input type="text" id="naam" name="naam" autocomplete="name" maxlength="120">
+          <p class="veld__fout verborgen" data-fout="naam"></p>
+        </div>
+        <div class="veld">
+          <label for="geboortedatum">Geboortedatum <span class="subtiel">(optioneel)</span></label>
+          <input type="date" id="geboortedatum" name="geboortedatum">
+        </div>
+      </div>
+
+      <div class="rij">
+        <div class="veld">
+          <label for="email">E-mailadres</label>
+          <input type="email" id="email" name="email" autocomplete="email" maxlength="160">
+          <p class="veld__fout verborgen" data-fout="email"></p>
+        </div>
+        <div class="veld">
+          <label for="telefoon">Telefoonnummer <span class="subtiel">(optioneel)</span></label>
+          <input type="tel" id="telefoon" name="telefoon" autocomplete="tel" maxlength="40">
+        </div>
+      </div>
+
+      <div class="veld">
+        <label for="adres">Adres <span class="subtiel">(optioneel, voor de brieven)</span></label>
+        <input type="text" id="adres" name="adres" autocomplete="street-address" maxlength="120">
+      </div>
+
+      <div class="rij">
+        <div class="veld">
+          <label for="postcode">Postcode <span class="subtiel">(optioneel)</span></label>
+          <input type="text" id="postcode" name="postcode" autocomplete="postal-code" maxlength="12">
+        </div>
+        <div class="veld">
+          <label for="woonplaats">Woonplaats <span class="subtiel">(optioneel)</span></label>
+          <input type="text" id="woonplaats" name="woonplaats" autocomplete="address-level2" maxlength="80">
+        </div>
+      </div>
+
+      <div class="veld">
+        <label for="kenmerk">Kenmerk of zaaknummer van de organisatie <span class="subtiel">(optioneel)</span></label>
+        <input type="text" id="kenmerk" name="kenmerk" maxlength="60">
+      </div>
+
+      <div class="veld">
+        <label for="toelichting">Toelichting <span class="subtiel">(optioneel)</span></label>
+        <p class="veld__hulp">Is er iets bijzonders aan uw zaak dat wij moeten weten?</p>
+        <textarea id="toelichting" name="toelichting" maxlength="2000"></textarea>
+      </div>
+
+      <div class="veld">
+        <div class="keuzes">
+          <label class="keuze"><input type="checkbox" name="machtiging">
+            <span class="keuze__tekst">Ik wil dat Dwangsomhulp namens mij optreedt
+              <span class="keuze__uitleg">Wij sturen u dan een machtiging ter ondertekening</span></span></label>
+          <label class="keuze"><input type="checkbox" name="akkoordVoorwaarden">
+            <span class="keuze__tekst">Ik ga ermee akkoord dat mijn gegevens worden gebruikt om deze aanvraag te beoordelen
+              <span class="keuze__uitleg">Wij bewaren uw gegevens alleen voor dit dossier</span></span></label>
+        </div>
+        <p class="veld__fout verborgen" data-fout="akkoordVoorwaarden"></p>
+      </div>
+
+      <div id="indien-fout"></div>
+    </section>
+
+    <!-- ============================================== 7. Bevestiging -->
+    <section class="stap verborgen" data-stap="7">
+      <div class="bevestiging">
+        <div style="font-size:2.6rem">✅</div>
+        <h1 class="stap-titel">Uw aanvraag is ontvangen</h1>
+        <p class="subtiel">Uw referentienummer</p>
+        <div class="referentie" id="referentienummer"></div>
+        <p class="subtiel">Bewaar dit nummer. Wij nemen binnen twee werkdagen contact met u op via het opgegeven e-mailadres.</p>
+        <div style="margin-top:22px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+          <a class="knop knop--zacht" href="/">Terug naar de startpagina</a>
+          <button type="button" class="knop knop--primair" id="download-brief-bevestiging">Conceptbrief downloaden</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="navigatie" id="navigatie">
+      <button type="button" class="knop knop--stil" id="knop-terug">← Vorige</button>
+      <div class="rechts">
+        <button type="button" class="knop knop--primair" id="knop-verder">Volgende →</button>
+      </div>
+    </div>
+  </form>
+
+  <p class="subtiel" style="margin-top:18px; text-align:center">
+    Dwangsomhulp is geen overheidsinstantie. De berekening is een inschatting en geen juridisch advies.
+  </p>
+</main>
+
+<script type="module" src="/assets/wizard.js"></script>
+</body>
+</html>

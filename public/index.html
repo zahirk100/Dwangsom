@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dwangsomhulp — geld terug als de overheid te laat beslist</title>
+<meta name="description" content="Wacht u te lang op een beslissing van UWV of de gemeente? Bereken in twee minuten of u recht heeft op een dwangsom van maximaal € 1.442 en dien uw aanvraag direct in.">
+<link rel="stylesheet" href="/assets/stijl.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+<style>
+  .held { padding: 68px 0 52px; }
+  .held__raster { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+  .held__oogmerk {
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    padding: 6px 14px; border-radius: 999px; background: var(--blauw-100);
+    color: var(--blauw-600); font-size: .84rem; font-weight: 640;
+  }
+  .held p.lead { font-size: 1.14rem; color: var(--tekst-zacht); max-width: 54ch; }
+  .held__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 18px; }
+  .held__punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: .93rem; color: var(--tekst-zacht); }
+  .held__punten li { display: flex; gap: 9px; align-items: flex-start; }
+  .vink { color: var(--groen-600); font-weight: 800; flex: none; }
+
+  .bedragkaart { padding: 28px; border-radius: 20px; background: var(--vlak); border: 1px solid var(--rand); box-shadow: var(--schaduw); }
+  .bedragkaart__titel { font-size: .82rem; text-transform: uppercase; letter-spacing: .07em; color: var(--tekst-zacht); font-weight: 680; }
+  .bedragkaart__bedrag { font-size: 3rem; font-weight: 800; letter-spacing: -.03em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .staaf { display: grid; grid-template-columns: repeat(42, 1fr); gap: 2px; margin: 20px 0 10px; }
+  .staaf span { height: 34px; border-radius: 2px; }
+  .staaf .t1 { background: var(--blauw-100); }
+  .staaf .t2 { background: var(--blauw-500); }
+  .staaf .t3 { background: var(--blauw-700); }
+  .staaf-uitleg { display: flex; justify-content: space-between; font-size: .8rem; color: var(--tekst-zacht); font-variant-numeric: tabular-nums; }
+
+  section.blok { padding: 56px 0; }
+  .sectiekop { max-width: 62ch; margin-bottom: 32px; }
+  .sectiekop p { color: var(--tekst-zacht); }
+  .stappen { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); counter-reset: stap; }
+  .stap { padding: 24px; counter-increment: stap; }
+  .stap::before {
+    content: counter(stap); display: grid; place-items: center; width: 34px; height: 34px;
+    border-radius: 10px; background: var(--blauw-600); color: #fff; font-weight: 760; margin-bottom: 14px;
+  }
+  .stap h3 { margin-bottom: 6px; }
+  .stap p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+
+  .kolommen { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; }
+  .organisatie { padding: 24px; }
+  .organisatie h3 { display: flex; align-items: center; gap: 10px; }
+  .organisatie ul { margin: 12px 0 0; padding-left: 20px; font-size: .93rem; color: var(--tekst-zacht); }
+  .organisatie li { margin-bottom: 4px; }
+
+  details.vraag { border-bottom: 1px solid var(--rand); padding: 16px 0; }
+  details.vraag summary { cursor: pointer; font-weight: 640; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  details.vraag summary::-webkit-details-marker { display: none; }
+  details.vraag summary::after { content: "+"; color: var(--blauw-600); font-size: 1.3rem; line-height: 1; }
+  details.vraag[open] summary::after { content: "–"; }
+  details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht); }
+
+  .oproep {
+    margin: 56px 0 0; padding: 44px; border-radius: 20px; text-align: center;
+    background: linear-gradient(150deg, var(--blauw-700), var(--blauw-900)); color: #fff;
+  }
+  .oproep h2 { color: #fff; }
+  .oproep p { color: #c9d9f2; max-width: 52ch; margin: 0 auto 24px; }
+  .oproep .knop--primair { background: #fff; color: var(--blauw-800); }
+  .oproep .knop--primair:hover { background: #e7effc; }
+
+  @media (max-width: 880px) {
+    .held__raster, .kolommen { grid-template-columns: 1fr; gap: 34px; }
+    .held { padding: 40px 0 32px; }
+    .oproep { padding: 30px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/"><span class="merk__teken">D</span> Dwangsomhulp</a>
+    <nav>
+      <a href="/hoe-werkt-het">Hoe werkt het</a>
+      <a href="#vragen">Veelgestelde vragen</a>
+      <a href="/beheer">Beheer</a>
+      <a class="knop knop--primair knop--klein" href="/aanvraag">Bereken uw dwangsom</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="held">
+    <div class="omhulsel held__raster">
+      <div>
+        <span class="held__oogmerk">⏱️ Artikel 4:17 Algemene wet bestuursrecht</span>
+        <h1>Beslist de overheid te laat? Dan heeft u recht op geld.</h1>
+        <p class="lead">
+          Wacht u langer dan de wettelijke termijn op een beslissing van UWV of uw gemeente?
+          Dan kan het bestuursorgaan een dwangsom verschuldigd zijn van <strong>maximaal € 1.442</strong>.
+          Bereken het in twee minuten en laat ons de aanvraag voor u regelen.
+        </p>
+        <div class="held__knoppen">
+          <a class="knop knop--primair" href="/aanvraag">Bereken mijn dwangsom →</a>
+          <a class="knop knop--zacht" href="/hoe-werkt-het">Eerst uitleg lezen</a>
+        </div>
+        <ul class="held__punten">
+          <li><span class="vink">✓</span> Geldt voor WIA, Wajong, WW, Ziektewet, bijstand, Wmo en bezwaarschriften</li>
+          <li><span class="vink">✓</span> U ziet direct welk bedrag is opgebouwd en tot wanneer het oploopt</li>
+          <li><span class="vink">✓</span> Wij stellen de ingebrekestelling op en bewaken alle termijnen</li>
+        </ul>
+      </div>
+
+      <aside class="bedragkaart" aria-label="Opbouw van de dwangsom">
+        <div class="bedragkaart__titel">Maximale dwangsom</div>
+        <div class="bedragkaart__bedrag">€ 1.442</div>
+        <p style="color:var(--tekst-zacht); font-size:.9rem; margin:0">
+          Opgebouwd over ten hoogste 42 dagen, met een oplopend tarief per dag.
+        </p>
+        <div class="staaf" aria-hidden="true">
+          <span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span>
+          <span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span><span class="t1"></span>
+          <span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span>
+          <span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span><span class="t2"></span>
+          <span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span>
+          <span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span><span class="t3"></span>
+        </div>
+        <div class="staaf-uitleg">
+          <span>dag 1–14<br><strong>€ 23 p/d</strong></span>
+          <span>dag 15–28<br><strong>€ 35 p/d</strong></span>
+          <span>dag 29–42<br><strong>€ 45 p/d</strong></span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="blok omhulsel" id="hoe">
+    <div class="sectiekop">
+      <h2>Zo werkt het</h2>
+      <p>De dwangsomregeling staat in de Algemene wet bestuursrecht en geldt landelijk hetzelfde
+         voor UWV, gemeenten en andere bestuursorganen. Wij vertalen die regels naar uw situatie.</p>
+    </div>
+    <div class="stappen">
+      <article class="kaart stap">
+        <h3>Beantwoord een paar vragen</h3>
+        <p>U ziet alleen de vragen die bij uw soort aanvraag horen. Meestal zijn dat er vijf tot acht.</p>
+      </article>
+      <article class="kaart stap">
+        <h3>Zie meteen uw berekening</h3>
+        <p>Wij berekenen de beslistermijn, de eerste dwangsomdag en het bedrag dat nu is opgebouwd.</p>
+      </article>
+      <article class="kaart stap">
+        <h3>Dien uw aanvraag in</h3>
+        <p>Uw dossier komt bij ons binnen. Wij controleren de data en stellen de stukken op.</p>
+      </article>
+      <article class="kaart stap">
+        <h3>Wij claimen voor u</h3>
+        <p>Wij stellen in gebreke, bewaken de termijn van twee weken en vorderen de dwangsom.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="blok omhulsel">
+    <div class="sectiekop">
+      <h2>Voor welke beslissingen geldt dit?</h2>
+      <p>Voor vrijwel elke aanvraag of elk bezwaarschrift bij een bestuursorgaan. De bekendste:</p>
+    </div>
+    <div class="kolommen">
+      <article class="kaart organisatie">
+        <h3><span class="label-chip label-chip--blauw">UWV</span> Uitkeringen en beoordelingen</h3>
+        <ul>
+          <li>WIA-aanvraag of herbeoordeling</li>
+          <li>Wajong-aanvraag</li>
+          <li>WW-uitkering</li>
+          <li>Ziektewet-uitkering</li>
+          <li>Bezwaar tegen een beslissing van UWV</li>
+        </ul>
+      </article>
+      <article class="kaart organisatie">
+        <h3><span class="label-chip label-chip--paars">Gemeente</span> Inkomen, zorg en vergunningen</h3>
+        <ul>
+          <li>Bijstandsuitkering (Participatiewet)</li>
+          <li>Bijzondere bijstand en inkomenstoeslag</li>
+          <li>Wmo-maatwerkvoorziening en jeugdhulp</li>
+          <li>Schuldhulpverlening</li>
+          <li>Bezwaar tegen een gemeentelijk besluit</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="blok omhulsel" id="vragen">
+    <div class="sectiekop">
+      <h2>Veelgestelde vragen</h2>
+    </div>
+    <details class="vraag" open>
+      <summary>Wat is een ingebrekestelling en waarom is die nodig?</summary>
+      <p>Een ingebrekestelling is een brief waarin u laat weten dat de beslistermijn is verstreken en
+         waarin u om een besluit vraagt. Zonder die brief gaat de dwangsom niet lopen. Het bestuursorgaan
+         krijgt daarna twee weken om alsnog te beslissen; pas daarna telt de dwangsom (art. 4:17 lid 3 Awb).
+         Wij stellen de brief voor u op.</p>
+    </details>
+    <details class="vraag">
+      <summary>Hoeveel is de dwangsom precies?</summary>
+      <p>De eerste veertien dagen € 23 per dag, de volgende veertien dagen € 35 per dag en de laatste
+         veertien dagen € 45 per dag. Na 42 dagen stopt de teller op € 1.442 (art. 4:17 lid 2 Awb).</p>
+    </details>
+    <details class="vraag">
+      <summary>Hoe lang mag het bestuursorgaan over mijn aanvraag doen?</summary>
+      <p>Dat verschilt per soort aanvraag. Staat er geen bijzondere termijn in de wet, dan geldt de
+         regel uit de Awb: een redelijke termijn, in ieder geval binnen acht weken. Bij een bezwaarschrift
+         is het zes weken na afloop van de bezwaartermijn, of twaalf weken als er een adviescommissie is.
+         Noemt het bestuursorgaan zelf een datum in de ontvangstbevestiging? Die telt.</p>
+    </details>
+    <details class="vraag">
+      <summary>Wanneer heb ik géén recht op een dwangsom?</summary>
+      <p>Onder meer als u geen belanghebbende bent, als uw aanvraag kennelijk niet-ontvankelijk is, of
+         als u onredelijk laat in gebreke stelt. Ook bij Woo-verzoeken en asielaanvragen is de
+         dwangsomregeling uitgesloten. In die gevallen bestaat wel de mogelijkheid van beroep bij de
+         rechtbank wegens niet tijdig beslissen.</p>
+    </details>
+    <details class="vraag">
+      <summary>Loopt de dwangsom door zolang er geen besluit is?</summary>
+      <p>Ja, maar maximaal 42 dagen. Daarna blijft het bedrag staan op € 1.442. Komt er eerder een
+         besluit, dan stopt de teller de dag voor de bekendmaking van dat besluit.</p>
+    </details>
+
+    <div class="oproep">
+      <h2>Benieuwd of u recht heeft op een dwangsom?</h2>
+      <p>De berekening is gratis en vrijblijvend. U beslist zelf of u de aanvraag daarna indient.</p>
+      <a class="knop knop--primair" href="/aanvraag">Start de berekening →</a>
+    </div>
+  </section>
+</main>
+
+<footer class="voet">
+  <div class="omhulsel">
+    <p><strong>Dwangsomhulp</strong> is een particuliere dienstverlener en geen overheidsinstantie.
+       Wij zijn niet verbonden aan UWV, een gemeente of een ander bestuursorgaan.</p>
+    <p>De berekening is een inschatting op basis van de door u ingevulde gegevens en vormt geen
+       juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
+    <p><a href="/hoe-werkt-het">Hoe werkt het</a> · <a href="/aanvraag">Aanvraag starten</a> · <a href="/beheer">Beheeromgeving</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
