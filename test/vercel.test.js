@@ -1,8 +1,9 @@
 /**
  * Bootst na hoe Vercel de serverloze functie aanroept: het platform leest de
- * body al in (req.body), zet de segmenten van de catch-all route in req.query
- * en beeindigt TLS zelf (x-forwarded-proto). Deze test bewaakt dat de
- * applicatie daar tegen kan, zonder dat er echt gedeployd hoeft te worden.
+ * body al in (req.body), stuurt verzoeken via een rewrite naar de functie
+ * terwijl req.url het oorspronkelijke pad houdt, en beeindigt TLS zelf
+ * (x-forwarded-proto). Deze test bewaakt dat de applicatie daar tegen kan,
+ * zonder dat er echt gedeployd hoeft te worden.
  */
 
 import test from 'node:test';
@@ -16,9 +17,10 @@ const tijdelijk = await fs.mkdtemp(path.join(os.tmpdir(), 'dwangsom-vercel-'));
 process.env.DATA_DIR = tijdelijk;
 process.env.BEHEER_WACHTWOORD = 'test-wachtwoord';
 
-const { default: handler } = await import('../api/[...pad].js');
+const { default: handler } = await import('../api/index.js');
 
-// De nabootsing: body inlezen, req.query vullen, dan pas de functie aanroepen.
+// De nabootsing: body inlezen, dan pas de functie aanroepen. Net als bij een
+// rewrite op Vercel blijft req.url het pad dat de bezoeker vroeg.
 const server = http.createServer(async (req, res) => {
   const stukken = [];
   for await (const stuk of req) stukken.push(stuk);
@@ -26,9 +28,7 @@ const server = http.createServer(async (req, res) => {
   if (ruw && String(req.headers['content-type'] || '').includes('json')) {
     try { req.body = JSON.parse(ruw); } catch { req.body = ruw; }
   }
-  const url = new URL(req.url, 'http://localhost');
-  req.query = Object.fromEntries(url.searchParams);
-  req.query.pad = url.pathname.replace(/^\/api\//, '').split('/');
+  req.query = Object.fromEntries(new URL(req.url, 'http://localhost').searchParams);
   req.headers['x-forwarded-proto'] = 'https';
   await handler(req, res);
 });
@@ -97,26 +97,22 @@ test('een sessie overleeft een koude start van de functie', async () => {
   assert.equal(tokenIsGeldig(verseSleutel, cookie.split('=')[1]), true);
 });
 
-test('het pad wordt herbouwd als het platform alleen de routesegmenten geeft', async () => {
-  const antwoord = await new Promise((resolve) => {
-    const nep = {
-      method: 'GET',
-      url: '/api/index',  // pad van de functie zelf, niet van het verzoek
-      headers: { host: 'test' },
-      query: { pad: ['catalogus'] },
-    };
-    const stukken = [];
-    const res = {
-      headersSent: false,
-      statusCode: 200,
-      setHeader() {},
-      writeHead(code) { this.statusCode = code; return this; },
-      end(body) { this.headersSent = true; resolve({ status: this.statusCode, body: String(body || stukken.join('')) }); },
-    };
-    handler(nep, res);
-  });
+test('bereikt een paginaverzoek de functie, dan serveert die de pagina zelf', async () => {
+  // Normaal serveert Vercel public/ statisch. Gebeurt dat niet, dan vangt de
+  // functie het op; anders zou de bezoeker een functiefout zien.
+  const antwoord = await haal('/');
   assert.equal(antwoord.status, 200);
-  assert.ok(JSON.parse(antwoord.body).zaaktypen.length > 0);
+  assert.match(antwoord.headers.get('content-type'), /text\/html/);
+  assert.match(await antwoord.text(), /Dwangsomhulp/);
+
+  for (const pad of ['/aanvraag', '/beheer', '/hoe-werkt-het']) {
+    const pagina = await haal(pad);
+    assert.equal(pagina.status, 200, `${pad} gaf ${pagina.status}`);
+  }
+
+  const module = await haal('/shared/dwangsom.js');
+  assert.equal(module.status, 200);
+  assert.match(module.headers.get('content-type'), /javascript/);
 });
 
 test('zonder cookie blijft het beheerdeel dicht', async () => {

@@ -83,6 +83,20 @@ op GitHub nog op de werkbranch. Kies één van beide:
 Doe je geen van beide, dan werkt de site ook gewoon — hij wordt dan alleen
 vanaf de werkbranch gebouwd.
 
+### Krijg je "500 FUNCTION_INVOCATION_FAILED"?
+
+Dat betekent dat de serverloze functie zelf stukliep. De applicatie geeft nu
+in plaats daarvan een leesbare melding terug, dus:
+
+1. **Deploy opnieuw** met de laatste code (*Deployments → Redeploy*, of push
+   een commit). Dat alleen al verhelpt de bekende oorzaak: de ingang heet nu
+   `api/index.js` in plaats van een catch-all met blokhaken, en al het verkeer
+   loopt via expliciete rewrites uit `vercel.json`.
+2. **Blijft er een fout staan**, dan zie je nu de melding van de applicatie
+   zelf in beeld, bijvoorbeeld `Cannot find module`. Stuur die tekst door.
+3. De volledige stacktrace vind je in Vercel onder het tabblad **Logs** van de
+   deployment (of *Observability → Runtime Logs*).
+
 ### 3. Uitproberen
 
 - `/` — de landingspagina

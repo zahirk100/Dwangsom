@@ -37,8 +37,8 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 
 ```
 server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
-api/[...pad].js        Ingang voor Vercel: alle /api/-verzoeken naar apiHandler
-vercel.json            Bouwstap, cleanUrls en beveiligingsheaders
+api/index.js           Ingang voor Vercel; valt terug op dezelfde router
+vercel.json            Bouwstap, rewrites, cleanUrls en beveiligingsheaders
 scripts/bouw-publiek.mjs  Kopieert shared/ naar public/shared/ bij het bouwen
 src/store.js           Dossierregels: referenties, status, notities, historie
 src/opslag.js          Opslagdrivers: bestand, Redis via REST, geheugen
@@ -111,8 +111,11 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
-Lokaal serveert `server.js` ook de pagina's; op Vercel doet het platform dat en
-handelt `api/[...pad].js` alleen `/api/*` af. Beide gebruiken dezelfde router.
+Lokaal serveert `server.js` ook de pagina's. Op Vercel serveert het platform
+`public/` statisch en gaat al het overige via een rewrite naar `api/index.js`,
+dat dezelfde `verwerk`-router aanroept. Valt de statische laag onverhoopt weg,
+dan serveert de functie de pagina's zelf — die bestanden zitten via
+`includeFiles` in de bundel.
 
 ## Hosting en opslag
 
