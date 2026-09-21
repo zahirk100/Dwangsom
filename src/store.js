@@ -1,15 +1,10 @@
 /**
- * Opslag van aanvragen in een JSON-bestand.
- *
- * Bewust zonder externe database: de applicatie draait met `node server.js`
- * zonder installatiestappen. Schrijven gebeurt atomair (tmp + rename) en
- * geserialiseerd via een wachtrij, zodat gelijktijdige requests elkaars
- * schrijfactie niet overschrijven.
+ * Dossierbeheer. De feitelijke opslag zit in src/opslag.js; deze laag kent
+ * alleen de regels: referentienummers, statusovergangen, notities en historie.
  */
 
-import { randomUUID, randomBytes } from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { kiesOpslag } from './opslag.js';
 
 export const STATUSSEN = [
   { id: 'nieuw', label: 'Nieuw', kleur: 'blauw' },
@@ -28,49 +23,35 @@ export function isGeldigeStatus(id) {
   return STATUS_IDS.has(id);
 }
 
+export function labelVoorStatus(id) {
+  const status = STATUSSEN.find((s) => s.id === id);
+  return status ? status.label : id;
+}
+
 export class Store {
-  constructor(dataDir) {
-    this.dataDir = dataDir;
-    this.bestand = path.join(dataDir, 'aanvragen.json');
-    this.aanvragen = [];
+  constructor({ dataDir, opslag } = {}) {
+    this.opslag = opslag || kiesOpslag({ dataDir });
     this.klaar = false;
-    this.schrijfKetting = Promise.resolve();
   }
 
   async init() {
-    await fs.mkdir(this.dataDir, { recursive: true });
-    try {
-      const ruw = await fs.readFile(this.bestand, 'utf8');
-      const data = JSON.parse(ruw);
-      this.aanvragen = Array.isArray(data.aanvragen) ? data.aanvragen : [];
-    } catch (err) {
-      if (err.code !== 'ENOENT') {
-        throw new Error(`Kan ${this.bestand} niet lezen: ${err.message}`);
-      }
-      this.aanvragen = [];
-    }
+    await this.opslag.init();
     this.klaar = true;
     return this;
   }
 
-  /** Schrijfacties achter elkaar uitvoeren, nooit tegelijk. */
-  #bewaar() {
-    this.schrijfKetting = this.schrijfKetting.then(async () => {
-      const tijdelijk = path.join(this.dataDir, `.aanvragen-${randomBytes(6).toString('hex')}.tmp`);
-      const inhoud = JSON.stringify({ versie: 1, aanvragen: this.aanvragen }, null, 2);
-      await fs.writeFile(tijdelijk, inhoud, 'utf8');
-      await fs.rename(tijdelijk, this.bestand);
-    }).catch((err) => {
-      console.error('[store] schrijven mislukt:', err.message);
-    });
-    return this.schrijfKetting;
+  /** Zegt of ingediende aanvragen een herstart overleven. */
+  get duurzaam() {
+    return this.opslag.duurzaam;
   }
 
   async nieuweAanvraag({ invoer, contact, rapport, meta }) {
     const nu = new Date().toISOString();
+    const jaar = new Date().getUTCFullYear();
+    const nummer = await this.opslag.volgendNummer(jaar);
     const aanvraag = {
       id: randomUUID(),
-      referentie: await this.#nieuwReferentienummer(),
+      referentie: `DWS-${jaar}-${String(nummer).padStart(4, '0')}`,
       status: 'nieuw',
       aangemaaktOp: nu,
       gewijzigdOp: nu,
@@ -81,24 +62,13 @@ export class Store {
       notities: [],
       historie: [{ op: nu, door: 'systeem', tekst: 'Aanvraag ontvangen via het aanvraagformulier.' }],
     };
-    this.aanvragen.unshift(aanvraag);
-    await this.#bewaar();
+    await this.opslag.voegToe(aanvraag);
     return aanvraag;
   }
 
-  async #nieuwReferentienummer() {
-    const jaar = new Date().getUTCFullYear();
-    const prefix = `DWS-${jaar}-`;
-    const hoogste = this.aanvragen
-      .filter((a) => typeof a.referentie === 'string' && a.referentie.startsWith(prefix))
-      .map((a) => Number.parseInt(a.referentie.slice(prefix.length), 10))
-      .filter((n) => Number.isFinite(n))
-      .reduce((max, n) => Math.max(max, n), 0);
-    return `${prefix}${String(hoogste + 1).padStart(4, '0')}`;
-  }
-
-  lijst({ status, zoek, bestuursorgaan } = {}) {
-    let resultaat = this.aanvragen.slice();
+  async lijst({ status, zoek, bestuursorgaan } = {}) {
+    let resultaat = (await this.opslag.haalAlle()).slice();
+    resultaat.sort((a, b) => String(b.aangemaaktOp).localeCompare(String(a.aangemaaktOp)));
     if (status && status !== 'alle') {
       resultaat = resultaat.filter((a) => a.status === status);
     }
@@ -107,27 +77,24 @@ export class Store {
     }
     if (zoek) {
       const term = String(zoek).toLowerCase().trim();
-      resultaat = resultaat.filter((a) => {
-        const hooiberg = [
-          a.referentie,
-          a.contact && a.contact.naam,
-          a.contact && a.contact.email,
-          a.contact && a.contact.woonplaats,
-          a.invoer && a.invoer.organisatienaam,
-          a.contact && a.contact.kenmerk,
-        ].filter(Boolean).join(' ').toLowerCase();
-        return hooiberg.includes(term);
-      });
+      resultaat = resultaat.filter((a) => [
+        a.referentie,
+        a.contact && a.contact.naam,
+        a.contact && a.contact.email,
+        a.contact && a.contact.woonplaats,
+        a.contact && a.contact.kenmerk,
+        a.invoer && a.invoer.organisatienaam,
+      ].filter(Boolean).join(' ').toLowerCase().includes(term));
     }
     return resultaat;
   }
 
-  vind(id) {
-    return this.aanvragen.find((a) => a.id === id || a.referentie === id) || null;
+  async vind(id) {
+    return this.opslag.haal(id);
   }
 
   async wijzigStatus(id, status, door) {
-    const aanvraag = this.vind(id);
+    const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const oud = aanvraag.status;
     if (oud === status) return aanvraag;
@@ -138,23 +105,23 @@ export class Store {
       door: door || 'beheerder',
       tekst: `Status gewijzigd van "${labelVoorStatus(oud)}" naar "${labelVoorStatus(status)}".`,
     });
-    await this.#bewaar();
+    await this.opslag.zet(aanvraag);
     return aanvraag;
   }
 
   async voegNotitieToe(id, tekst, door) {
-    const aanvraag = this.vind(id);
+    const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const nu = new Date().toISOString();
     aanvraag.notities.push({ id: randomUUID(), op: nu, door: door || 'beheerder', tekst });
     aanvraag.gewijzigdOp = nu;
-    await this.#bewaar();
+    await this.opslag.zet(aanvraag);
     return aanvraag;
   }
 
   /** Herberekening opslaan, bijvoorbeeld nadat de beheerder data heeft gecorrigeerd. */
   async werkRapportBij(id, { invoer, rapport, door, toelichting }) {
-    const aanvraag = this.vind(id);
+    const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const nu = new Date().toISOString();
     aanvraag.invoer = invoer;
@@ -165,28 +132,24 @@ export class Store {
       door: door || 'beheerder',
       tekst: toelichting || 'Gegevens gecorrigeerd en berekening opnieuw uitgevoerd.',
     });
-    await this.#bewaar();
+    await this.opslag.zet(aanvraag);
     return aanvraag;
   }
 
-  statistieken() {
+  async statistieken() {
+    const alle = await this.opslag.haalAlle();
     const perStatus = Object.fromEntries(STATUSSEN.map((s) => [s.id, 0]));
     let totaalBedrag = 0;
     let metRecht = 0;
-    for (const a of this.aanvragen) {
+    for (const a of alle) {
       if (perStatus[a.status] !== undefined) perStatus[a.status] += 1;
-      const b = a.rapport && a.rapport.berekening;
-      if (a.rapport && a.rapport.uitkomst === 'recht' && b) {
-        totaalBedrag += b.totaal || 0;
+      const berekening = a.rapport && a.rapport.berekening;
+      if (a.rapport && a.rapport.uitkomst === 'recht' && berekening) {
+        totaalBedrag += berekening.totaal || 0;
         metRecht += 1;
       }
     }
-    const open = this.aanvragen.filter((a) => !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)).length;
-    return { totaal: this.aanvragen.length, open, perStatus, totaalBedrag, metRecht };
+    const open = alle.filter((a) => !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status)).length;
+    return { totaal: alle.length, open, perStatus, totaalBedrag, metRecht };
   }
-}
-
-export function labelVoorStatus(id) {
-  const s = STATUSSEN.find((x) => x.id === id);
-  return s ? s.label : id;
 }

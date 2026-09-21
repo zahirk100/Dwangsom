@@ -49,6 +49,19 @@ export function stuurFout(res, statuscode, melding, details) {
 }
 
 export async function leesJsonBody(req) {
+  // Serverloze platforms (Vercel) lezen de body zelf al en zetten die op
+  // req.body; de stream is dan leeg. Daarom eerst daar kijken.
+  if (req.body !== undefined && req.body !== null && req.body !== '') {
+    if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body;
+    try {
+      return JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body));
+    } catch {
+      const err = new Error('Ongeldige JSON in het verzoek.');
+      err.statuscode = 400;
+      throw err;
+    }
+  }
+
   const stukken = [];
   let lengte = 0;
   for await (const stuk of req) {

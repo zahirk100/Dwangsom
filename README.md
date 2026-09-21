@@ -18,23 +18,31 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 ```bash
 node server.js                  # http://localhost:3000
 BEHEER_WACHTWOORD=geheim node server.js
-npm test                        # 35 tests, zonder netwerk
+npm test                        # 59 tests, zonder netwerk
 ```
 
-Geen dependencies, geen buildstap. Node 20.6 of nieuwer.
+Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
+[DEPLOY.md](DEPLOY.md).
 
 | Omgevingsvariabele | Standaard | Betekenis |
 | --- | --- | --- |
 | `PORT` | `3000` | Poort van de webserver |
 | `BEHEER_WACHTWOORD` | willekeurig, wordt geprint | Wachtwoord voor `/beheer` |
+| `SESSIE_GEHEIM` | het beheerwachtwoord | Sleutel waarmee sessiecookies worden ondertekend |
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
-| `SECURE_COOKIES` | uit | Zet op `1` achter HTTPS |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN` | leeg | Redis via REST; verplicht op serverloze hosting |
+| `SECURE_COOKIES` | automatisch achter HTTPS | Zet op `1` om af te dwingen |
 
 ## Structuur
 
 ```
-server.js              HTTP-server, routes, sessies, CSV-export
-src/store.js           Opslag in JSON (atomair schrijven, geserialiseerd)
+server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
+api/[...pad].js        Ingang voor Vercel: alle /api/-verzoeken naar apiHandler
+vercel.json            Bouwstap, cleanUrls en beveiligingsheaders
+scripts/bouw-publiek.mjs  Kopieert shared/ naar public/shared/ bij het bouwen
+src/store.js           Dossierregels: referenties, status, notities, historie
+src/opslag.js          Opslagdrivers: bestand, Redis via REST, geheugen
+src/sessie.js          Sessies als ondertekend cookie, zonder serverstatus
 src/validatie.js       Servervalidatie van het aanvraagformulier
 src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
 shared/dwangsom.js     Rekenkern (browser + server)
@@ -103,6 +111,32 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
+Lokaal serveert `server.js` ook de pagina's; op Vercel doet het platform dat en
+handelt `api/[...pad].js` alleen `/api/*` af. Beide gebruiken dezelfde router.
+
+## Hosting en opslag
+
+De applicatie kiest zelf de opslag die bij de omgeving past:
+
+| Omgeving | Driver | Duurzaam |
+| --- | --- | --- |
+| Eigen server of laptop | `aanvragen.json`, atomair geschreven | ja |
+| Serverloos mét `KV_REST_API_*` | Redis via de REST-API, alleen met `fetch` | ja |
+| Serverloos zónder database | werkgeheugen | **nee** — de beheeromgeving toont een rode waarschuwing |
+
+Serverloos draaien stelt twee extra eisen, en aan allebei is voldaan:
+
+- **Sessies** zitten niet in het geheugen van één instantie, maar in het cookie
+  zelf: een vervaltijd met een HMAC-handtekening (`src/sessie.js`). Elke
+  instantie leidt dezelfde sleutel af uit `SESSIE_GEHEIM` of het
+  beheerwachtwoord.
+- **De request-body** wordt door Vercel al ingelezen; `leesJsonBody` gebruikt
+  `req.body` als die er is en valt anders terug op de stream.
+
+De snelheidsbegrenzers tellen per instantie. Op serverloze hosting is dat een
+ruwe bovengrens, geen harde. Voor strengere limieten hoort die teller ook in
+Redis.
+
 ## Privacy en beveiliging
 
 - Er wordt **geen burgerservicenummer** gevraagd; het formulier zegt dat expliciet.
@@ -116,9 +150,11 @@ Beheer (sessiecookie vereist):
 ### Voor productie
 
 Dit is een werkende applicatie met bewuste beperkingen. Vóór echt gebruik:
-bewaar dossiers in een echte database, geef beheerders eigen accounts met
-tweefactorauthenticatie, zet de applicatie achter HTTPS, richt back-ups en een
-bewaartermijn in, en laat de standaardtermijnen in de catalogus juridisch toetsen.
+geef beheerders eigen accounts met tweefactorauthenticatie in plaats van één
+gedeeld wachtwoord, voeg e-mailnotificatie bij een nieuwe aanvraag toe (zit er
+nu niet in), richt back-ups en een bewaartermijn in, en laat de
+standaardtermijnen in de catalogus juridisch toetsen. Zie DEPLOY.md voor de
+volledige lijst.
 
 ## Voorbehoud
 

@@ -1,9 +1,11 @@
 /**
  * Dwangsomhulp - webserver.
  *
- * Draait zonder externe afhankelijkheden: `node server.js`.
- * Publiek deel  : landingspagina en aanvraagwizard.
- * Beheerdeel    : overzicht van binnengekomen aanvragen, achter een wachtwoord.
+ * Draait op twee manieren:
+ *   - `node server.js` op een gewone server of lokaal;
+ *   - als serverloze functie op Vercel, via api/[...pad].js, die `apiHandler`
+ *     hergebruikt. Statische bestanden worden daar door het platform zelf
+ *     geserveerd.
  */
 
 import http from 'node:http';
@@ -12,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { Store, STATUSSEN, isGeldigeStatus, labelVoorStatus } from './src/store.js';
+import { kiesOpslag } from './src/opslag.js';
+import { maakToken, tokenIsGeldig, sessieCookie, sessieSleutel, COOKIE_NAAM } from './src/sessie.js';
 import {
   Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
   serveerBestand, stuurFout, stuurJson, stuurTekst,
@@ -27,63 +31,50 @@ const GEDEELD = path.join(HIER, 'shared');
 
 const POORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(HIER, 'data');
-const VEILIGE_COOKIE = process.env.SECURE_COOKIES === '1';
-const SESSIEDUUR_MS = 8 * 60 * 60 * 1000;
+const OP_VERCEL = Boolean(process.env.VERCEL);
 
 let beheerWachtwoord = process.env.BEHEER_WACHTWOORD || '';
-let wachtwoordGegenereerd = false;
-if (!beheerWachtwoord) {
-  beheerWachtwoord = randomBytes(9).toString('base64url');
-  wachtwoordGegenereerd = true;
-}
+export const wachtwoordGegenereerd = !beheerWachtwoord;
+if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
 
-const store = new Store(DATA_DIR);
-const sessies = new Map();
+const SLEUTEL = sessieSleutel({ ...process.env, BEHEER_WACHTWOORD: beheerWachtwoord });
+
+const opslag = kiesOpslag({ dataDir: DATA_DIR });
+const store = new Store({ opslag });
+
+/** Init gebeurt één keer, ook als er tien requests tegelijk binnenkomen. */
+let initBelofte = null;
+function gereed() {
+  if (!initBelofte) initBelofte = store.init();
+  return initBelofte;
+}
 
 const indienBegrenzer = new Snelheidsbegrenzer({ max: 20, vensterMs: 60 * 60 * 1000 });
 const loginBegrenzer = new Snelheidsbegrenzer({ max: 8, vensterMs: 15 * 60 * 1000 });
 
-// ---------------------------------------------------------------- sessies --
+// ---------------------------------------------------------------- sessie --
 
-function maakSessie() {
-  const token = randomBytes(32).toString('hex');
-  sessies.set(token, { aangemaaktOp: Date.now(), verlooptOp: Date.now() + SESSIEDUUR_MS });
-  return token;
+function overHttps(req) {
+  return OP_VERCEL || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
 }
 
-function geldigeSessie(req) {
-  const token = parseCookies(req.headers.cookie).dh_sessie;
-  if (!token) return null;
-  const sessie = sessies.get(token);
-  if (!sessie) return null;
-  if (Date.now() > sessie.verlooptOp) {
-    sessies.delete(token);
-    return null;
-  }
-  return { token, ...sessie };
+function veiligeCookie(req) {
+  return process.env.SECURE_COOKIES === '1' || overHttps(req);
 }
 
-function sessieCookie(token, verwijder = false) {
-  const delen = [
-    `dh_sessie=${verwijder ? '' : token}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Strict',
-    verwijder ? 'Max-Age=0' : `Max-Age=${Math.floor(SESSIEDUUR_MS / 1000)}`,
-  ];
-  if (VEILIGE_COOKIE) delen.push('Secure');
-  return delen.join('; ');
+function ingelogd(req) {
+  return tokenIsGeldig(SLEUTEL, parseCookies(req.headers.cookie)[COOKIE_NAAM]);
 }
 
 function wachtwoordKlopt(ingevoerd) {
-  const a = Buffer.from(String(ingevoerd || ''));
-  const b = Buffer.from(beheerWachtwoord);
-  if (a.length !== b.length) {
+  const gekregen = Buffer.from(String(ingevoerd || ''));
+  const verwacht = Buffer.from(beheerWachtwoord);
+  if (gekregen.length !== verwacht.length) {
     // Toch vergelijken, zodat de duur niet verraadt of de lengte klopt.
-    timingSafeEqual(b, b);
+    timingSafeEqual(verwacht, verwacht);
     return false;
   }
-  return timingSafeEqual(a, b);
+  return timingSafeEqual(gekregen, verwacht);
 }
 
 // ----------------------------------------------------------------- routes --
@@ -95,8 +86,7 @@ async function publiekeApi(req, res, url) {
 
   if (url.pathname === '/api/berekening' && req.method === 'POST') {
     const body = await leesJsonBody(req);
-    const rapport = berekenDwangsom(body.invoer || body);
-    return stuurJson(res, 200, { rapport });
+    return stuurJson(res, 200, { rapport: berekenDwangsom(body.invoer || body) });
   }
 
   if (url.pathname === '/api/aanvragen' && req.method === 'POST') {
@@ -120,11 +110,7 @@ async function publiekeApi(req, res, url) {
         userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
       },
     });
-    return stuurJson(res, 201, {
-      referentie: aanvraag.referentie,
-      status: aanvraag.status,
-      rapport,
-    });
+    return stuurJson(res, 201, { referentie: aanvraag.referentie, status: aanvraag.status, rapport });
   }
 
   return false;
@@ -138,32 +124,26 @@ async function beheerApi(req, res, url) {
       return stuurFout(res, 429, `Te veel inlogpogingen. Probeer het over ${limiet.wachtSeconden} seconden opnieuw.`);
     }
     const body = await leesJsonBody(req);
-    if (!wachtwoordKlopt(body.wachtwoord)) {
-      return stuurFout(res, 401, 'Onjuist wachtwoord.');
-    }
+    if (!wachtwoordKlopt(body.wachtwoord)) return stuurFout(res, 401, 'Onjuist wachtwoord.');
     loginBegrenzer.herstel(ip);
-    const token = maakSessie();
-    return stuurJson(res, 200, { ingelogd: true }, { 'Set-Cookie': sessieCookie(token) });
+    const cookie = sessieCookie(maakToken(SLEUTEL), { veilig: veiligeCookie(req) });
+    return stuurJson(res, 200, { ingelogd: true }, { 'Set-Cookie': cookie });
   }
 
   if (url.pathname === '/api/beheer/sessie' && req.method === 'GET') {
-    return stuurJson(res, 200, { ingelogd: Boolean(geldigeSessie(req)) });
+    return stuurJson(res, 200, { ingelogd: ingelogd(req) });
   }
 
   if (url.pathname === '/api/beheer/logout' && req.method === 'POST') {
-    const sessie = geldigeSessie(req);
-    if (sessie) sessies.delete(sessie.token);
-    return stuurJson(res, 200, { ingelogd: false }, { 'Set-Cookie': sessieCookie('', true) });
+    const cookie = sessieCookie('', { verwijder: true, veilig: veiligeCookie(req) });
+    return stuurJson(res, 200, { ingelogd: false }, { 'Set-Cookie': cookie });
   }
 
-  // Alles hierna vereist een sessie.
   if (!url.pathname.startsWith('/api/beheer/')) return false;
-  if (!geldigeSessie(req)) {
-    return stuurFout(res, 401, 'Niet ingelogd.');
-  }
+  if (!ingelogd(req)) return stuurFout(res, 401, 'Niet ingelogd.');
 
   if (url.pathname === '/api/beheer/aanvragen' && req.method === 'GET') {
-    const aanvragen = store.lijst({
+    const aanvragen = await store.lijst({
       status: url.searchParams.get('status'),
       zoek: url.searchParams.get('zoek'),
       bestuursorgaan: url.searchParams.get('bestuursorgaan'),
@@ -171,12 +151,13 @@ async function beheerApi(req, res, url) {
     return stuurJson(res, 200, {
       aanvragen: aanvragen.map(samenvatting),
       statussen: STATUSSEN,
-      statistieken: store.statistieken(),
+      statistieken: await store.statistieken(),
+      opslag: { soort: opslag.soort, duurzaam: opslag.duurzaam, omschrijving: opslag.omschrijving },
     });
   }
 
   if (url.pathname === '/api/beheer/export.csv' && req.method === 'GET') {
-    const rijen = store.lijst({ status: url.searchParams.get('status') });
+    const rijen = await store.lijst({ status: url.searchParams.get('status') });
     return stuurTekst(res, 200, naarCsv(rijen), {
       'Content-Disposition': 'attachment; filename="dwangsom-aanvragen.csv"',
     });
@@ -184,7 +165,7 @@ async function beheerApi(req, res, url) {
 
   const detail = /^\/api\/beheer\/aanvragen\/([A-Za-z0-9-]+)(\/[a-z]+)?$/.exec(url.pathname);
   if (detail) {
-    const aanvraag = store.vind(detail[1]);
+    const aanvraag = await store.vind(detail[1]);
     if (!aanvraag) return stuurFout(res, 404, 'Aanvraag niet gevonden.');
     const subpad = detail[2];
 
@@ -195,25 +176,22 @@ async function beheerApi(req, res, url) {
     if (!subpad && req.method === 'PATCH') {
       const body = await leesJsonBody(req);
       if (!isGeldigeStatus(body.status)) return stuurFout(res, 400, 'Onbekende status.');
-      const bijgewerkt = await store.wijzigStatus(aanvraag.id, body.status, 'beheerder');
-      return stuurJson(res, 200, { aanvraag: bijgewerkt });
+      return stuurJson(res, 200, { aanvraag: await store.wijzigStatus(aanvraag.id, body.status, 'beheerder') });
     }
 
     if (subpad === '/notities' && req.method === 'POST') {
       const body = await leesJsonBody(req);
       const tekst = String(body.tekst || '').trim().slice(0, 2000);
       if (!tekst) return stuurFout(res, 400, 'Notitie is leeg.');
-      const bijgewerkt = await store.voegNotitieToe(aanvraag.id, tekst, 'beheerder');
-      return stuurJson(res, 200, { aanvraag: bijgewerkt });
+      return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, 'beheerder') });
     }
 
     if (subpad === '/herbereken' && req.method === 'POST') {
       const body = await leesJsonBody(req);
       const invoer = { ...aanvraag.invoer, ...(body.invoer || {}) };
-      const rapport = berekenDwangsom(invoer);
       const bijgewerkt = await store.werkRapportBij(aanvraag.id, {
         invoer,
-        rapport,
+        rapport: berekenDwangsom(invoer),
         door: 'beheerder',
         toelichting: body.toelichting || 'Berekening opnieuw uitgevoerd door de beheerder.',
       });
@@ -257,8 +235,8 @@ function samenvatting(a) {
   };
 }
 
-function csvVeld(waarde) {
-  const s = waarde === null || waarde === undefined ? '' : String(waarde);
+function csvVeld(input) {
+  const s = input === null || input === undefined ? '' : String(input);
   // Voorkomt formule-injectie bij openen in een spreadsheet.
   const veilig = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return `"${veilig.replace(/"/g, '""')}"`;
@@ -295,7 +273,23 @@ function naarCsv(aanvragen) {
   return '﻿' + regels.join('\r\n');
 }
 
-// ---------------------------------------------------------------- pagina's --
+// ------------------------------------------------------------- afhandeling --
+
+function standaardHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+}
+
+/** Alleen de API. Dit is wat de serverloze functie op Vercel aanroept. */
+export async function apiHandler(req, res) {
+  await gereed();
+  standaardHeaders(res);
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if ((await beheerApi(req, res, url)) !== false) return;
+  if ((await publiekeApi(req, res, url)) !== false) return;
+  stuurFout(res, 404, 'Onbekend API-pad.');
+}
 
 const PAGINAS = {
   '/': 'index.html',
@@ -304,36 +298,20 @@ const PAGINAS = {
   '/hoe-werkt-het': 'hoe-werkt-het.html',
 };
 
+/** API plus statische bestanden: de complete applicatie op één poort. */
 async function verwerk(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if (url.pathname.startsWith('/api/')) return apiHandler(req, res);
 
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'same-origin');
-
-  if (url.pathname.startsWith('/api/')) {
-    const afgehandeld = (await beheerApi(req, res, url)) ?? false;
-    if (afgehandeld !== false) return;
-    const publiek = (await publiekeApi(req, res, url)) ?? false;
-    if (publiek !== false) return;
-    return stuurFout(res, 404, 'Onbekend API-pad.');
-  }
-
+  standaardHeaders(res);
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return stuurFout(res, 405, 'Methode niet toegestaan.');
   }
 
   const pagina = PAGINAS[url.pathname.replace(/\/+$/, '') || '/'];
-  if (pagina) {
-    const ok = await serveerBestand(res, PUBLIEK, pagina);
-    if (ok) return;
-  }
-
-  if (url.pathname.startsWith('/shared/')) {
-    const ok = await serveerBestand(res, GEDEELD, url.pathname.slice('/shared/'.length));
-    if (ok) return;
-  }
-
+  if (pagina && await serveerBestand(res, PUBLIEK, pagina)) return;
+  if (url.pathname.startsWith('/shared/')
+    && await serveerBestand(res, GEDEELD, url.pathname.slice('/shared/'.length))) return;
   if (await serveerBestand(res, PUBLIEK, url.pathname)) return;
 
   res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -341,21 +319,28 @@ async function verwerk(req, res) {
     + '<p style="font:16px system-ui;padding:2rem">Deze pagina bestaat niet. <a href="/">Terug naar de startpagina</a>.</p>');
 }
 
+export function foutAfhandeling(err, req, res) {
+  const code = err.statuscode || 500;
+  if (code >= 500) console.error('[server]', err);
+  if (!res.headersSent) stuurFout(res, code, err.statuscode ? err.message : 'Er ging iets mis op de server.');
+  else res.end();
+}
+
 const server = http.createServer((req, res) => {
-  verwerk(req, res).catch((err) => {
-    const code = err.statuscode || 500;
-    if (code >= 500) console.error('[server]', err);
-    if (!res.headersSent) stuurFout(res, code, err.statuscode ? err.message : 'Er ging iets mis op de server.');
-    else res.end();
-  });
+  verwerk(req, res).catch((err) => foutAfhandeling(err, req, res));
 });
 
 export async function start(poort = POORT) {
-  await store.init();
+  await gereed();
   await new Promise((resolve) => server.listen(poort, resolve));
-  const adres = server.address();
-  console.log(`\n  Dwangsomhulp draait op http://localhost:${adres.port}`);
-  console.log(`  Beheeromgeving:        http://localhost:${adres.port}/beheer`);
+  const { port } = server.address();
+  console.log(`\n  Dwangsomhulp draait op http://localhost:${port}`);
+  console.log(`  Beheeromgeving:        http://localhost:${port}/beheer`);
+  console.log(`  Opslag:                ${opslag.omschrijving}`);
+  if (!opslag.duurzaam) {
+    console.log('  LET OP: aanvragen worden niet duurzaam bewaard. Stel KV_REST_API_URL en');
+    console.log('          KV_REST_API_TOKEN in, of draai op een server met een eigen schijf.');
+  }
   if (wachtwoordGegenereerd) {
     console.log(`  Beheerwachtwoord (gegenereerd): ${beheerWachtwoord}`);
     console.log('  Zet BEHEER_WACHTWOORD in de omgeving om een vast wachtwoord te gebruiken.\n');
@@ -365,7 +350,7 @@ export async function start(poort = POORT) {
   return server;
 }
 
-export { server, store };
+export { server, store, opslag, verwerk };
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   start().catch((err) => {

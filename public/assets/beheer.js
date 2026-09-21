@@ -111,6 +111,7 @@ async function laadLijst() {
   const data = await api(`/api/beheer/aanvragen?${filterQuery()}`);
   statussen = data.statussen;
   vulStatusfilter();
+  rendereOpslagwaarschuwing(data.opslag);
   rendereKengetallen(data.statistieken);
   rendereTabel(data.aanvragen);
   document.getElementById('knop-export').href = `/api/beheer/export.csv?status=${document.getElementById('filter-status').value}`;
@@ -122,6 +123,21 @@ function vulStatusfilter() {
   for (const status of statussen) {
     select.append(el('option', { value: status.id }, status.label));
   }
+}
+
+/**
+ * Zonder duurzame opslag (bijvoorbeeld op Vercel zonder database) verdwijnen
+ * ingediende aanvragen zodra de functie afkoelt. Dat mag niemand ontgaan.
+ */
+function rendereOpslagwaarschuwing(opslag) {
+  const vak = document.getElementById('opslag-waarschuwing');
+  vak.textContent = '';
+  if (!opslag || opslag.duurzaam) return;
+  vak.append(el('div', { class: 'melding melding--fout' },
+    el('strong', {}, 'Let op: aanvragen worden nu niet bewaard'),
+    el('p', {}, `Deze omgeving draait op ${opslag.omschrijving}. Ingediende aanvragen `
+      + 'verdwijnen zodra de server herstart. Koppel een database (KV_REST_API_URL en '
+      + 'KV_REST_API_TOKEN) voordat u klanten naar deze site verwijst.')));
 }
 
 function rendereKengetallen(stats) {
