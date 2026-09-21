@@ -433,12 +433,20 @@ export async function apiHandler(req, res) {
   stuurFout(res, 404, 'Onbekend API-pad.');
 }
 
+/**
+ * Let op: op Vercel gaat het bestandssysteem vóór deze functie. Een pagina
+ * die hier een andere kant op wordt gestuurd, mag dus géén gelijknamig
+ * bestand in public/ hebben - anders serveert het platform dat bestand en
+ * komt deze tabel nooit aan bod. Daarom heet de klassieke wizard
+ * aanvraag-klassiek.html: /aanvraag zelf heeft geen eigen bestand en wordt
+ * altijd hier beslist.
+ */
 const PAGINAS = {
   '/': 'index.html',
   '/start': 'start.html',
-  '/aanvraag': FUNNEL === 'klassiek' ? 'aanvraag.html' : 'start.html',
+  '/aanvraag': FUNNEL === 'klassiek' ? 'aanvraag-klassiek.html' : 'start.html',
   '/aanvraag-nieuw': 'start.html',
-  '/aanvraag-klassiek': 'aanvraag.html',
+  '/aanvraag-klassiek': 'aanvraag-klassiek.html',
   '/beheer': 'beheer.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
 };
@@ -498,7 +506,7 @@ export async function start(poort = POORT) {
   return server;
 }
 
-export { server, store, opslag, verwerk };
+export { server, store, opslag, verwerk, PAGINAS, FUNNEL };
 
 /**
  * Default export voor platforms die deze module zelf laden en er de
