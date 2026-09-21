@@ -26,10 +26,10 @@ export default async function handler(req, res) {
 
   // Stap voor stap laden, zodat zichtbaar wordt wáár het misgaat.
   const modules = [
-    ['shared/datum.js', () => import('../shared/datum.js')],
-    ['shared/catalogus.js', () => import('../shared/catalogus.js')],
-    ['shared/dwangsom.js', () => import('../shared/dwangsom.js')],
-    ['shared/brief.js', () => import('../shared/brief.js')],
+    ['shared/datum.js', () => import('../public/shared/datum.js')],
+    ['shared/catalogus.js', () => import('../public/shared/catalogus.js')],
+    ['shared/dwangsom.js', () => import('../public/shared/dwangsom.js')],
+    ['shared/brief.js', () => import('../public/shared/brief.js')],
     ['src/opslag.js', () => import('../src/opslag.js')],
     ['src/sessie.js', () => import('../src/sessie.js')],
     ['src/store.js', () => import('../src/store.js')],

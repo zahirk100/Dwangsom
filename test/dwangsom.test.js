@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { bedragOverDagen, berekenDwangsom, TARIEF, UITKOMST } from '../shared/dwangsom.js';
-import { parseDatum, plusDagen, formatDatum } from '../shared/datum.js';
+import { bedragOverDagen, berekenDwangsom, TARIEF, UITKOMST } from '../public/shared/dwangsom.js';
+import { parseDatum, plusDagen, formatDatum } from '../public/shared/datum.js';
 
 const basis = {
   bestuursorgaan: 'gemeente',

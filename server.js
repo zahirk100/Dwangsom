@@ -21,13 +21,12 @@ import {
   serveerBestand, stuurFout, stuurJson, stuurTekst,
 } from './src/http-util.js';
 import { valideerAanvraag } from './src/validatie.js';
-import { berekenDwangsom } from './shared/dwangsom.js';
-import { BESTUURSORGANEN, ZAAKTYPEN } from './shared/catalogus.js';
-import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './shared/brief.js';
+import { berekenDwangsom } from './public/shared/dwangsom.js';
+import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
+import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, 'public');
-const GEDEELD = path.join(HIER, 'shared');
 
 const POORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(HIER, 'data');
@@ -325,10 +324,10 @@ async function verwerk(req, res) {
     return stuurFout(res, 405, 'Methode niet toegestaan.');
   }
 
+  // De gedeelde modules staan in public/shared/, zodat de browser ze net als
+  // elk ander bestand ophaalt en er geen bouwstap nodig is om ze te kopieren.
   const pagina = PAGINAS[url.pathname.replace(/\/+$/, '') || '/'];
   if (pagina && await serveerBestand(res, PUBLIEK, pagina)) return;
-  if (url.pathname.startsWith('/shared/')
-    && await serveerBestand(res, GEDEELD, url.pathname.slice('/shared/'.length))) return;
   if (await serveerBestand(res, PUBLIEK, url.pathname)) return;
 
   res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });

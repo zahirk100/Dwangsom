@@ -1,7 +1,7 @@
 /** Validatie van wat de aanvrager instuurt. De server vertrouwt de client niet. */
 
-import { parseDatum } from '../shared/datum.js';
-import { zoekZaaktype } from '../shared/catalogus.js';
+import { parseDatum } from '../public/shared/datum.js';
+import { zoekZaaktype } from '../public/shared/catalogus.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 

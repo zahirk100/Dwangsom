@@ -37,25 +37,23 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 
 ```
 server.js              HTTP-server, routes, CSV-export; exporteert apiHandler
-api/index.js           Ingang voor Vercel; valt terug op dezelfde router
-vercel.json            Bouwstap, rewrites, cleanUrls en beveiligingsheaders
-scripts/bouw-publiek.mjs  Kopieert shared/ naar public/shared/ bij het bouwen
+api/index.js           Ingang voor Vercel: /api/* naar dezelfde router
+api/ping.js            Diagnose-eindpunt, zonder imports; mag weg als alles draait
+vercel.json            cleanUrls en de rewrite van /api/* naar api/index.js
 src/store.js           Dossierregels: referenties, status, notities, historie
 src/opslag.js          Opslagdrivers: bestand, Redis via REST, geheugen
 src/sessie.js          Sessies als ondertekend cookie, zonder serverstatus
 src/validatie.js       Servervalidatie van het aanvraagformulier
 src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
-shared/dwangsom.js     Rekenkern (browser + server)
-shared/catalogus.js    Zaaktypen met hun beslistermijn
-shared/brief.js        Ingebrekestelling en dwangsomclaim als brieftekst
-shared/datum.js        Datumrekenen in UTC
 public/                Landingspagina, wizard, beheeromgeving
+public/shared/         Rekenkern, catalogus, brieven en datumhulpjes
 test/                  Unit- en integratietests (node:test)
 ```
 
-`shared/` wordt ook aan de browser geserveerd, zodat de wizard live met exact dezelfde
-functie rekent als de server. De server rekent bij indiening altijd opnieuw; wat de
-browser meestuurt is nooit leidend.
+De rekenkern staat in `public/shared/` omdat de browser die modules rechtstreeks
+importeert: de wizard rekent live met exact dezelfde functie als de server, zonder
+bouwstap of gekopieerde bestanden. De server rekent bij indiening altijd opnieuw;
+wat de browser meestuurt is nooit leidend.
 
 ## Het rekenmodel
 
@@ -81,11 +79,11 @@ Mogelijke uitkomsten: `termijn-loopt`, `ingebrekestelling-nodig`, `hersteltermij
 
 ### Aanpassen van termijnen en bedragen
 
-- Beslistermijn per zaaktype: `ZAAKTYPEN` in `shared/catalogus.js`. Elk zaaktype heeft
+- Beslistermijn per zaaktype: `ZAAKTYPEN` in `public/shared/catalogus.js`. Elk zaaktype heeft
   `zekerheid: 'wettelijk'` (termijn staat in de wet) of `'restnorm'` (geen bijzondere
   termijn, dus de acht weken van art. 4:13 lid 2 Awb). De restnormen zijn terugvalwaarden;
   de wizard vraagt daarom altijd eerst naar de datum uit de ontvangstbevestiging.
-- Tarieven en het maximum: `TARIEF` in `shared/dwangsom.js`. De tranches tellen op tot het
+- Tarieven en het maximum: `TARIEF` in `public/shared/dwangsom.js`. De tranches tellen op tot het
   maximum; een test bewaakt dat.
 
 ## API
@@ -112,10 +110,9 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
 Lokaal serveert `server.js` ook de pagina's. Op Vercel serveert het platform
-`public/` statisch en gaat al het overige via een rewrite naar `api/index.js`,
-dat dezelfde `verwerk`-router aanroept. Valt de statische laag onverhoopt weg,
-dan serveert de functie de pagina's zelf — die bestanden zitten via
-`includeFiles` in de bundel.
+`public/` statisch en gaat alleen `/api/*` via een rewrite naar `api/index.js`,
+dat dezelfde router aanroept. Er is geen bouwstap: wat in de repository staat,
+is wat er wordt geserveerd.
 
 ## Hosting en opslag
 

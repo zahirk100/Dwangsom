@@ -85,17 +85,26 @@ vanaf de werkbranch gebouwd.
 
 ### Krijg je "500 FUNCTION_INVOCATION_FAILED"?
 
-Dat betekent dat de serverloze functie zelf stukliep. De applicatie geeft nu
-in plaats daarvan een leesbare melding terug, dus:
+Dat betekent dat de serverloze functie niet opstartte. Het project gebruikt nu
+de standaardopzet van Vercel zonder bouwstap: `public/` is de statische map,
+`api/` bevat de functies, en `vercel.json` regelt alleen `cleanUrls` en de
+rewrite van `/api/*`. Blijft de fout staan, zoek dan gericht:
 
-1. **Deploy opnieuw** met de laatste code (*Deployments → Redeploy*, of push
-   een commit). Dat alleen al verhelpt de bekende oorzaak: de ingang heet nu
-   `api/index.js` in plaats van een catch-all met blokhaken, en al het verkeer
-   loopt via expliciete rewrites uit `vercel.json`.
-2. **Blijft er een fout staan**, dan zie je nu de melding van de applicatie
-   zelf in beeld, bijvoorbeeld `Cannot find module`. Stuur die tekst door.
-3. De volledige stacktrace vind je in Vercel onder het tabblad **Logs** van de
+1. **Controleer de projectinstellingen.** *Settings → Build and Deployment*:
+   Build Command, Output Directory en Install Command horen allemaal op de
+   standaardwaarde te staan, zonder override. Er is geen bouwstap nodig.
+2. **Open `/statisch.txt`.** Zie je tekst, dan werkt de statische hosting.
+   Krijg je een fout of 404, dan wordt `public/` niet als statische map
+   gebruikt en zit het in de Output Directory.
+3. **Open `/api/ping`.** Dat bestand heeft geen enkele import en kan dus niet
+   falen door de applicatie. Het toont de Node-versie, de omgevingsvariabelen
+   en laadt daarna elke module los van elkaar, met per module `ok` of `FOUT`.
+   Faalt ook `/api/ping`, dan start geen enkele functie op en ligt het aan het
+   project, niet aan de code.
+4. De volledige stacktrace staat in Vercel onder het tabblad **Logs** van de
    deployment (of *Observability → Runtime Logs*).
+
+`api/ping.js` en `public/statisch.txt` mogen weg zodra de site draait.
 
 ### 3. Uitproberen
 
