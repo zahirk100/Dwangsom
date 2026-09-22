@@ -123,3 +123,30 @@ test('zonder cookie blijft het beheerdeel dicht', async () => {
   assert.equal((await haal('/api/beheer/aanvragen')).status, 401);
   assert.equal((await haal('/api/beheer/export.csv')).status, 401);
 });
+
+/**
+ * Een cron in vercel.json die naar een pad wijst dat de applicatie niet kent,
+ * faalt geruisloos: Vercel roept hem netjes aan, de applicatie antwoordt met
+ * 404, en niemand merkt dat de dagelijkse bewaking al weken niets doet. Deze
+ * toets legt de twee kanten naast elkaar.
+ */
+test('elk cronpad uit vercel.json wordt ook echt door de applicatie bediend', async () => {
+  const config = JSON.parse(await fs.readFile(
+    path.join(path.dirname(path.dirname(new URL(import.meta.url).pathname)), 'vercel.json'), 'utf8'));
+  const crons = config.crons || [];
+  assert.ok(crons.length > 0, 'er hoort minstens een dagelijkse bewaking te staan');
+
+  const eerder = process.env.CRON_GEHEIM;
+  delete process.env.CRON_GEHEIM;
+  try {
+    for (const cron of crons) {
+      assert.match(cron.schedule, /^\S+ \S+ \S+ \S+ \S+$/, `${cron.path}: schema klopt niet`);
+      const antwoord = await fetch(basis + cron.path);
+      // 503 is "ingesteld maar uitgezet", en dus bekend. 404 zou betekenen dat
+      // het pad niet bestaat en de cron elke dag in het niets loopt.
+      assert.notEqual(antwoord.status, 404, `${cron.path} bestaat niet in de applicatie`);
+    }
+  } finally {
+    if (eerder === undefined) delete process.env.CRON_GEHEIM; else process.env.CRON_GEHEIM = eerder;
+  }
+});

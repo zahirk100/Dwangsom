@@ -304,6 +304,7 @@ echte klant.
 | `KANTOOR_EMAIL` | aanbevolen | Krijgt een melding bij elk nieuw dossier. |
 | `BEDRIJF_NAAM` · `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` · `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | **ja** | Komen op de machtiging. Wat leeg blijft wordt een stippellijn. |
 | `TARIEF_PERCENTAGE` *of* `TARIEF_VAST` | **ja** | Onze vergoeding: `25` (procent van de toegekende dwangsom) of `129` (vast bedrag). Staat er niets, dan noemt de site nergens een bedrag en zegt hij dat je het vooraf hoort. Dat is eerlijk, maar het kost conversie: zet het erin. |
+| `CRON_GEHEIM` | **ja** | Het wachtwoord van de dagelijkse bewaking (zie hieronder). Staat hij er niet, dan gaat er nooit een automatisch bericht uit. |
 | `BEHEER_OPEN` | **moet weg** | Zet de beheeromgeving wagenwijd open. Alleen voor proefdraaien. |
 
 Een geheim maak je zo:
@@ -311,6 +312,46 @@ Een geheim maak je zo:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 ```
+
+---
+
+### De automatische berichten aan de aanvrager
+
+Een aanvrager hoorde vroeger na zijn welkomstmail niets meer, tenzij iemand
+zelf iets stuurde. Dat is verkeerd om: de momenten die ertoe doen zijn datums,
+en een datum verstrijkt ook op een zondag.
+
+Er lopen nu twee wegen naar dezelfde berichten:
+
+| Moment | Wanneer | Waardoor |
+| --- | --- | --- |
+| De beslistermijn is voorbij | de dag na de einddatum | dagelijkse taak |
+| De dwangsom gaat lopen | de eerste dwangsomdag | dagelijkse taak |
+| Wij missen nog stukken | vijf dagen na binnenkomst, één keer | dagelijkse taak |
+| De melding is verstuurd | de behandelaar zet de status | meteen |
+| Er is toegekend | de behandelaar legt de afhandeling vast | meteen |
+
+De dagelijkse taak is `/api/taken/bewaking` en staat als cron in `vercel.json`
+(elke ochtend om 07:00 UTC). Die route zit achter `CRON_GEHEIM`: Vercel stuurt
+dat mee als `Authorization: Bearer …`.
+
+**Staat `CRON_GEHEIM` niet in de omgeving, dan doet de route niets** — hij
+antwoordt met 503 in plaats van open te staan. Dat is bewust: wie deze route
+kan aanroepen, laat de applicatie mail sturen naar echte aanvragers. Een
+vergeten variabele hoort de deur dicht te doen, niet open te zetten.
+
+Zelf een ronde draaien om te kijken of het werkt:
+
+```bash
+curl -H "Authorization: Bearer $CRON_GEHEIM" https://nubeslist.nl/api/taken/bewaking
+```
+
+Je krijgt een telling terug (`bekeken`, `verstuurd`, `mislukt`) en geen
+persoonsgegevens. Wat eruit is gegaan staat per dossier in `berichten`, zodat
+hetzelfde moment nooit twee keer gemaild wordt — ook niet als de taak per
+ongeluk twee keer loopt. Een mislukte verzending wordt geteld en na drie
+pogingen opgegeven, zodat een adres dat blijft weigeren niet elke dag opnieuw
+een poging krijgt.
 
 ---
 
@@ -363,9 +404,10 @@ dat erbij, en het staat al in het schema klaar (`db/001-schema.sql`).
 duizenden dossiers. Het schema en de rijbeveiliging liggen klaar in `db/`; zie
 [ontwerp-database.md](ontwerp-database.md) voor de afweging en de volgorde.
 
-**e. Statusmails bij elke stap.** De sjablonen staan in `src/mail.js`
-(`meldingVerstuurd`, `toegekend`); ze worden nog niet automatisch verstuurd als
-een behandelaar een stap vastlegt.
+**e. Meer momenten in de bewaker.** De vijf berichten uit stap 5 gaan nu
+automatisch. Wat er nog niet in zit: een seintje als het maximum van 42 dagen
+in zicht komt, en een herinnering aan onszelf als een dossier te lang op
+dezelfde status blijft staan. Allebei een regel erbij in `src/bewaker.js`.
 
 ---
 

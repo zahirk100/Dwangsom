@@ -124,6 +124,46 @@ export const SJABLONEN = {
     knop: { tekst: 'Bekijk mijn zaak', url },
   }),
 
+  /** De beslistermijn is verstreken terwijl wij hem bewaakten. */
+  termijnVerlopen: ({ naam, instantie, referentie, url }) => ({
+    onderwerp: `De beslistermijn van ${instantie} is voorbij (${referentie})`,
+    kop: 'De termijn is voorbij',
+    regels: [
+      `Hallo${naam ? ` ${veilig(naam)}` : ''}, de termijn waarbinnen ${veilig(instantie)} had moeten beslissen is verstreken.`,
+      'Wij stellen hen nu namens jou in gebreke. Dat is de stap die de wet vereist voordat er een dwangsom kan gaan lopen.',
+      `Daarna heeft ${veilig(instantie)} nog twee weken. Komt er dan nog geen besluit, dan gaat de dwangsom lopen en vorderen wij die voor je.`,
+      'Je hoeft zelf niets te doen.',
+    ],
+    knop: { tekst: 'Bekijk mijn zaak', url },
+  }),
+
+  /** De hersteltermijn is om: vanaf nu telt de dwangsom. */
+  dwangsomLoopt: ({ naam, instantie, referentie, url }) => ({
+    onderwerp: `Er loopt nu een dwangsom voor je (${referentie})`,
+    kop: 'De dwangsom loopt',
+    regels: [
+      `Hallo${naam ? ` ${veilig(naam)}` : ''}, de twee weken na onze melding zijn voorbij en ${veilig(instantie)} heeft nog steeds niet beslist.`,
+      'Vanaf vandaag loopt er een dwangsom op, voor elke dag dat het besluit uitblijft. Dat loopt door tot maximaal 42 dagen.',
+      'Wij houden het bedrag bij en vorderen het zodra er een besluit is of het maximum is bereikt. Een toegekende vergoeding wordt rechtstreeks aan jou overgemaakt.',
+    ],
+    knop: { tekst: 'Bekijk mijn zaak', url },
+  }),
+
+  /** Er ontbreken nog stukken, en het is stil gebleven. */
+  stukkenHerinnering: ({ naam, referentie, stukken = [], url }) => ({
+    onderwerp: `Wij missen nog een paar stukken (${referentie})`,
+    kop: 'Wij missen nog iets van jou',
+    regels: [
+      `Hallo${naam ? ` ${veilig(naam)}` : ''}, je zaak staat klaar, maar wij kunnen hem nog niet onderbouwen. Dit hebben wij nog nodig:`,
+      stukken.length
+        ? `<ul style="margin:0 0 14px;padding-left:20px">${stukken.map((s) => `<li style="margin-bottom:5px">${veilig(s)}</li>`).join('')}</ul>`
+        : 'Een of meer stukken bij je zaak.',
+      'Je kunt ze toevoegen via de knop hieronder. Een foto van het papier met je telefoon is ook goed.',
+    ],
+    knop: { tekst: 'Stukken toevoegen', url },
+    slot: 'Heb je ze al opgestuurd? Dan heeft deze mail elkaar gekruist en hoef je niets te doen.',
+  }),
+
   /** Er is toegekend. */
   toegekend: ({ naam, bedrag, referentie, url }) => ({
     onderwerp: `Goed nieuws over je zaak (${referentie})`,

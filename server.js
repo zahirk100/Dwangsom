@@ -9,6 +9,7 @@
  */
 
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +22,7 @@ import {
   SESSIEDUUR_MS, KLANTSESSIEDUUR_MS,
 } from './src/gebruikers.js';
 import { verstuur } from './src/mail.js';
+import { loopBewakingAf, bewaakDossier } from './src/bewaker.js';
 import {
   MAX_UPLOAD_BYTES, Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
   serveerBestand, stuurFout, stuurHtml, stuurJson, stuurTekst,
@@ -321,7 +323,46 @@ async function publiekeApi(req, res, url) {
     });
   }
 
+  /**
+   * De dagelijkse ronde van de bewaker.
+   *
+   * Hier hangt een geheim voor, en zonder dat geheim doet deze route niets.
+   * Dat is geen extra slot maar het enige slot: wie hem wel kan aanroepen,
+   * laat de applicatie mail sturen naar echte aanvragers. Een niet ingestelde
+   * `CRON_GEHEIM` betekent dus dicht, niet open — anders zou een vergeten
+   * variabele de deur juist openzetten.
+   */
+  if (url.pathname === '/api/taken/bewaking') {
+    const geheim = process.env.CRON_GEHEIM || '';
+    if (!geheim) return stuurFout(res, 503, 'De bewaking is niet ingesteld.');
+    const meegegeven = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const a = Buffer.from(meegegeven);
+    const b = Buffer.from(geheim);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return stuurFout(res, 401, 'Geen toegang.');
+    const uitslag = await loopBewakingAf({
+      store, gebruikers, verstuur, siteUrl: siteUrl(req),
+    });
+    console.log('[bewaker]', JSON.stringify(uitslag));
+    return stuurJson(res, 200, uitslag);
+  }
+
   return false;
+}
+
+/**
+ * Laat de bewaker meteen langs één dossier gaan.
+ *
+ * Een aanvrager wil binnen een minuut horen dat zijn melding de deur uit is,
+ * niet de volgende ochtend als de dagelijkse taak toevallig langskomt. Dit
+ * mag nooit het antwoord aan de behandelaar ophouden of laten mislukken: de
+ * statuswijziging is al opgeslagen, de mail is een gevolg.
+ */
+function meldAanKlant(dossier, req) {
+  if (!dossier) return;
+  const adres = siteUrl(req);
+  Promise.resolve()
+    .then(() => bewaakDossier(dossier, { store, gebruikers, verstuur, siteUrl: adres }))
+    .catch((err) => console.error('[bewaker] direct bericht mislukt:', err.message));
 }
 
 /**
@@ -833,7 +874,9 @@ async function beheerApi(req, res, url) {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       if (!isGeldigeStatus(body.status)) return stuurFout(res, 400, 'Onbekende status.');
-      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(await store.wijzigStatus(aanvraag.id, body.status, ik.naam || ik.email)) });
+      const bijgewerkt = await store.wijzigStatus(aanvraag.id, body.status, ik.naam || ik.email);
+      meldAanKlant(bijgewerkt, req);
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
     }
 
     if (subpad === '/notities' && req.method === 'POST') {
@@ -909,9 +952,9 @@ async function beheerApi(req, res, url) {
         toelichting: typeof body.toelichting === 'string' ? body.toelichting.trim().slice(0, 1000) : '',
         status: isGeldigeStatus(body.status) ? body.status : null,
       };
-      return stuurJson(res, 200, {
-        aanvraag: zonderBestandsinhoud(await store.legAfhandelingVast(aanvraag.id, afhandeling, ik.naam || ik.email)),
-      });
+      const afgehandeld = await store.legAfhandelingVast(aanvraag.id, afhandeling, ik.naam || ik.email);
+      meldAanKlant(afgehandeld, req);
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(afgehandeld) });
     }
 
     if (subpad === '/herbereken' && req.method === 'POST') {

@@ -206,6 +206,38 @@ export class Store {
     return aanvraag;
   }
 
+  /**
+   * Tekent aan dat een automatisch bericht de deur uit is.
+   *
+   * Dit staat bewust in het dossier en niet in een aparte lijst: serverloos
+   * draait elke ronde in een ander proces, en alleen het dossier reist mee.
+   * Zo kan hetzelfde moment nooit twee keer gemaild worden, ook niet als de
+   * dagelijkse taak per ongeluk twee keer loopt.
+   *
+   * Een mislukte poging wordt geteld in plaats van vergeten. Een tijdelijke
+   * storing mag het morgen opnieuw proberen; een adres dat blijft weigeren
+   * loopt na een paar rondes vanzelf dood in plaats van eeuwig door.
+   */
+  async noteerBericht(id, sleutel, { gelukt = true } = {}) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+    aanvraag.berichten = { ...(aanvraag.berichten || {}) };
+    const eerder = aanvraag.berichten[sleutel] || {};
+    aanvraag.berichten[sleutel] = gelukt
+      ? { verstuurdOp: nu, pogingen: (eerder.pogingen || 0) + 1 }
+      : { pogingen: (eerder.pogingen || 0) + 1, laatstGeprobeerdOp: nu };
+    // Alleen een geslaagde verzending is iets wat de behandelaar moet kunnen
+    // terugzien. Mislukte pogingen staan in het logboek, niet in de historie
+    // van de klant zijn dossier.
+    if (gelukt) {
+      aanvraag.historie.push({ op: nu, door: 'systeem', tekst: `Automatisch bericht verstuurd: ${sleutel}.` });
+    }
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
   async voegNotitieToe(id, tekst, door) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
