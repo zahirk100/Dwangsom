@@ -152,6 +152,13 @@ aan te pas.
 
 ## Later: klaar voor echte klanten
 
+> **Let op:** onderstaande stappen brengen de testopstelling verder, maar zijn
+> niet het ontwerp voor de echte livegang. Dat staat in
+> [docs/livegang.md](docs/livegang.md): Postgres in plaats van Redis, accounts
+> met tweefactor in plaats van één gedeeld wachtwoord, een klantportaal, e-mail
+> en de AVG-punten. Ga je echte klanten binnenhalen, lees dan dat document
+> eerst.
+
 ### 4. Database koppelen
 
 1. Open in Vercel het tabblad **Storage → Create Database**.

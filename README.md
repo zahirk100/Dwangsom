@@ -400,6 +400,18 @@ nu niet in), richt back-ups en een bewaartermijn in, en laat de
 standaardtermijnen in de catalogus juridisch toetsen. Zie DEPLOY.md voor de
 volledige lijst.
 
+## Van test naar live
+
+Het ontwerp voor de livegang staat in **[docs/livegang.md](docs/livegang.md)**:
+domeinnaam en DNS, de keuze voor Supabase met de afwegingen erbij, het volledige
+databaseschema met rijbeveiliging, de loginopbouw voor zowel het klantportaal
+(magic link) als de beheeromgeving (wachtwoord plus verplichte tweefactor), en
+wat er juridisch geregeld moet zijn voordat er één echte klant in zit.
+
+Wat er nu draait is bewust een testopstelling: dossiers als JSON-documenten, één
+gedeeld beheerwachtwoord, geen e-mail en geen klantomgeving. Het document
+beschrijft per onderdeel wat daarvoor in de plaats komt en in welke volgorde.
+
 ## Voorbehoud
 
 nubeslist.nl is een particuliere dienstverlener, geen overheidsinstantie. De berekening is
