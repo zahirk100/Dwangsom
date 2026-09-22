@@ -141,6 +141,9 @@ async function huidigeKlant(req) {
   return sessie.gebruiker;
 }
 
+/** Wanneer deze instantie is opgestart; samen met de commit zegt dat genoeg. */
+const GESTART_OP = new Date().toISOString();
+
 // ----------------------------------------------------------------- routes --
 
 async function publiekeApi(req, res, url) {
@@ -148,12 +151,22 @@ async function publiekeApi(req, res, url) {
     // Zodat in één oogopslag te zien is welke versie er echt draait. Zonder
     // dit blijft "ik zie geen verandering" giswerk tussen cache, branch en
     // een mislukte deploy.
+    //
+    // Dit antwoord gaat als no-store de deur uit, dus het komt altijd van de
+    // draaiende server en nooit uit een cache. Dat maakt het het enige
+    // betrouwbare antwoord op de vraag "staat mijn wijziging er nu op?": zie
+    // je hier je nieuwe commit maar op het scherm de oude pagina, dan zit het
+    // in je browser en niet in de deploy.
     return stuurJson(res, 200, {
       commit: String(process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || 'lokaal',
       branch: process.env.VERCEL_GIT_COMMIT_REF || 'lokaal',
       funnel: FUNNEL,
       opslag: opslag.soort,
+      // Het belangrijkste vinkje van de hele productieomgeving: onthoudt hij
+      // het na een nieuwe deploy?
+      opslagDuurzaam: opslag.duurzaam,
       beheerOpen: BEHEER_OPEN,
+      gestartOp: GESTART_OP,
       tijd: new Date().toISOString(),
     });
   }

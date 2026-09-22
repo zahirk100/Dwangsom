@@ -425,6 +425,29 @@ komen uit bij dezelfde `verwerk`-router, dus de
 applicatie gedraagt zich overal gelijk. Er is geen bouwstap: wat in de
 repository staat, is wat er wordt geserveerd.
 
+## Wat staat er nu live?
+
+`GET /api/versie` geeft het antwoord, en het is het enige antwoord waar je op
+kunt bouwen:
+
+```json
+{ "commit": "88e5996", "branch": "main", "opslag": "redis",
+  "opslagDuurzaam": true, "beheerOpen": false, "gestartOp": "..." }
+```
+
+Dat antwoord gaat als `no-store` de deur uit, dus het komt altijd van de
+draaiende server en nooit uit een cache. Daarmee valt het meest verwarrende
+probleem van een livegang uiteen in twee losse vragen:
+
+- **Staat je commit er niet?** Dan is de deploy niet gelukt of niet gestart;
+  kijk in Vercel onder Deployments.
+- **Staat je commit er wél, maar zie je op het scherm de oude pagina?** Dan zit
+  het in de cache van je browser, niet in de deploy. Een privévenster laat
+  meteen zien of dat klopt.
+
+`opslagDuurzaam: false` is het ergste wat hier kan staan: dan draait de
+applicatie op geheugenopslag en is elk dossier weg bij de volgende deploy.
+
 ## Hosting en opslag
 
 De applicatie kiest zelf de opslag die bij de omgeving past:
