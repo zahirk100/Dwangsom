@@ -125,10 +125,23 @@ test('de voorbeeldkaarten zijn als voorbeeld gemerkt', () => {
 
 // ----------------------------------------------------------- de uitgangen ---
 
-test('de balk heeft geen navigatie: elke link daar is een uitgang', () => {
+test('de balk heeft geen navigatie, alleen een weg naar de funnel', () => {
+  // De regel is niet "geen links" maar "geen uitgangen". Een knop naar de
+  // funnel is de bestemming van deze pagina, geen afleiding ervan.
   const balk = html().split('<header')[1].split('</header>')[0];
-  assert.ok(!balk.includes('<a '), 'geen links in de balk van een advertentiepagina');
   assert.ok(!balk.includes('<nav'), 'geen menu');
+  const links = [...balk.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(links.length > 0, 'de knop rechtsboven hoort ergens heen te gaan');
+  for (const link of links) {
+    assert.match(link, /^\/aanvraag\?/, `${link} is een uitgang en hoort hier niet`);
+  }
+});
+
+test('er staat niets in de balk dat op een knop lijkt maar er geen is', () => {
+  // Rechtsboven stond een grijs label. Daar werd op geklikt en er gebeurde
+  // niets; dat is een valse belofte op de plek waar iedereen een knop zoekt.
+  const balk = html().split('<header')[1].split('</header>')[0];
+  assert.ok(!balk.includes('balk__rust'), 'het oude niet-klikbare label hoort weg');
 });
 
 test('alle knoppen gaan naar de funnel, met de herkomst erachter', () => {

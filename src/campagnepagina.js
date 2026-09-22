@@ -311,7 +311,6 @@ a { color: var(--blauw-600); }
 .merk { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--tekst); font-weight: 700; }
 .merk__teken { width: 30px; height: 30px; border-radius: 9px; }
 .merk__punt { color: var(--blauw-600); }
-.balk__rust { font-size: .82rem; color: var(--tekst-licht); }
 
 section { padding: clamp(40px, 7vw, 68px) 0; }
 .grijs { background: var(--achtergrond); }
@@ -336,6 +335,23 @@ section { padding: clamp(40px, 7vw, 68px) 0; }
 .knop--primair:active { transform: translateY(1px); }
 .knop--groot { padding: 17px 32px; font-size: 1.08rem; }
 .knop--zacht { background: var(--vlak); color: var(--blauw-600); border-color: var(--rand); }
+/*
+  Rechtsboven stond een grijs label "Gratis controle". Dat is de plek waar
+  iedereen een knop verwacht, dus werd erop geklikt en gebeurde er niets. Nu
+  is het er ook echt een, naar dezelfde plek als de rest van de pagina: geen
+  uitgang, maar een extra ingang naar de funnel die altijd in beeld is.
+
+  Deze regels staan met opzet ná .knop: anders wint de ruime padding daarvan
+  en wordt de knop hoger dan de balk waar hij in moet passen.
+*/
+.knop--balk { padding: 8px 15px; font-size: .86rem; border-radius: 9px; white-space: nowrap; }
+.knop__kort { display: none; }
+@media (max-width: 480px) {
+  /* Op een smal scherm past "Controleer mijn brief" niet naast het merk. */
+  .knop__lang { display: none; }
+  .knop__kort { display: inline; }
+  .knop--balk { padding: 8px 12px; font-size: .82rem; }
+}
 .hero__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0 16px; }
 .geruststelling { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .geruststelling li { display: flex; align-items: center; gap: 7px; font-size: .92rem; color: var(--tekst-zacht); }
@@ -457,7 +473,10 @@ section { padding: clamp(40px, 7vw, 68px) 0; }
       ${MERK}
       <span>nubeslist<span class="merk__punt">.nl</span></span>
     </span>
-    <span class="balk__rust">Gratis controle</span>
+    <a class="knop knop--primair knop--balk" href="${BESTEMMING}">
+      <span class="knop__lang">Controleer mijn brief</span>
+      <span class="knop__kort">Controleer brief</span>
+    </a>
   </div>
 </header>
 
