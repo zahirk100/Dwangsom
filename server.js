@@ -38,6 +38,7 @@ import { leesBrief } from './src/brieflezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 import { campagnePaden } from './public/shared/campagnes.js';
+import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, 'public');
@@ -1171,6 +1172,9 @@ const PAGINAS = {
   // scripts/maak-paginas.mjs. Hier alleen het pad zonder .html erbij, zodat
   // lokaal hetzelfde werkt als cleanUrls op Vercel.
   ...Object.fromEntries(campagnePaden().map((pad) => [pad, `${pad.slice(1)}.html`])),
+  // De losse advertentielanding. Staat bewust niet in campagnes.js: die
+  // ingangen horen bij de site, deze pagina staat ernaast.
+  [CAMPAGNE_PAD]: `${CAMPAGNE_PAD.slice(1)}.html`,
 };
 
 /** API plus statische bestanden: de complete applicatie op één poort. */

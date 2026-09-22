@@ -12,11 +12,12 @@ import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { alleLandingspaginas } from '../src/landingpagina.js';
+import { campagnepaginas } from '../src/campagnepagina.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, '..', 'public');
 
-for (const { bestand, html } of alleLandingspaginas()) {
+for (const { bestand, html } of [...alleLandingspaginas(), ...campagnepaginas()]) {
   writeFileSync(path.join(PUBLIEK, bestand), html);
   console.log(`  ${bestand.padEnd(26)} ${html.length} tekens`);
 }
