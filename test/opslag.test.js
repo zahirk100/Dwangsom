@@ -111,3 +111,61 @@ test('de redisdriver praat via de REST-API en verwerkt fouten', async () => {
     globalThis.fetch = echteFetch;
   }
 });
+
+test('de inhoud van een bijlage staat niet in het dossier zelf', async () => {
+  // Dit stond eerst als base64 in het dossier. De lijst in de beheeromgeving
+  // haalt élk dossier op, dus daarmee ook de inhoud van elk bestand: bij een
+  // paar honderd dossiers met foto's is dat honderden megabytes per klik, en
+  // een dossier dat over de maximale waardegrootte van de opslag gaat kan
+  // helemaal niet meer worden weggeschreven.
+  const store = new Store({ opslag: new GeheugenOpslag() });
+  await store.init();
+  const aanvraag = await store.nieuweAanvraag({
+    invoer: { zaaktype: 'gem-bijstand', basisdatum: '2025-01-06' },
+    contact: { naam: 'B. Bijlage' },
+    rapport: { uitkomst: 'recht' },
+  });
+
+  const data = Buffer.from('%PDF-1.4 een brief van de instantie').toString('base64');
+  const na = await store.voegBestandToe(aanvraag.id, {
+    stukId: 'ontvangstbevestiging',
+    bestandsnaam: 'brief.pdf',
+    mediaType: 'application/pdf',
+    data,
+    door: 'klant',
+  });
+
+  assert.equal(na.bestanden.length, 1);
+  assert.equal(na.bestanden[0].data, undefined, 'de bytes horen in een eigen rij te staan');
+  assert.equal(na.bestanden[0].bestandsnaam, 'brief.pdf');
+  assert.ok(na.bestanden[0].bytes > 0, 'de omvang blijft wel zichtbaar');
+
+  // Ook niet via een verse leesactie uit de opslag.
+  const opnieuw = await store.vind(aanvraag.id);
+  assert.equal(opnieuw.bestanden[0].data, undefined);
+
+  // Maar downloaden werkt gewoon.
+  const bestand = await store.vindBestand(aanvraag.id, na.bestanden[0].id);
+  assert.equal(bestand.data, data);
+  assert.equal(bestand.bestandsnaam, 'brief.pdf');
+});
+
+test('een verwijderd bestand laat geen inhoud achter', async () => {
+  const store = new Store({ opslag: new GeheugenOpslag() });
+  await store.init();
+  const aanvraag = await store.nieuweAanvraag({
+    invoer: { zaaktype: 'gem-bijstand', basisdatum: '2025-01-06' },
+    contact: { naam: 'W. Weg' },
+    rapport: { uitkomst: 'recht' },
+  });
+  const na = await store.voegBestandToe(aanvraag.id, {
+    stukId: 'ontvangstbevestiging', bestandsnaam: 'weg.pdf', mediaType: 'application/pdf',
+    data: Buffer.from('weg').toString('base64'), door: 'klant',
+  });
+  const bestandId = na.bestanden[0].id;
+
+  await store.verwijderBestand(aanvraag.id, bestandId, 'beheerder');
+  assert.equal(await store.vindBestand(aanvraag.id, bestandId), null);
+  assert.equal(await store.opslag.rij('bestanden', bestandId), null,
+    'anders blijven de bytes voor altijd in de opslag staan');
+});

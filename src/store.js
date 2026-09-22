@@ -16,6 +16,9 @@ import { DOSSIERSOORT } from '../public/shared/dwangsom.js';
  */
 export const LOSSE_BAKKEN = ['nieuwe-post', 'correspondentie'];
 
+/** De verzameling waarin de inhoud van bijlagen staat, los van het dossier. */
+const VERZAMELING_BESTANDEN = 'bestanden';
+
 export const SOORTEN = [
   { id: DOSSIERSOORT.AANVRAAG, label: 'Aanvragen', enkelvoud: 'Aanvraag',
     uitleg: 'Er is een dwangsom opgebouwd; deze kan gevorderd worden.' },
@@ -347,18 +350,37 @@ export class Store {
     const nu = new Date().toISOString();
 
     if (!Array.isArray(aanvraag.bestanden)) aanvraag.bestanden = [];
+    const bestandId = randomUUID();
     const bestand = {
-      id: randomUUID(),
+      id: bestandId,
       stukId: String(stukId || 'overig'),
       bestandsnaam: String(bestandsnaam || 'bestand').slice(0, 160),
       mediaType: String(mediaType || '').slice(0, 80),
       bytes: Math.round((String(data).length * 3) / 4),
-      data: String(data),
       doorKlant: door === 'klant',
       door: door === 'klant' ? 'de aanvrager' : (door || 'beheerder'),
       toelichting: String(toelichting || '').slice(0, 300),
       aangemaaktOp: nu,
     };
+
+    // De inhoud gaat in een eigen rij, niet in het dossier.
+    //
+    // Dit stond eerst als base64 in het dossier zelf. Dat werkte, tot je
+    // bedacht wat er gebeurt bij de lijst in de beheeromgeving: die haalt élk
+    // dossier op, dus ook de inhoud van elk bestand. Bij een paar honderd
+    // dossiers met foto's van brieven is dat honderden megabytes per klik, en
+    // een dossier dat over de maximale waardegrootte van de opslag heen gaat,
+    // kan helemaal niet meer worden weggeschreven.
+    //
+    // In het dossier blijft alleen wat je nodig hebt om het te tonen; de bytes
+    // komen pas van de schijf als iemand echt op de link klikt.
+    await this.opslag.zetRij(VERZAMELING_BESTANDEN, bestandId, {
+      id: bestandId,
+      aanvraagId: aanvraag.id,
+      bestandsnaam: bestand.bestandsnaam,
+      mediaType: bestand.mediaType,
+      data: String(data),
+    });
     aanvraag.bestanden.push(bestand);
 
     // Een aangeleverd stuk is meteen afgevinkt; anders staat het dossier te
@@ -395,6 +417,7 @@ export class Store {
     if (!bestand) return null;
 
     aanvraag.bestanden = aanvraag.bestanden.filter((b) => b.id !== bestandId);
+    await this.opslag.wisRij(VERZAMELING_BESTANDEN, bestandId);
     const nu = new Date().toISOString();
 
     const restVoorStuk = aanvraag.bestanden.filter((b) => b.stukId === bestand.stukId);
@@ -413,11 +436,22 @@ export class Store {
     return aanvraag;
   }
 
-  /** Eén bestand ophalen om te downloaden. */
+  /**
+   * Eén bestand ophalen om te downloaden.
+   *
+   * De metagegevens staan in het dossier, de bytes in een eigen rij. Oudere
+   * dossiers hebben de inhoud nog inline staan; die blijven werken.
+   */
   async vindBestand(id, bestandId) {
     const aanvraag = await this.vind(id);
     if (!aanvraag || !Array.isArray(aanvraag.bestanden)) return null;
-    return aanvraag.bestanden.find((b) => b.id === bestandId) || null;
+    const bestand = aanvraag.bestanden.find((b) => b.id === bestandId);
+    if (!bestand) return null;
+    if (bestand.data) return bestand;
+
+    const inhoud = await this.opslag.rij(VERZAMELING_BESTANDEN, bestandId);
+    if (!inhoud || !inhoud.data) return null;
+    return { ...bestand, data: inhoud.data };
   }
 
   async werkStukkenBij(id, stukken, door) {

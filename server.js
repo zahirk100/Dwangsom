@@ -805,7 +805,9 @@ async function beheerApi(req, res, url) {
     // uploadknop.
     const bestandPad = /^\/bestanden\/([A-Za-z0-9-]+)$/.exec(subpad || '');
     if (bestandPad && req.method === 'GET') {
-      const bestand = (aanvraag.bestanden || []).find((b) => b.id === bestandPad[1]);
+      // Via de store: de metagegevens staan in het dossier, de bytes in een
+      // eigen rij.
+      const bestand = await store.vindBestand(aanvraag.id, bestandPad[1]);
       if (!bestand) return stuurFout(res, 404, 'Onbekend bestand.');
       return stuurBestandInhoud(res, bestand);
     }

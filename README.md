@@ -520,12 +520,20 @@ uploadknop waarvan niemand de uitkomst ziet, is erger dan geen uploadknop. De
 inhoud reist niet mee in het dossierantwoord — `zonderBestandsinhoud()` haalt
 hem eruit, anders gaan er megabytes over de lijn bij elk geopend dossier.
 
-**Voorlopig** gaan die bestanden als base64 in het dossier zelf, met een grens
-van 3 MB per bestand. Dat is een noodoplossing om het werkend te hebben zonder
-één dependency: het hoort naar Vercel Blob of Supabase Storage zodra het domein
-er is. Zie `docs/livegang.md`. Downloaden kan alleen ingelogd, en gaat altijd
-als `attachment` met `no-store`, zodat een pdf nooit in de browser opent of in
-een cache blijft hangen.
+**De inhoud staat in een eigen rij**, niet in het dossier. Dat is een les die
+we bijna te laat leerden: met de base64 ín het dossier haalde de lijst in de
+beheeromgeving — die élk dossier ophaalt — ook de inhoud van elk bestand op.
+Bij een paar honderd dossiers met foto's van brieven is dat honderden megabytes
+per klik, en een dossier dat over de maximale waardegrootte van de opslag heen
+gaat, kan helemaal niet meer worden weggeschreven. In het dossier blijft nu
+alleen wat je nodig hebt om het te tónen (naam, type, omvang, wie en wanneer);
+de bytes komen pas tevoorschijn als iemand op de link klikt.
+
+Grens: 3 MB per bestand. Downloaden kan alleen ingelogd, en gaat altijd als
+`attachment` met `no-store`, zodat een pdf nooit in de browser opent of in een
+cache blijft hangen. Voor grote aantallen hoort hier op termijn echte
+bestandsopslag achter (Vercel Blob of Supabase Storage); zie
+`docs/livegang.md`.
 
 ```
 src/wachtwoord.js   scrypt-hashes, met de kosten in de hash
