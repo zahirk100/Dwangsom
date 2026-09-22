@@ -1,4 +1,10 @@
 data/
 test/
-scripts/
 *.md
+
+# scripts/ staat hier bewust NIET meer bij.
+#
+# De landingspagina's worden bij elke deploy geschreven door
+# `npm run build` -> scripts/maak-paginas.mjs. Sluit je die map uit, dan wordt
+# het bestand niet meegestuurd en faalt de build met "Cannot find module",
+# zonder dat er iets mis is met de code. Dat is precies één keer gebeurd.

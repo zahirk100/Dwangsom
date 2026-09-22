@@ -73,3 +73,22 @@ test('de inhoudelijke links worden niet langer zomaar verborgen', () => {
     'deze regel maakte de links op een telefoon onbereikbaar');
   assert.match(css, /\.balk:not\(\.balk--met-menu\) nav a\.nav-secundair \{ display: none; \}/);
 });
+
+test('de buildstap kan ook echt draaien op de hosting', () => {
+  // De landingspagina's worden bij elke deploy geschreven door npm run build.
+  // Staat het script in .vercelignore, dan wordt het niet meegestuurd en faalt
+  // de deploy met "Cannot find module", zonder dat er iets mis is met de code.
+  // Dat is precies één keer gebeurd.
+  const pkg = JSON.parse(fs.readFileSync(path.join(WORTEL, 'package.json'), 'utf8'));
+  const build = pkg.scripts && pkg.scripts.build;
+  assert.ok(build, 'er hoort een buildstap te zijn');
+
+  const script = build.replace(/^node\s+/, '').trim();
+  assert.ok(fs.existsSync(path.join(WORTEL, script)), `${script} bestaat niet`);
+
+  const genegeerd = fs.readFileSync(path.join(WORTEL, '.vercelignore'), 'utf8')
+    .split('\n').map((r) => r.trim()).filter((r) => r && !r.startsWith('#'));
+  const map = script.split('/')[0];
+  assert.ok(!genegeerd.includes(`${map}/`) && !genegeerd.includes(map),
+    `${map}/ staat in .vercelignore, dan kan de build het script niet vinden`);
+});
