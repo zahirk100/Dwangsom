@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beslistermijn: hoelang mag een instantie over je aanvraag doen?</title>
+<meta name="description" content="De wettelijke beslistermijnen per soort aanvraag bij UWV, gemeente, DUO, SVB en Belastingdienst, plus wat verdaging en opschorting met die termijn doen.">
+<link rel="canonical" href="https://nubeslist.nl/beslistermijn">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/beslistermijn">
+<meta property="og:title" content="Hoelang mag een instantie over een beslissing doen?">
+<meta property="og:description" content="De wettelijke beslistermijnen per soort aanvraag bij UWV, gemeente, DUO, SVB en Belastingdienst, plus wat verdaging en opschorting met die termijn doen.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .artikel { max-width: 740px; margin: 0 auto; padding: 40px 16px 80px; }
+  .artikel h2 { margin-top: 42px; }
+  .artikel h3 { margin-top: 26px; font-size: 1.05rem; }
+  .artikel p, .artikel li { color: var(--tekst); }
+  .artikel ul, .artikel ol { padding-left: 22px; }
+  .artikel li { margin-bottom: 8px; }
+  .wetnoot { font-size: .86rem; color: var(--tekst-zacht); }
+  .kader {
+    padding: 18px 20px; margin: 24px 0; border-radius: var(--radius);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .kader p:last-child { margin-bottom: 0; }
+  .kader--let-op { background: var(--oranje-50); border-color: var(--oranje-100); }
+  .tabel { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: .94rem; }
+  .tabel th {
+    text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tekst-zacht); padding: 0 10px 9px 0; border-bottom: 1px solid var(--rand);
+  }
+  .tabel td { padding: 10px 10px 10px 0; border-top: 1px solid var(--rand); vertical-align: top; }
+  .tabel td:last-child, .tabel th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabel tbody tr:first-child td { border-top: 0; }
+  .vraag { border: 1px solid var(--rand); border-radius: var(--radius); margin-bottom: 9px; background: var(--vlak); }
+  .vraag summary { cursor: pointer; padding: 14px 18px; font-weight: 700; }
+  .vraag p { padding: 0 18px; margin: 0 0 14px; color: var(--tekst-zacht); }
+  .verder { margin: 34px 0 0; padding: 20px; border-radius: var(--radius); border: 1px solid var(--rand); }
+  .verder ul { list-style: none; padding: 0; margin: 10px 0 0; }
+  .verder li { margin-bottom: 7px; }
+  .doe { margin: 34px 0 0; padding: 24px; border-radius: var(--radius); background: var(--blauw-50); border: 1px solid var(--blauw-100); }
+  .doe p:last-of-type { margin-bottom: 18px; }
+  /*
+    Een tabel met vier kolommen past niet op een telefoon. De kolom "Duur"
+    staat al in de periode ("dag 1 tot en met 14"), dus die kan als eerste
+    weg. Onder 420px valt ook de optelkolom weg; het maximum staat in de zin
+    onder de tabel, dus er gaat geen informatie verloren.
+  */
+  @media (max-width: 560px) {
+    .tabel { font-size: .88rem; }
+    .tabel th:nth-child(2), .tabel td:nth-child(2) { display: none; }
+  }
+  @media (max-width: 420px) {
+    .tabel--vier th:nth-child(4), .tabel--vier td:nth-child(4) { display: none; }
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://nubeslist.nl/#organisatie",
+  "name": "nubeslist.nl",
+  "alternateName": "nubeslist.nl",
+  "url": "https://nubeslist.nl/",
+  "logo": "https://nubeslist.nl/icoon-512.png",
+  "description": "nubeslist.nl controleert of een bestuursorgaan te laat is met beslissen en regelt de ingebrekestelling en de dwangsom bij niet tijdig beslissen.",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Nederland"
+  },
+  "knowsLanguage": "nl-NL"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://nubeslist.nl/#site",
+  "url": "https://nubeslist.nl/",
+  "name": "nubeslist.nl",
+  "inLanguage": "nl-NL",
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": "https://nubeslist.nl/beslistermijn#vragen",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Hoelang mag UWV over een WIA-aanvraag doen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "In de wet staat voor de WIA geen eigen termijn, dus geldt de restnorm van acht weken uit artikel 4:13 lid 2 Awb. In de praktijk noemt UWV in de ontvangstbevestiging vaak een eigen datum, en die datum telt. Staat er een langere termijn in dan acht weken, dan is dat de termijn waar je van uitgaat."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hoelang mag de gemeente over een bijstandsaanvraag doen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ook hier geldt de termijn van acht weken, tenzij er een datum in je brief staat. Heb je op dit moment geen geld om van te leven, dan kun je bij de gemeente om een voorschot vragen. Dat staat los van de beslistermijn en van een eventuele dwangsom."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hoelang mag een instantie over een bezwaar doen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Zes weken, gerekend vanaf het einde van de bezwaartermijn. Is er een adviescommissie bij betrokken, dan is het twaalf weken. Verdaging met maximaal zes weken is mogelijk; daarna alleen nog met jouw instemming. Dit staat in artikel 7:10 Awb."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "De termijn is verstreken. Wat nu?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Dan kun je het bestuursorgaan in gebreke stellen. Vanaf dat moment heeft het nog twee weken om alsnog te beslissen, en pas daarna kan er een dwangsom gaan lopen. Op de pagina over de ingebrekestelling staat wat er in die brief hoort."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Mijn termijn is nog niet voorbij. Kan ik nu al iets doen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Een ingebrekestelling die te vroeg wordt verstuurd telt niet mee, dus wachten is hier het juiste antwoord. Wel kun je de datum laten vastleggen, zodat je er niet zelf aan hoeft te denken. Wij houden hem dan bij en laten van ons horen zodra hij voorbij is."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "nubeslist.nl",
+      "item": "https://nubeslist.nl/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Beslistermijnen",
+      "item": "https://nubeslist.nl/beslistermijn"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "@id": "https://nubeslist.nl/beslistermijn#artikel",
+  "headline": "Hoelang mag een instantie over een beslissing doen?",
+  "description": "De wettelijke beslistermijnen per soort aanvraag bij UWV, gemeente, DUO, SVB en Belastingdienst, plus wat verdaging en opschorting met die termijn doen.",
+  "inLanguage": "nl-NL",
+  "isAccessibleForFree": true,
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  },
+  "mainEntityOfPage": "https://nubeslist.nl/beslistermijn"
+}
+</script>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
+    <nav id="balk-nav">
+      <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
+      <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
+      <a class="nav-secundair" href="/mijn">Mijn dossier</a>
+      <a class="knop knop--primair knop--klein" href="/aanvraag">Controleer mijn brief</a>
+    </nav>
+  </div>
+</header>
+
+<main class="artikel">
+  <h1>Hoelang mag een instantie over een beslissing doen?</h1>
+  <p class="wetnoot">Wettelijk kader: Algemene wet bestuursrecht, artikelen 4:13 tot en met 4:15 en 7:10. De termijnen hieronder komen uit dezelfde tabel die onze rekenmodule gebruikt.</p>
+
+  <p>Een bestuursorgaan moet binnen een <strong>redelijke termijn</strong> beslissen. Wat redelijk
+     is, staat soms met zoveel woorden in de wet; in de overige gevallen geldt een termijn van
+     <strong>acht weken</strong> na ontvangst van je aanvraag.</p>
+  <p class="wetnoot">Artikel 4:13 van de Algemene wet bestuursrecht.</p>
+
+  <div class="kader">
+    <p><strong>De datum in je eigen brief gaat voor.</strong> Staat er in de ontvangstbevestiging
+       een datum waarop je een beslissing kunt verwachten, dan telt die datum. Daar hoef je geen
+       wetsartikel voor op te zoeken.</p>
+  </div>
+
+  <h2>Twee dingen die de termijn verschuiven</h2>
+  <h3>Verdaging</h3>
+  <p>Een bestuursorgaan mag de termijn eenmalig verlengen, mits het dat vóór het einde van de
+     termijn laat weten en er een nieuwe datum bij noemt. Krijg je zo'n brief, dan geldt die
+     nieuwe datum.</p>
+  <h3>Opschorting</h3>
+  <p>Vraagt het bestuursorgaan aanvullende gegevens, dan staat de klok stil tussen de dag van het
+     verzoek en de dag waarop jij die gegevens aanlevert. Die dagen tellen dus niet mee.</p>
+  <p class="wetnoot">Verdaging: artikel 4:14 Awb. Opschorting: artikel 4:15 Awb.</p>
+
+  <h2>Termijnen per soort aanvraag</h2>
+  <p>Dit is de termijn die geldt als er geen datum in je brief staat. Bij een bezwaar loopt de
+     termijn niet vanaf je bezwaarschrift maar vanaf het einde van de bezwaartermijn.</p>
+
+  <h3>UWV</h3>
+  <table class="tabel">
+    <thead><tr><th>Soort aanvraag</th><th>Grondslag</th><th>Termijn</th></tr></thead>
+    <tbody>
+      <tr><td>WIA-uitkering aanvragen of beoordelen</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Wajong aanvragen of beoordelen</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>WW-uitkering aanvragen</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Ziektewet-uitkering aanvragen</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Herbeoordeling of wijziging van een lopende uitkering</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bezwaar tegen een beslissing van UWV</td><td class="wetnoot">Awb art. 7:10 lid 1 (zes weken na afloop van de bezwaartermijn)</td><td>zes weken</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Gemeente</h3>
+  <table class="tabel">
+    <thead><tr><th>Soort aanvraag</th><th>Grondslag</th><th>Termijn</th></tr></thead>
+    <tbody>
+      <tr><td>Bijstandsuitkering aanvragen (Participatiewet)</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bijzondere bijstand of individuele inkomenstoeslag</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Wmo-maatwerkvoorziening (hulp, vervoer, woningaanpassing)</td><td class="wetnoot">Wmo 2015 art. 2.3.2 en 2.3.5 (zes weken onderzoek + twee weken beslissen)</td><td>acht weken</td></tr>
+      <tr><td>Jeugdhulp aanvragen (Jeugdwet)</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Schuldhulpverlening aanvragen</td><td class="wetnoot">Wet gemeentelijke schuldhulpverlening art. 4a (acht weken na het eerste gesprek)</td><td>acht weken</td></tr>
+      <tr><td>Vergunning, ontheffing of subsidie van de gemeente</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bezwaar tegen een beslissing van de gemeente</td><td class="wetnoot">Awb art. 7:10 lid 1 (zes weken, of twaalf weken met adviescommissie)</td><td>zes weken</td></tr>
+    </tbody>
+  </table>
+
+  <h3>DUO</h3>
+  <table class="tabel">
+    <thead><tr><th>Soort aanvraag</th><th>Grondslag</th><th>Termijn</th></tr></thead>
+    <tbody>
+      <tr><td>Studiefinanciering of studieschuld</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bezwaar tegen een beslissing van DUO</td><td class="wetnoot">Awb art. 7:10 lid 1 (zes weken, of twaalf weken met adviescommissie)</td><td>zes weken</td></tr>
+    </tbody>
+  </table>
+
+  <h3>SVB</h3>
+  <table class="tabel">
+    <thead><tr><th>Soort aanvraag</th><th>Grondslag</th><th>Termijn</th></tr></thead>
+    <tbody>
+      <tr><td>AOW, kinderbijslag of nabestaandenuitkering</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bezwaar tegen een beslissing van de SVB</td><td class="wetnoot">Awb art. 7:10 lid 1 (zes weken, of twaalf weken met adviescommissie)</td><td>zes weken</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Belastingdienst</h3>
+  <table class="tabel">
+    <thead><tr><th>Soort aanvraag</th><th>Grondslag</th><th>Termijn</th></tr></thead>
+    <tbody>
+      <tr><td>Toeslag aanvragen of wijzigen</td><td class="wetnoot">Awb art. 4:13 lid 2 (acht weken)</td><td>acht weken</td></tr>
+      <tr><td>Bezwaar bij de Belastingdienst of Toeslagen</td><td class="wetnoot">Awb art. 7:10 lid 1 (zes weken)</td><td>zes weken</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Veelgestelde vragen</h2>
+      <details class="vraag">
+        <summary>Hoelang mag UWV over een WIA-aanvraag doen?</summary>
+        <p>In de wet staat voor de WIA geen eigen termijn, dus geldt de restnorm van acht weken uit artikel 4:13 lid 2 Awb.</p>
+        <p>In de praktijk noemt UWV in de ontvangstbevestiging vaak een eigen datum, en die datum telt. Staat er een langere termijn in dan acht weken, dan is dat de termijn waar je van uitgaat.</p>
+      </details>
+      <details class="vraag">
+        <summary>Hoelang mag de gemeente over een bijstandsaanvraag doen?</summary>
+        <p>Ook hier geldt de termijn van acht weken, tenzij er een datum in je brief staat.</p>
+        <p>Heb je op dit moment geen geld om van te leven, dan kun je bij de gemeente om een voorschot vragen. Dat staat los van de beslistermijn en van een eventuele dwangsom.</p>
+      </details>
+      <details class="vraag">
+        <summary>Hoelang mag een instantie over een bezwaar doen?</summary>
+        <p>Zes weken, gerekend vanaf het einde van de bezwaartermijn. Is er een adviescommissie bij betrokken, dan is het twaalf weken.</p>
+        <p>Verdaging met maximaal zes weken is mogelijk; daarna alleen nog met jouw instemming.</p>
+        <p>Dit staat in artikel 7:10 Awb.</p>
+      </details>
+      <details class="vraag">
+        <summary>De termijn is verstreken. Wat nu?</summary>
+        <p>Dan kun je het bestuursorgaan in gebreke stellen. Vanaf dat moment heeft het nog twee weken om alsnog te beslissen, en pas daarna kan er een dwangsom gaan lopen.</p>
+        <p>Op <a href="/ingebrekestelling">de pagina over de ingebrekestelling</a> staat wat er in die brief hoort.</p>
+      </details>
+      <details class="vraag">
+        <summary>Mijn termijn is nog niet voorbij. Kan ik nu al iets doen?</summary>
+        <p>Een ingebrekestelling die te vroeg wordt verstuurd telt niet mee, dus wachten is hier het juiste antwoord.</p>
+        <p>Wel kun je de datum laten vastleggen, zodat je er niet zelf aan hoeft te denken. Wij houden hem dan bij en laten van ons horen zodra hij voorbij is.</p>
+      </details>
+
+
+  <div class="doe">
+    <p><strong>Wil je weten of dit voor jouw zaak geldt?</strong></p>
+    <p>Upload de brief waarin staat wanneer je een beslissing kon verwachten. Wij zoeken de
+       datum voor je op en zeggen wat je nu kunt doen. Dat kost niets en je zit nergens aan vast.</p>
+    <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief</a>
+  </div>
+
+  <div class="verder">
+    <strong>Verder lezen</strong>
+    <ul>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/ingebrekestelling">Wat is een ingebrekestelling?</a></li>
+      <li><a href="/dwangsom-berekenen">Hoe wordt de dwangsom berekend?</a></li>
+    </ul>
+  </div>
+</main>
+
+<footer class="voet">
+  <div class="omhulsel">
+    <div class="voet__merk"><svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg><span>nubeslist.nl</span></div>
+    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+       verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
+    <p>Deze pagina is algemene uitleg en geen juridisch advies. Aan de inhoud kunnen geen rechten
+       worden ontleend.</p>
+    <ul class="voet__links">
+      <li><a href="/">Startpagina</a></li>
+      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/ingebrekestelling">Wat is een ingebrekestelling?</a></li>
+      <li><a href="/beslistermijn">Hoelang mag een instantie erover doen?</a></li>
+      <li><a href="/dwangsom-berekenen">Hoe wordt de dwangsom berekend?</a></li>
+      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/voorwaarden">Voorwaarden</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script type="module" src="/assets/menu.js"></script>
+</body>
+</html>

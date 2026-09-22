@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dwangsom berekenen: van &amp;euro; 23 per dag tot &amp;euro; 1.442</title>
+<meta name="description" content="Hoe de dwangsom bij niet tijdig beslissen wordt berekend: wanneer de teller begint, de bedragen per dag en waarom hij na 42 dagen stopt.">
+<link rel="canonical" href="https://nubeslist.nl/dwangsom-berekenen">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/dwangsom-berekenen">
+<meta property="og:title" content="Hoe wordt de dwangsom berekend?">
+<meta property="og:description" content="Hoe de dwangsom bij niet tijdig beslissen wordt berekend: wanneer de teller begint, de bedragen per dag en waarom hij na 42 dagen stopt.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .artikel { max-width: 740px; margin: 0 auto; padding: 40px 16px 80px; }
+  .artikel h2 { margin-top: 42px; }
+  .artikel h3 { margin-top: 26px; font-size: 1.05rem; }
+  .artikel p, .artikel li { color: var(--tekst); }
+  .artikel ul, .artikel ol { padding-left: 22px; }
+  .artikel li { margin-bottom: 8px; }
+  .wetnoot { font-size: .86rem; color: var(--tekst-zacht); }
+  .kader {
+    padding: 18px 20px; margin: 24px 0; border-radius: var(--radius);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .kader p:last-child { margin-bottom: 0; }
+  .kader--let-op { background: var(--oranje-50); border-color: var(--oranje-100); }
+  .tabel { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: .94rem; }
+  .tabel th {
+    text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tekst-zacht); padding: 0 10px 9px 0; border-bottom: 1px solid var(--rand);
+  }
+  .tabel td { padding: 10px 10px 10px 0; border-top: 1px solid var(--rand); vertical-align: top; }
+  .tabel td:last-child, .tabel th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabel tbody tr:first-child td { border-top: 0; }
+  .vraag { border: 1px solid var(--rand); border-radius: var(--radius); margin-bottom: 9px; background: var(--vlak); }
+  .vraag summary { cursor: pointer; padding: 14px 18px; font-weight: 700; }
+  .vraag p { padding: 0 18px; margin: 0 0 14px; color: var(--tekst-zacht); }
+  .verder { margin: 34px 0 0; padding: 20px; border-radius: var(--radius); border: 1px solid var(--rand); }
+  .verder ul { list-style: none; padding: 0; margin: 10px 0 0; }
+  .verder li { margin-bottom: 7px; }
+  .doe { margin: 34px 0 0; padding: 24px; border-radius: var(--radius); background: var(--blauw-50); border: 1px solid var(--blauw-100); }
+  .doe p:last-of-type { margin-bottom: 18px; }
+  /*
+    Een tabel met vier kolommen past niet op een telefoon. De kolom "Duur"
+    staat al in de periode ("dag 1 tot en met 14"), dus die kan als eerste
+    weg. Onder 420px valt ook de optelkolom weg; het maximum staat in de zin
+    onder de tabel, dus er gaat geen informatie verloren.
+  */
+  @media (max-width: 560px) {
+    .tabel { font-size: .88rem; }
+    .tabel th:nth-child(2), .tabel td:nth-child(2) { display: none; }
+  }
+  @media (max-width: 420px) {
+    .tabel--vier th:nth-child(4), .tabel--vier td:nth-child(4) { display: none; }
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://nubeslist.nl/#organisatie",
+  "name": "nubeslist.nl",
+  "alternateName": "nubeslist.nl",
+  "url": "https://nubeslist.nl/",
+  "logo": "https://nubeslist.nl/icoon-512.png",
+  "description": "nubeslist.nl controleert of een bestuursorgaan te laat is met beslissen en regelt de ingebrekestelling en de dwangsom bij niet tijdig beslissen.",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Nederland"
+  },
+  "knowsLanguage": "nl-NL"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://nubeslist.nl/#site",
+  "url": "https://nubeslist.nl/",
+  "name": "nubeslist.nl",
+  "inLanguage": "nl-NL",
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": "https://nubeslist.nl/dwangsom-berekenen#vragen",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Moet ik de dwangsom zelf uitrekenen en opvragen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Het bestuursorgaan moet de hoogte binnen twee weken na de laatste dag zelf vaststellen bij beschikking (art. 4:18 Awb). Gebeurt dat niet, dan kun je erom vragen. Ben je het niet eens met het vastgestelde bedrag, dan kun je daartegen bezwaar maken."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Krijg ik het geld zelf, of gaat het naar de instantie?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Een toegekende dwangsom wordt rechtstreeks aan jou uitbetaald, op je eigen rekening."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Loopt de dwangsom door als ik intussen een besluit krijg?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nee. De teller stopt op de dag dat het besluit er is. De dagen daarvoor blijven wel staan."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Tellen weekenden en feestdagen mee?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja. Het gaat om kalenderdagen, niet om werkdagen."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is de dwangsom belast?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Of een dwangsom in jouw situatie fiscale gevolgen heeft, hangt van je omstandigheden af. Dat is een vraag voor de Belastingdienst of een fiscalist; wij kunnen daar geen uitsluitsel over geven."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "nubeslist.nl",
+      "item": "https://nubeslist.nl/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Dwangsom berekenen",
+      "item": "https://nubeslist.nl/dwangsom-berekenen"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "@id": "https://nubeslist.nl/dwangsom-berekenen#artikel",
+  "headline": "Hoe wordt de dwangsom berekend?",
+  "description": "Hoe de dwangsom bij niet tijdig beslissen wordt berekend: wanneer de teller begint, de bedragen per dag en waarom hij na 42 dagen stopt.",
+  "inLanguage": "nl-NL",
+  "isAccessibleForFree": true,
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  },
+  "mainEntityOfPage": "https://nubeslist.nl/dwangsom-berekenen"
+}
+</script>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
+    <nav id="balk-nav">
+      <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
+      <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
+      <a class="nav-secundair" href="/mijn">Mijn dossier</a>
+      <a class="knop knop--primair knop--klein" href="/aanvraag">Controleer mijn brief</a>
+    </nav>
+  </div>
+</header>
+
+<main class="artikel">
+  <h1>Hoe wordt de dwangsom berekend?</h1>
+  <p class="wetnoot">Wettelijk kader: Awb art. 4:17 lid 2 van de Algemene wet bestuursrecht. De bedragen hieronder komen uit dezelfde tabel die onze rekenmodule gebruikt.</p>
+
+  <p>De dwangsom is een vast bedrag per dag dat oploopt naarmate het langer duurt. Je hoeft er
+     niets voor aan te tonen: als aan de voorwaarden is voldaan, ontstaat hij van rechtswege.</p>
+
+  <h2>Waar begint de teller?</h2>
+  <p>Niet op de dag dat de beslistermijn verstrijkt. De teller begint <strong>twee weken nadat je
+     het bestuursorgaan in gebreke hebt gesteld</strong>, en alleen als er dan nog steeds geen
+     besluit is.</p>
+  <p>In de praktijk betekent dat drie momenten achter elkaar:</p>
+  <ol>
+    <li>de beslistermijn verstrijkt;</li>
+    <li>je stelt in gebreke &mdash; vanaf dat moment lopen twee weken;</li>
+    <li>is er daarna nog geen besluit, dan telt vanaf de dag erna elke dag mee.</li>
+  </ol>
+
+  <h2>De bedragen per dag</h2>
+  <table class="tabel tabel--vier">
+    <thead><tr><th>Periode</th><th>Duur</th><th>Per dag</th><th>Totaal tot dan</th></tr></thead>
+    <tbody>
+      <tr><td>Dag 1 tot en met 14</td><td>14 dagen</td><td>&euro; 23 per dag</td><td>&euro; 322</td></tr>
+      <tr><td>Dag 15 tot en met 28</td><td>14 dagen</td><td>&euro; 35 per dag</td><td>&euro; 812</td></tr>
+      <tr><td>Dag 29 tot en met 42</td><td>14 dagen</td><td>&euro; 45 per dag</td><td>&euro; 1.442</td></tr>
+    </tbody>
+  </table>
+  <p>Na 42 dagen stopt de teller. Het maximum is daarmee
+     <strong>&euro; 1.442</strong>, ook als het besluit daarna nog maanden
+     uitblijft.</p>
+  <p class="wetnoot">Awb art. 4:17 lid 2 van de Algemene wet bestuursrecht.</p>
+
+  <div class="kader">
+    <p><strong>Alle dagen tellen mee</strong>, ook weekenden en feestdagen. Het gaat om kalenderdagen.</p>
+  </div>
+
+  <h2>Een voorbeeld</h2>
+  <p>Stel: de beslistermijn verliep op 1 maart. Je stelt op 8 maart in gebreke. Dan heeft het
+     bestuursorgaan tot en met 22 maart om te beslissen. Komt er op 15 april nog steeds niets, dan
+     zijn er vanaf 23 maart 24 dagen verstreken:</p>
+  <ul>
+    <li>14 dagen &times; &euro; 23 = &euro; 322</li>
+    <li>10 dagen &times; &euro; 35 = &euro; 350</li>
+    <li>samen <strong>&euro; 672</strong></li>
+  </ul>
+  <p>Komt het besluit pas na 42 dagen, dan is het het maximum van
+     &euro; 1.442.</p>
+
+  <h2>Veelgestelde vragen</h2>
+      <details class="vraag">
+        <summary>Moet ik de dwangsom zelf uitrekenen en opvragen?</summary>
+        <p>Het bestuursorgaan moet de hoogte binnen twee weken na de laatste dag zelf vaststellen bij beschikking (art. 4:18 Awb). Gebeurt dat niet, dan kun je erom vragen.</p>
+        <p>Ben je het niet eens met het vastgestelde bedrag, dan kun je daartegen bezwaar maken.</p>
+      </details>
+      <details class="vraag">
+        <summary>Krijg ik het geld zelf, of gaat het naar de instantie?</summary>
+        <p>Een toegekende dwangsom wordt rechtstreeks aan jou uitbetaald, op je eigen rekening.</p>
+      </details>
+      <details class="vraag">
+        <summary>Loopt de dwangsom door als ik intussen een besluit krijg?</summary>
+        <p>Nee. De teller stopt op de dag dat het besluit er is. De dagen daarvoor blijven wel staan.</p>
+      </details>
+      <details class="vraag">
+        <summary>Tellen weekenden en feestdagen mee?</summary>
+        <p>Ja. Het gaat om kalenderdagen, niet om werkdagen.</p>
+      </details>
+      <details class="vraag">
+        <summary>Is de dwangsom belast?</summary>
+        <p>Of een dwangsom in jouw situatie fiscale gevolgen heeft, hangt van je omstandigheden af. Dat is een vraag voor de Belastingdienst of een fiscalist; wij kunnen daar geen uitsluitsel over geven.</p>
+      </details>
+
+
+  <div class="doe">
+    <p><strong>Wil je weten of dit voor jouw zaak geldt?</strong></p>
+    <p>Upload de brief waarin staat wanneer je een beslissing kon verwachten. Wij zoeken de
+       datum voor je op en zeggen wat je nu kunt doen. Dat kost niets en je zit nergens aan vast.</p>
+    <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief</a>
+  </div>
+
+  <div class="verder">
+    <strong>Verder lezen</strong>
+    <ul>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/ingebrekestelling">Wat is een ingebrekestelling?</a></li>
+      <li><a href="/beslistermijn">Hoelang mag een instantie erover doen?</a></li>
+    </ul>
+  </div>
+</main>
+
+<footer class="voet">
+  <div class="omhulsel">
+    <div class="voet__merk"><svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg><span>nubeslist.nl</span></div>
+    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+       verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
+    <p>Deze pagina is algemene uitleg en geen juridisch advies. Aan de inhoud kunnen geen rechten
+       worden ontleend.</p>
+    <ul class="voet__links">
+      <li><a href="/">Startpagina</a></li>
+      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/ingebrekestelling">Wat is een ingebrekestelling?</a></li>
+      <li><a href="/beslistermijn">Hoelang mag een instantie erover doen?</a></li>
+      <li><a href="/dwangsom-berekenen">Hoe wordt de dwangsom berekend?</a></li>
+      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/voorwaarden">Voorwaarden</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script type="module" src="/assets/menu.js"></script>
+</body>
+</html>

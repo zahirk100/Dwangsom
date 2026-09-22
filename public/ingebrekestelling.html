@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingebrekestelling: wat is het en wanneer stuur je er een?</title>
+<meta name="description" content="Een ingebrekestelling laat een instantie weten dat de beslistermijn voorbij is. Wat erin moet staan, wanneer je hem stuurt en wat er daarna gebeurt.">
+<link rel="canonical" href="https://nubeslist.nl/ingebrekestelling">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/ingebrekestelling">
+<meta property="og:title" content="Wat is een ingebrekestelling?">
+<meta property="og:description" content="Een ingebrekestelling laat een instantie weten dat de beslistermijn voorbij is. Wat erin moet staan, wanneer je hem stuurt en wat er daarna gebeurt.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .artikel { max-width: 740px; margin: 0 auto; padding: 40px 16px 80px; }
+  .artikel h2 { margin-top: 42px; }
+  .artikel h3 { margin-top: 26px; font-size: 1.05rem; }
+  .artikel p, .artikel li { color: var(--tekst); }
+  .artikel ul, .artikel ol { padding-left: 22px; }
+  .artikel li { margin-bottom: 8px; }
+  .wetnoot { font-size: .86rem; color: var(--tekst-zacht); }
+  .kader {
+    padding: 18px 20px; margin: 24px 0; border-radius: var(--radius);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .kader p:last-child { margin-bottom: 0; }
+  .kader--let-op { background: var(--oranje-50); border-color: var(--oranje-100); }
+  .tabel { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: .94rem; }
+  .tabel th {
+    text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tekst-zacht); padding: 0 10px 9px 0; border-bottom: 1px solid var(--rand);
+  }
+  .tabel td { padding: 10px 10px 10px 0; border-top: 1px solid var(--rand); vertical-align: top; }
+  .tabel td:last-child, .tabel th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabel tbody tr:first-child td { border-top: 0; }
+  .vraag { border: 1px solid var(--rand); border-radius: var(--radius); margin-bottom: 9px; background: var(--vlak); }
+  .vraag summary { cursor: pointer; padding: 14px 18px; font-weight: 700; }
+  .vraag p { padding: 0 18px; margin: 0 0 14px; color: var(--tekst-zacht); }
+  .verder { margin: 34px 0 0; padding: 20px; border-radius: var(--radius); border: 1px solid var(--rand); }
+  .verder ul { list-style: none; padding: 0; margin: 10px 0 0; }
+  .verder li { margin-bottom: 7px; }
+  .doe { margin: 34px 0 0; padding: 24px; border-radius: var(--radius); background: var(--blauw-50); border: 1px solid var(--blauw-100); }
+  .doe p:last-of-type { margin-bottom: 18px; }
+  /*
+    Een tabel met vier kolommen past niet op een telefoon. De kolom "Duur"
+    staat al in de periode ("dag 1 tot en met 14"), dus die kan als eerste
+    weg. Onder 420px valt ook de optelkolom weg; het maximum staat in de zin
+    onder de tabel, dus er gaat geen informatie verloren.
+  */
+  @media (max-width: 560px) {
+    .tabel { font-size: .88rem; }
+    .tabel th:nth-child(2), .tabel td:nth-child(2) { display: none; }
+  }
+  @media (max-width: 420px) {
+    .tabel--vier th:nth-child(4), .tabel--vier td:nth-child(4) { display: none; }
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://nubeslist.nl/#organisatie",
+  "name": "nubeslist.nl",
+  "alternateName": "nubeslist.nl",
+  "url": "https://nubeslist.nl/",
+  "logo": "https://nubeslist.nl/icoon-512.png",
+  "description": "nubeslist.nl controleert of een bestuursorgaan te laat is met beslissen en regelt de ingebrekestelling en de dwangsom bij niet tijdig beslissen.",
+  "areaServed": {
+    "@type": "Country",
+    "name": "Nederland"
+  },
+  "knowsLanguage": "nl-NL"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "@id": "https://nubeslist.nl/#site",
+  "url": "https://nubeslist.nl/",
+  "name": "nubeslist.nl",
+  "inLanguage": "nl-NL",
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": "https://nubeslist.nl/ingebrekestelling#vragen",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Moet een ingebrekestelling per post of mag het per e-mail?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Dat hangt van het bestuursorgaan af. Veel instanties accepteren digitale post alleen via een eigen formulier of berichtenbox, en een e-mail aan een algemeen adres telt dan niet. Kies je toch voor e-mail, vraag dan om een ontvangstbevestiging. Je moet later kunnen aantonen wanneer de brief is aangekomen, want vanaf dat moment gaan de twee weken lopen."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Ik heb al een keer gebeld of gemaild. Telt dat ook?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Meestal niet. Een telefoontje laat geen spoor na, en een vraag naar de stand van zaken is iets anders dan een ingebrekestelling. Heb je wel iets schriftelijk gestuurd, bewaar dat dan. Soms is zo'n bericht alsnog als ingebrekestelling aan te merken, en dan tellen de twee weken vanaf dat moment."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Moet ik een bepaald formulier gebruiken?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Nee, de wet schrijft geen formulier voor. Sommige instanties bieden er een aan, en dat is vaak de makkelijkste weg omdat je dan zeker weet dat de brief op de juiste plek aankomt."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Hoeveel kan het opleveren?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "De eerste 14 dagen € 23 per dag, de volgende 14 dagen € 35 en de laatste 14 dagen € 45. Na 42 dagen stopt de teller op € 1.442. Op de rekenpagina staat het per dag uitgewerkt."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Moet het bestuursorgaan de dwangsom zelf vaststellen?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Ja. Het bestuursorgaan stelt de hoogte binnen twee weken na de laatste dag vast bij beschikking (art. 4:18 Awb). Gebeurt dat niet, dan kun je daarom vragen. Het bedrag wordt rechtstreeks aan jou uitbetaald."
+      }
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "nubeslist.nl",
+      "item": "https://nubeslist.nl/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Ingebrekestelling",
+      "item": "https://nubeslist.nl/ingebrekestelling"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "@id": "https://nubeslist.nl/ingebrekestelling#artikel",
+  "headline": "Wat is een ingebrekestelling?",
+  "description": "Een ingebrekestelling laat een instantie weten dat de beslistermijn voorbij is. Wat erin moet staan, wanneer je hem stuurt en wat er daarna gebeurt.",
+  "inLanguage": "nl-NL",
+  "isAccessibleForFree": true,
+  "publisher": {
+    "@id": "https://nubeslist.nl/#organisatie"
+  },
+  "mainEntityOfPage": "https://nubeslist.nl/ingebrekestelling"
+}
+</script>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
+    <nav id="balk-nav">
+      <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
+      <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
+      <a class="nav-secundair" href="/mijn">Mijn dossier</a>
+      <a class="knop knop--primair knop--klein" href="/aanvraag">Controleer mijn brief</a>
+    </nav>
+  </div>
+</header>
+
+<main class="artikel">
+  <h1>Wat is een ingebrekestelling?</h1>
+  <p class="wetnoot">Wettelijk kader: Algemene wet bestuursrecht, artikel 4:17. Deze regeling is landelijk en geldt hetzelfde voor UWV, gemeenten, DUO, de SVB en andere bestuursorganen.</p>
+
+  <p>Een <strong>ingebrekestelling</strong> is een brief waarin je een bestuursorgaan laat weten
+     dat de beslistermijn voorbij is en dat je alsnog een besluit wilt. Het is geen klacht en geen
+     bezwaar: je zegt niet dat het besluit verkeerd is, je zegt dat er nog geen besluit is.</p>
+
+  <p>Die brief is bovendien een voorwaarde. <strong>Zonder ingebrekestelling ontstaat er nooit een
+     dwangsom</strong>, hoe lang je ook wacht. Dat is precies waar de meeste mensen op vastlopen:
+     ze wachten maanden, bellen een paar keer, en beginnen pas te tellen vanaf het moment dat ze
+     eindelijk die brief sturen.</p>
+
+  <h2>Wanneer kun je in gebreke stellen?</h2>
+  <p>Als de beslistermijn voorbij is. Niet eerder. Een ingebrekestelling die te vroeg wordt
+     verstuurd telt niet mee en je moet hem dan opnieuw sturen.</p>
+  <p>Welke termijn voor jouw zaak geldt, staat meestal in de ontvangstbevestiging van je aanvraag.
+     Staat er geen datum in, dan geldt de wettelijke termijn voor dat soort aanvraag. Op
+     <a href="/beslistermijn">de pagina over beslistermijnen</a> staat een overzicht per soort zaak.</p>
+
+  <h2>Wat gebeurt er nadat je hem verstuurt?</h2>
+  <ol>
+    <li>Het bestuursorgaan krijgt <strong>twee weken</strong> om alsnog te beslissen.</li>
+    <li>Komt er binnen die twee weken een besluit, dan is de zaak klaar en is er geen dwangsom.</li>
+    <li>Komt er niets, dan gaat vanaf de dag daarna een dwangsom lopen, voor elke dag dat het
+        besluit uitblijft, tot maximaal 42 dagen.</li>
+  </ol>
+  <p class="wetnoot">Die twee weken staan in artikel 4:17 lid 3 van de Algemene wet bestuursrecht.</p>
+
+  <h2>Wat moet erin staan?</h2>
+  <p>De wet stelt geen vormvereisten, maar een bruikbare ingebrekestelling bevat in elk geval:</p>
+  <ul>
+    <li>je naam, adres en het kenmerk of zaaknummer;</li>
+    <li>om welke aanvraag of welk bezwaar het gaat, en wanneer je die hebt ingediend;</li>
+    <li>dat de beslistermijn is verstreken, met de datum erbij;</li>
+    <li>dat je het bestuursorgaan <strong>in gebreke stelt</strong> en alsnog een besluit vraagt;</li>
+    <li>dat je aanspraak maakt op een dwangsom als er niet binnen twee weken wordt beslist.</li>
+  </ul>
+  <div class="kader">
+    <p><strong>Het woord zelf maakt uit.</strong> Een e-mail met "wanneer hoor ik nu eindelijk
+       iets?" is begrijpelijk, maar het is geen ingebrekestelling. Zet er met zoveel woorden in dat
+       je het bestuursorgaan in gebreke stelt.</p>
+  </div>
+
+  <h2>Kan dit gevolgen hebben voor je aanvraag of bezwaar?</h2>
+  <p>De ingebrekestelling gaat over het <strong>uitblijven van een beslissing</strong> en niet over
+     de inhoud van je zaak. Loopt er een bezwaar, dan blijft dat bezwaar gewoon inhoudelijk
+     behandeld worden.</p>
+  <p>Het is wel een formele stap, en daarmee een stap die vastligt. Twijfel je of hij in jouw
+     situatie verstandig is, leg hem dan eerst voor aan een jurist of het Juridisch Loket.</p>
+
+  <h2>Wanneer levert het geen dwangsom op?</h2>
+  <p>In een aantal gevallen is de regeling uitgesloten. De belangrijkste:</p>
+  <ul>
+    <li><strong>Woo-verzoeken.</strong> Sinds 1 mei 2022 geldt de dwangsomregeling niet voor
+        verzoeken op grond van de Wet open overheid. Beroep bij de rechtbank wegens niet tijdig
+        beslissen kan wel.</li>
+    <li><strong>Asielaanvragen.</strong> Ook daar is de dwangsom uitgeschakeld; de route loopt via
+        de rechtbank.</li>
+    <li><strong>Geen belanghebbende.</strong> Alleen de aanvrager of een belanghebbende kan
+        aanspraak maken (art. 4:17 lid 6 sub b Awb).</li>
+    <li><strong>De aanvraag is buiten behandeling gesteld.</strong> Zo'n besluit is ook een besluit;
+        daarmee is op tijd beslist. Tegen dat besluit kun je wel bezwaar maken.</li>
+    <li><strong>Onredelijk laat in gebreke gesteld.</strong> Wie jaren wacht en dan pas een brief
+        stuurt, kan die aanspraak verliezen.</li>
+  </ul>
+
+  <h2>Veelgestelde vragen</h2>
+      <details class="vraag">
+        <summary>Moet een ingebrekestelling per post of mag het per e-mail?</summary>
+        <p>Dat hangt van het bestuursorgaan af. Veel instanties accepteren digitale post alleen via een eigen formulier of berichtenbox, en een e-mail aan een algemeen adres telt dan niet.</p>
+        <p>Kies je toch voor e-mail, vraag dan om een ontvangstbevestiging. Je moet later kunnen aantonen wanneer de brief is aangekomen, want vanaf dat moment gaan de twee weken lopen.</p>
+      </details>
+      <details class="vraag">
+        <summary>Ik heb al een keer gebeld of gemaild. Telt dat ook?</summary>
+        <p>Meestal niet. Een telefoontje laat geen spoor na, en een vraag naar de stand van zaken is iets anders dan een ingebrekestelling.</p>
+        <p>Heb je wel iets schriftelijk gestuurd, bewaar dat dan. Soms is zo'n bericht alsnog als ingebrekestelling aan te merken, en dan tellen de twee weken vanaf dat moment.</p>
+      </details>
+      <details class="vraag">
+        <summary>Moet ik een bepaald formulier gebruiken?</summary>
+        <p>Nee, de wet schrijft geen formulier voor. Sommige instanties bieden er een aan, en dat is vaak de makkelijkste weg omdat je dan zeker weet dat de brief op de juiste plek aankomt.</p>
+      </details>
+      <details class="vraag">
+        <summary>Hoeveel kan het opleveren?</summary>
+        <p>De eerste 14 dagen &euro; 23 per dag, de volgende 14 dagen &euro; 35 en de laatste 14 dagen &euro; 45. Na 42 dagen stopt de teller op &euro; 1.442.</p>
+        <p>Op <a href="/dwangsom-berekenen">de rekenpagina</a> staat het per dag uitgewerkt.</p>
+      </details>
+      <details class="vraag">
+        <summary>Moet het bestuursorgaan de dwangsom zelf vaststellen?</summary>
+        <p>Ja. Het bestuursorgaan stelt de hoogte binnen twee weken na de laatste dag vast bij beschikking (art. 4:18 Awb). Gebeurt dat niet, dan kun je daarom vragen.</p>
+        <p>Het bedrag wordt rechtstreeks aan jou uitbetaald.</p>
+      </details>
+
+
+  <div class="doe">
+    <p><strong>Wil je weten of dit voor jouw zaak geldt?</strong></p>
+    <p>Upload de brief waarin staat wanneer je een beslissing kon verwachten. Wij zoeken de
+       datum voor je op en zeggen wat je nu kunt doen. Dat kost niets en je zit nergens aan vast.</p>
+    <a class="knop knop--primair" href="/aanvraag">Controleer mijn brief</a>
+  </div>
+
+  <div class="verder">
+    <strong>Verder lezen</strong>
+    <ul>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/beslistermijn">Hoelang mag een instantie erover doen?</a></li>
+      <li><a href="/dwangsom-berekenen">Hoe wordt de dwangsom berekend?</a></li>
+    </ul>
+  </div>
+</main>
+
+<footer class="voet">
+  <div class="omhulsel">
+    <div class="voet__merk"><svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg><span>nubeslist.nl</span></div>
+    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+       verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
+    <p>Deze pagina is algemene uitleg en geen juridisch advies. Aan de inhoud kunnen geen rechten
+       worden ontleend.</p>
+    <ul class="voet__links">
+      <li><a href="/">Startpagina</a></li>
+      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+      <li><a href="/ingebrekestelling">Wat is een ingebrekestelling?</a></li>
+      <li><a href="/beslistermijn">Hoelang mag een instantie erover doen?</a></li>
+      <li><a href="/dwangsom-berekenen">Hoe wordt de dwangsom berekend?</a></li>
+      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/voorwaarden">Voorwaarden</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script type="module" src="/assets/menu.js"></script>
+</body>
+</html>

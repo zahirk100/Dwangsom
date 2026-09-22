@@ -11,7 +11,7 @@ alleen jij kunt doen.
 | | Waar |
 | --- | --- |
 | `robots.txt` met verwijzing naar de sitemap | gegenereerd door `npm run build` |
-| `sitemap.xml` met 23 pagina's | idem, uit dezelfde lijst die de pagina's maakt |
+| `sitemap.xml` met 26 pagina's | idem, uit dezelfde lijst die de pagina's maakt |
 | Eigen titel, omschrijving en canonical per pagina | `public/shared/campagnes.js` |
 | `Organization` en `WebSite` op elke pagina | `src/seo.js` |
 | `FAQPage` op elke pagina met zichtbare vragen | uit de pagina zelf gelezen |
@@ -90,19 +90,38 @@ FAQ-blokken vangen de tweede.
 | `/aow` | aow aanvraag duurt lang | beslistermijn aow |
 | `/toeslagen` | toeslag aanvraag duurt lang | belastingdienst beslist niet |
 | `/nog-niet-te-laat` | wanneer is de beslistermijn voorbij | hoelang mag een instantie erover doen |
-| `/hoe-werkt-het` | dwangsom niet tijdig beslissen | ingebrekestelling, awb 4:17 |
+| `/hoe-werkt-het` | dwangsom niet tijdig beslissen | awb 4:17, regeling |
+| `/ingebrekestelling` | ingebrekestelling | in gebreke stellen |
+| `/beslistermijn` | beslistermijn | hoelang mag uwv erover doen |
+| `/dwangsom-berekenen` | dwangsom berekenen | bedrag per dag |
 | `/uwv-te-laat` | *advertenties, geen organisch doel* | — |
 
-### Wat er nog ontbreekt
+### De kennispagina's
 
-Er is **geen enkele pagina** die uitlegt wat een ingebrekestelling is, los van
-de dienst. Dat is het grootste gat: dat woord heeft vast zoekvolume, de
-intentie is hoog, en wie het zoekt is precies onze klant. Eén goede uitlegpagina
-(`/ingebrekestelling`) zou hier het meeste opleveren.
+Deze drie beantwoorden een vraag die iemand intypt **voordat** hij weet dat wij
+bestaan. Dat is ander verkeer dan de campagnepagina's, en het was het grootste
+gat in de opzet.
 
-Tweede gat: geen pagina per **veelvoorkomende vraag**, zoals "hoelang mag UWV
-over een WIA-aanvraag doen". Dat zijn zoekopdrachten met veel volume waar nu
-alleen forums op scoren.
+| Pagina | Hoofdzoekwoord | Daarnaast |
+| --- | --- | --- |
+| `/ingebrekestelling` | ingebrekestelling | in gebreke stellen, wat is een ingebrekestelling |
+| `/beslistermijn` | beslistermijn | hoelang mag uwv erover doen, beslistermijn bijstand |
+| `/dwangsom-berekenen` | dwangsom berekenen | dwangsom hoogte, bedrag per dag |
+
+De inhoud komt uit `dwangsom.js` en `catalogus.js` — dezelfde bron als de
+rekenmodule. Een uitlegpagina die iets anders zegt dan de uitslag die de
+bezoeker even later krijgt, is erger dan geen uitlegpagina.
+
+Ze staan in de voet van **elke** pagina. Dat is niet alleen service: interne
+links zijn hoe een zoekmachine een nieuwe pagina vindt en inschat waar die
+over gaat.
+
+### Wat er hierna nog kan
+
+Meer vraagpagina's, maar alleen als er echt iets te vertellen valt. Een pagina
+per instantie met dezelfde tekst is dunne inhoud, en dat patroon herkent
+Google. De beste bron voor de volgende pagina is Search Console: waar je op
+plek 11 tot 20 staat, is wat je moet uitbouwen.
 
 ---
 

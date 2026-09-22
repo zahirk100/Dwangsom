@@ -24,6 +24,7 @@ import { labelBestuursorgaan, zoekZaaktype } from '../public/shared/catalogus.js
 import { tarief, tariefZin, tariefVoorbeeld } from '../public/shared/tarief.js';
 import { organisatiegegevens } from './organisatie.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
+import { KENNISLINKS } from './kennispagina.js';
 
 const SITE = 'https://nubeslist.nl';
 
@@ -757,7 +758,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
     <ul class="voet__links">
       <li><a href="/">Startpagina</a></li>
       <li><a href="${pad}">Controle starten</a></li>
-      <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
+${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li>`).join('\n')}
       <li><a href="#kosten">Kosten</a></li>
       <li><a href="#vertrouwen">Over ons</a></li>
       <li><a href="/privacy">Privacy</a></li>

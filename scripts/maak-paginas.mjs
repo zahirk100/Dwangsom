@@ -14,12 +14,14 @@ import path from 'node:path';
 import { alleLandingspaginas } from '../src/landingpagina.js';
 import { campagnepaginas, CAMPAGNE_PAD } from '../src/campagnepagina.js';
 import { robotsTxt, sitemapXml } from '../src/seo.js';
+import { kennispaginas } from '../src/kennispagina.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, '..', 'public');
 
 const landingen = alleLandingspaginas();
-for (const { bestand, html } of [...landingen, ...campagnepaginas()]) {
+const kennis = kennispaginas();
+for (const { bestand, html } of [...landingen, ...campagnepaginas(), ...kennis]) {
   writeFileSync(path.join(PUBLIEK, bestand), html);
   console.log(`  ${bestand.padEnd(26)} ${html.length} tekens`);
 }
@@ -49,6 +51,9 @@ const inSitemap = [
       frequentie: 'monthly',
     })),
   { pad: '/hoe-werkt-het', prioriteit: 0.8, frequentie: 'monthly' },
+  // De kennispagina's: ze beantwoorden een vraag die iemand intypt voordat
+  // hij weet dat wij bestaan. Dat is ander verkeer dan de campagnepagina's.
+  ...kennis.map(({ pad }) => ({ pad, prioriteit: 0.8, frequentie: 'monthly' })),
   { pad: '/voorwaarden', prioriteit: 0.3, frequentie: 'yearly' },
   { pad: '/privacy', prioriteit: 0.3, frequentie: 'yearly' },
 ];

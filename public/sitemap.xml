@@ -127,6 +127,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://nubeslist.nl/ingebrekestelling</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://nubeslist.nl/beslistermijn</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://nubeslist.nl/dwangsom-berekenen</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://nubeslist.nl/voorwaarden</loc>
     <lastmod>2026-09-22</lastmod>
     <changefreq>yearly</changefreq>
