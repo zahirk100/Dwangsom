@@ -101,32 +101,60 @@ vanaf, doe dat dan pas als het bouwen klaar is.
 
 ## 4. Het domein
 
-### Kopen
+### Kopen: waar, en wat "onder één dak" hier kan betekenen
 
-`nubeslist.nl` kan bij GoDaddy, dat werkt gewoon. Twee dingen om te weten:
+**Bij Vercel zelf kan niet.** Vercel verkoopt domeinen, maar heeft de meeste
+landextensies uit zijn aanbod gehaald, `.nl` daarbij. Dat is bevestigd in hun
+eigen changelog en in hun helpforum, waar iemand met precies deze vraag te horen
+kreeg: koop hem bij een Nederlandse partij en koppel hem. Alles bij één
+leverancier kopen is voor een `.nl` dus geen optie.
 
-- **.nl loopt altijd via SIDN**, welke verkoper je ook kiest. Een Nederlandse
-  partij (TransIP, Versio, Antagonist, Hostnet) is voor .nl meestal goedkoper
-  en heeft minder opties die je niet wilt aanvinken. GoDaddy staat erom bekend
-  dat het eerste jaar goedkoop is en de verlenging fors duurder.
+Wat wél kan, en in de praktijk op hetzelfde neerkomt: **koop het domein bij een
+Nederlandse registrar en verhuis het DNS-beheer naar Vercel.** De registratie
+staat dan bij de registrar (één factuur per jaar, verder kijk je er nooit naar
+om), en alles wat je dagelijks aanraakt — het certificaat, de records voor de
+site, de records voor de mail — beheer je op één plek in Vercel. Dat is het
+dichtst bij "één dak" dat je voor een `.nl` kunt krijgen.
+
+**Welke registrar.** `.nl` loopt altijd via SIDN, welke verkoper je ook kiest;
+het verschil zit in prijs, support en hoeveel er standaard aanstaat dat je niet
+wilt. Nederlandse partijen als TransIP, Versio, Antagonist of Hostnet zijn voor
+`.nl` meestal goedkoper dan GoDaddy en hebben Nederlandse support, wat scheelt
+als er iets met SIDN moet gebeuren. GoDaddy werkt op zich prima, maar staat erom
+bekend dat het eerste jaar goedkoop is en de verlenging fors duurder. Controleer
+de verlengprijs, niet de eerstejaarsprijs.
+
+Twee dingen die mensen achteraf verrassen:
+
 - **Whois werkt anders bij .nl.** Als privépersoon verbergt SIDN je gegevens
   standaard. Registreer je op de KvK-inschrijving, dan zijn bedrijfsnaam en
   adres openbaar. Staat je bedrijf op je huisadres ingeschreven, dan staat dat
-  adres dus openbaar in het register.
+  huisadres dus openbaar in het register.
+- **Zet automatische verlenging aan.** Een vergeten verlenging haalt je site en
+  je e-mail tegelijk offline, en een vrijgevallen `.nl` is binnen een dag door
+  iemand anders geregistreerd.
 
-Zet **automatische verlenging aan**. Een vergeten verlenging haalt je site en je
-e-mail tegelijk offline.
+Koop meteen ook `nubeslist.com` of een veelgemaakte typefout als je dat wilt
+afschermen; dat is een paar euro per jaar en later duurder.
+
+### Vercel moet naar Pro
+
+Dit hoort bij het domein omdat het op hetzelfde moment speelt. Het gratis
+**Hobby**-plan van Vercel is uitdrukkelijk voor niet-commercieel gebruik.
+nubeslist.nl vraagt geld voor een dienst, dus dat is commercieel. Voor de eerste
+echte klant moet het project op een betaald plan staan. Reken op ongeveer
+$20 per gebruiker per maand; controleer de actuele prijs bij het overzetten.
 
 ### DNS naar Vercel
 
 Twee manieren, kies er één:
 
-**A. Nameservers naar Vercel (makkelijkst).** In Vercel: *Settings → Domains →
-Add*. Vercel geeft twee nameservers. Die zet je bij GoDaddy onder *Nameservers →
-Change → I'll use my own*. Vanaf dan beheer je alle DNS in Vercel, inclusief de
-records voor je e-mail.
+**A. Nameservers naar Vercel (aanbevolen).** In Vercel: *Settings → Domains →
+Add*. Vercel geeft twee nameservers. Die zet je bij je registrar in plaats van
+de hunne. Vanaf dan beheer je alle DNS in Vercel, inclusief de records voor je
+e-mail. Dit is de variant die "alles op één plek" oplevert.
 
-**B. Records bij GoDaddy laten staan.** Voeg toe wat Vercel je opgeeft: een
+**B. Records bij de registrar laten staan.** Voeg toe wat Vercel je opgeeft: een
 `A`-record voor `nubeslist.nl` en een `CNAME` voor `www` naar
 `cname.vercel-dns.com`. **Neem de exacte waarden over uit het Vercel-scherm**;
 die kunnen wijzigen, schrijf ze niet over uit dit document.
@@ -296,22 +324,78 @@ handtekening van mensen die vaak in een kwetsbare positie zitten.
 
 ---
 
-## 10. De volgorde
+## 10. Het plan, in vier blokken
 
-**Week 1: het fundament.**
-Domein kopen, DNS naar Vercel, mailbox inrichten, SPF/DKIM/DMARC zetten, Vercel
-naar Pro, opslag koppelen, omgevingsvariabelen invullen. Daarna staat de site op
-`nubeslist.nl` en werkt alles wat er nu is.
+Vier blokken, en ze moeten in deze volgorde. Elk blok eindigt met iets dat je
+kunt controleren; is dat er niet, dan is het blok niet af.
 
-**Week 2: inrichten en proefdraaien.**
-Eerste beheerder, collega's uitnodigen, verzenddienst koppelen, een paar
-testdossiers helemaal doorlopen, van upload tot afhandeling.
+### Blok 1 — Het domein en het adres (een halve dag, plus wachttijd)
 
-**Week 3: het juridische deel.**
-Privacyverklaring, algemene voorwaarden, verwerkersovereenkomsten, de BSN-vraag
-bij een jurist, en de bevestiging van UWV aanvragen.
+1. Koop `nubeslist.nl` bij een Nederlandse registrar (zie stap 4). Zet
+   automatische verlenging aan.
+2. Zet Vercel op een betaald plan. Hobby mag niet voor een betaalde dienst.
+3. In Vercel: *Settings → Domains → Add* → `nubeslist.nl`. Neem de nameservers
+   over bij je registrar.
+4. Wacht tot Vercel het domein als *Valid* toont. Dat duurt meestal minuten,
+   soms uren. Het certificaat regelt Vercel zelf.
+5. Zet `SITE_URL=https://nubeslist.nl` in de omgevingsvariabelen.
 
-**Daarna pas adverteren.** De campagnepagina's staan klaar (`/uwv-wia`,
-`/bijstand`, `/wmo` en veertien andere), maar zet er geen budget op voordat
-bovenstaande lijst af is. Eén klacht bij de Autoriteit Persoonsgegevens over een
-BSN zonder grondslag kost meer dan de hele bouw.
+**Af als:** `https://nubeslist.nl` de site toont met een geldig slotje, en
+`www.nubeslist.nl` daarheen doorverwijst.
+
+### Blok 2 — De techniek erachter (een dag)
+
+6. Koppel de opslag (`KV_REST_API_URL` en `KV_REST_API_TOKEN`). **Dit is de
+   belangrijkste stap van allemaal**: zonder opslag is elk dossier weg bij de
+   volgende deploy.
+7. Zet `SESSIE_GEHEIM` op een lange willekeurige reeks.
+8. Kies je tarief en zet `TARIEF_PERCENTAGE` of `TARIEF_VAST`. Zolang dit leeg
+   is, noemt de site nergens een bedrag.
+9. Vul de `BEDRIJF_*`-variabelen in; die komen op de machtiging.
+10. Richt de mailbox in en zet SPF, DKIM en DMARC (zie stap 4). Koppel de
+    verzenddienst (`RESEND_API_KEY` of `POSTMARK_API_KEY`) en `MAIL_AFZENDER`.
+11. **Haal `BEHEER_OPEN` weg.**
+
+**Af als:** je een testdossier indient, het na een *Redeploy* nog steeds in
+`/beheer` staat, en de inloglink in je echte mailbox aankomt — niet in de
+spambox.
+
+### Blok 3 — Inrichten en proefdraaien (een dag)
+
+12. Maak de eerste beheerder aan op `/beheer` en zet tweestapsverificatie op.
+    Bewaar de acht herstelcodes ergens buiten je telefoon.
+13. Nodig je collega's uit met de rol die bij hun werk past.
+14. Loop drie testdossiers van begin tot eind door: één waarbij de termijn nog
+    loopt, één waarbij hij net verstreken is, en één bezwaarzaak. Upload bij
+    elk de stukken, stel de brief op, bewaar hem in het dossier en handel af.
+15. Controleer het klantportaal: link aanvragen, inloggen, stuk uploaden,
+    nieuwe post uploaden.
+
+**Af als:** je een dossier van upload tot uitbetaling hebt doorlopen zonder
+ergens iets in de database met de hand te moeten aanpassen.
+
+### Blok 4 — Het juridische deel (loopt parallel, duurt het langst)
+
+16. De BSN-vraag bij een jurist. **Dit is de blokkade.** Mag een particuliere
+    partij dit burgerservicenummer verwerken, en op welke grondslag? Begin
+    hiermee in blok 1, niet in blok 4, want hier zit de doorlooptijd.
+17. Privacyverklaring en algemene voorwaarden laten nakijken. Er staan concepten
+    op `/privacy` en `/voorwaarden` die zeggen wat het systeem echt doet; die
+    zijn een startpunt voor een jurist, geen eindproduct.
+18. Verwerkersovereenkomsten met Vercel, de opslagpartij en de verzenddienst.
+19. Verwerkingsregister (AVG art. 30) en bewaartermijnen.
+20. KvK-inschrijving rond, en de bevestiging van UWV over de digitale
+    handtekening aanvragen.
+
+**Af als:** de lijst in stap 9 van dit document helemaal afgevinkt is.
+
+### En dan pas adverteren
+
+De campagnepagina's staan klaar (`/uwv-wia`, `/bijstand`, `/wmo` en vijftien
+andere), maar zet er geen budget op voordat blok 4 af is. Eén klacht bij de
+Autoriteit Persoonsgegevens over een burgerservicenummer zonder grondslag kost
+meer dan de hele bouw.
+
+Begin daarna klein: één campagnepagina, een klein budget, en kijk of de
+dossiers die binnenkomen ook echt afgehandeld kunnen worden. Tien zaken goed
+afhandelen leert je meer dan honderd die blijven liggen.
