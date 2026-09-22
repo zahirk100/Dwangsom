@@ -198,3 +198,124 @@ test('een klantcookie geeft geen toegang tot de beheeromgeving', async () => {
   const alsBeheer = cookie.replace(/^nb_klant=/, 'nb_beheer=');
   assert.equal((await haal('/api/beheer/aanvragen', { headers: { cookie: alsBeheer } })).status, 401);
 });
+
+// --------------------------------------------- stukken aanleveren ---------
+
+test('het portaal vraagt precies de stukken die bij deze zaak horen', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const stukken = data.dossiers[0].stukken;
+
+  assert.ok(Array.isArray(stukken) && stukken.length > 0, 'er hoort een lijst te zijn');
+  const ids = stukken.map((s) => s.id);
+  // Deze zaak is een aanvraag waarbij zelf in gebreke is gesteld.
+  assert.ok(ids.includes('ontvangstbevestiging'), 'bewijs van de aanvraag');
+  assert.ok(ids.includes('ingebrekestelling'), 'de eigen melding van de aanvrager');
+  assert.ok(ids.includes('verzendbewijs'), 'en het verzendbewijs daarvan');
+  // Een bezwaarstuk hoort hier juist niet bij: dit is geen bezwaarzaak.
+  assert.ok(!ids.includes('bezwaarschrift'));
+  for (const stuk of stukken) {
+    assert.ok(stuk.label, 'elk stuk heeft een naam die de klant begrijpt');
+    assert.equal(typeof stuk.binnen, 'boolean');
+  }
+});
+
+test('een bezwaarzaak vraagt andere stukken dan een aanvraag', async () => {
+  await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: {
+        bestuursorgaan: 'uwv', zaaktype: 'uwv-bezwaar', basisdatum: dag(300),
+        ingebrekeGesteld: true, ingebrekestellingDatum: dag(90),
+      },
+      contact: {
+        naam: 'B. Bezwaar', email: 'bezwaar@voorbeeld.nl', adres: 'Teststraat 1',
+        postcode: '1000 AA', woonplaats: 'Amsterdam', geboortedatum: '1980-01-01',
+        bsn: '111222333', iban: 'NL91ABNA0417164300',
+        machtiging: true, akkoordVoorwaarden: true,
+      },
+    }),
+  });
+  const cookie = await logInAlsKlant('bezwaar@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const ids = data.dossiers[0].stukken.map((s) => s.id);
+
+  assert.ok(ids.includes('primair-besluit'), 'het besluit waartegen bezwaar is gemaakt');
+  assert.ok(ids.includes('bezwaarschrift'));
+  assert.ok(!ids.includes('ontvangstbevestiging'), 'dat hoort bij een aanvraag, niet bij bezwaar');
+});
+
+test('de klant levert een stuk aan en het staat daarna als binnen', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const voor = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const dossier = voor.dossiers[0];
+  const stuk = dossier.stukken.find((s) => !s.binnen);
+  assert.ok(stuk, 'er hoort nog iets open te staan');
+
+  const antwoord = await haal(`/api/mijn/dossiers/${dossier.id}/stuk`, {
+    method: 'POST',
+    headers: { cookie },
+    body: JSON.stringify({
+      stukId: stuk.id,
+      bestandsnaam: 'mijn-brief.pdf',
+      mediaType: 'application/pdf',
+      data: Buffer.from('%PDF-1.4 dit is een testbestand').toString('base64'),
+    }),
+  });
+  const tekst = await antwoord.text();
+  assert.equal(antwoord.status, 200, tekst);
+  const bijgewerkt = JSON.parse(tekst).dossier.stukken.find((s) => s.id === stuk.id);
+  assert.equal(bijgewerkt.binnen, true);
+  assert.equal(bijgewerkt.bestanden.length, 1);
+  assert.equal(bijgewerkt.bestanden[0].bestandsnaam, 'mijn-brief.pdf');
+});
+
+test('een aangeleverd bestand is terug te downloaden, maar niet door een ander', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const dossier = data.dossiers[0];
+  const bestand = dossier.stukken.flatMap((s) => s.bestanden)[0];
+  assert.ok(bestand, 'er hoort een bestand te staan');
+
+  const eigen = await haal(`/api/mijn/dossiers/${dossier.id}/bestanden/${bestand.id}`, {
+    headers: { cookie },
+  });
+  assert.equal(eigen.status, 200);
+  assert.match(eigen.headers.get('content-disposition'), /attachment/,
+    'nooit inline tonen; een geüpload bestand laten renderen is onnodig risico');
+
+  const cookieAnder = await logInAlsKlant('twee@voorbeeld.nl');
+  const vanAnder = await haal(`/api/mijn/dossiers/${dossier.id}/bestanden/${bestand.id}`, {
+    headers: { cookie: cookieAnder },
+  });
+  assert.equal(vanAnder.status, 404, 'het dossier van een ander bestaat voor jou niet');
+});
+
+test('een stuk dat in deze zaak niet gevraagd wordt, wordt geweigerd', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const antwoord = await haal(`/api/mijn/dossiers/${data.dossiers[0].id}/stuk`, {
+    method: 'POST',
+    headers: { cookie },
+    body: JSON.stringify({ stukId: 'bezwaarschrift', bestandsnaam: 'x.pdf', data: 'eA==' }),
+  });
+  assert.equal(antwoord.status, 400);
+  assert.match((await antwoord.json()).fout, /niet gevraagd/);
+});
+
+test('een te groot bestand wordt geweigerd met uitleg', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const dossier = data.dossiers[0];
+  const antwoord = await haal(`/api/mijn/dossiers/${dossier.id}/stuk`, {
+    method: 'POST',
+    headers: { cookie },
+    body: JSON.stringify({
+      stukId: dossier.stukken[0].id,
+      bestandsnaam: 'groot.pdf',
+      data: 'A'.repeat(5 * 1024 * 1024),
+    }),
+  });
+  assert.equal(antwoord.status, 413);
+  assert.match((await antwoord.json()).fout, /3 MB/);
+});

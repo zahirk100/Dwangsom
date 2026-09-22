@@ -100,12 +100,30 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 | `PORT` | `3000` | Poort van de webserver |
 | `SESSIE_GEHEIM` | per start willekeurig | Ondertekent de sessiecookies; zonder dit log je uit bij een herstart |
 | `BEHEER_OPEN` | uit | `1` opent `/beheer` zonder wachtwoord, om te proefdraaien. De omgeving waarschuwt er zelf over. Weghalen vóór livegang. |
-| `SESSIE_GEHEIM` | het beheerwachtwoord | Sleutel waarmee sessiecookies worden ondertekend |
+| `TARIEF_PERCENTAGE` **of** `TARIEF_VAST` | leeg | Onze vergoeding bij een toegekende dwangsom: een percentage (`25`) of een vast bedrag (`129`). **Staat er niets, dan noemt de site nergens een bedrag** — dat is met opzet, zie hieronder. Vóór livegang invullen. |
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
 | `KV_REST_API_URL` + `KV_REST_API_TOKEN` | leeg | Redis via REST; verplicht op serverloze hosting |
 | `SECURE_COOKIES` | automatisch achter HTTPS | Zet op `1` om af te dwingen |
 | `FUNNEL` | `nieuw` | `klassiek` zet de oude vragenwizard terug op `/aanvraag` |
 | `BEDRIJF_NAAM`, `BEDRIJF_ADRES`, `BEDRIJF_POSTCODE_PLAATS`, `BEDRIJF_KVK`, `BEDRIJF_EMAIL`, `BEDRIJF_TELEFOON` | leeg | Onze eigen gegevens op de machtiging. Wat leeg is, wordt een invulregel in het document en een waarschuwing in het dossier. |
+
+### Het tarief staat op één plek
+
+Wat wij rekenen is een bedrijfsbeslissing, geen code, en het staat op te veel
+schermen om het te kopiëren: de homepage, de funnel vlak voor de handtekening,
+de voorwaarden. Daarom komt het uit `public/shared/tarief.js`, en die leest de
+omgeving.
+
+Is er niets ingesteld, dan zegt de site eerlijk dat je het vooraf te horen
+krijgt en noemt hij géén getal. Dat is met opzet: een verzonnen percentage op
+de pagina waar iemand zijn handtekening zet, is erger dan geen percentage.
+`ontbrekendTarief()` zet het in de beheeromgeving op de lijst met dingen die
+vóór livegang geregeld moeten zijn.
+
+```
+TARIEF_PERCENTAGE=25    een deel van de toegekende dwangsom
+TARIEF_VAST=129         een vast bedrag per toegekende zaak
+```
 
 ## Structuur
 
@@ -352,6 +370,16 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
+Klantportaal (eigen sessiecookie, alleen het eigen dossier):
+
+| Route | Doel |
+| --- | --- |
+| `POST /api/mijn/link` · `/koppeling` · `/uitloggen` · `GET /sessie` | Inloglink aanvragen, inwisselen, uitloggen |
+| `GET /api/mijn/dossiers` | De eigen dossiers, door `voorKlant` gefilterd |
+| `POST /api/mijn/dossiers/:id/gegevens` | De eigen contactgegevens aanvullen (niet BSN of IBAN) |
+| `POST /api/mijn/dossiers/:id/stuk` | Een bewijsstuk uploaden bij een van de gevraagde stukken |
+| `GET /api/mijn/dossiers/:id/bestanden/:bestandId` | Een eerder geüpload bestand terugkijken |
+
 Lokaal serveert `server.js` ook de pagina's. Op Vercel wordt diezelfde module
 geladen en via de **default export** aangeroepen, ook voor `/api/*`. Beide wegen
 komen uit bij dezelfde `verwerk`-router, dus de
@@ -428,12 +456,39 @@ burgerservicenummer komen er zo nooit in terecht, ook niet als er later een veld
 bijkomt. `test/portaal.test.js` legt dat vast, inclusief de vraag waar het bij
 een portaal om draait: kan iemand het dossier van een ander zien?
 
+### De klant levert zijn eigen stukken aan
+
+Welke bewijsstukken een zaak nodig heeft, verschilt per soort zaak: bij een
+aanvraag is dat de ontvangstbevestiging, bij een bezwaar het primaire besluit
+plus het bezwaarschrift, en stelde iemand zelf al in gebreke, dan is het
+verzendbewijs daarvan het belangrijkste papier dat er is — dat bepaalt vanaf
+welke dag de dwangsom telt.
+
+Die lijst komt uit dezelfde functie als de beheeromgeving gebruikt
+(`bepaalDossiereisen` in `public/shared/dossier.js`), zodat behandelaar en klant
+nooit naar een andere lijst kijken. In het portaal staat per stuk een
+uploadknop; wat binnen is, vinkt zichzelf af. Stukken die **wij** aanleveren
+(onze eigen ingebrekestelling, de machtiging) worden er via `stukkenVanKlant`
+uitgefilterd: daar moet de klant niet om gevraagd worden.
+
+De teksten erboven zijn wél anders. De gedeelde module schrijft voor de
+behandelaar ("de eigen ingebrekestelling van de aanvrager"), en dat is precies
+de verkeerde toon tegen de aanvrager zelf. `mijn.js` heeft daarom een eigen
+woordenlijst; staat een stuk daar niet in, dan blijft de gedeelde tekst staan.
+
+**Voorlopig** gaan die bestanden als base64 in het dossier zelf, met een grens
+van 3 MB per bestand. Dat is een noodoplossing om het werkend te hebben zonder
+één dependency: het hoort naar Vercel Blob of Supabase Storage zodra het domein
+er is. Zie `docs/livegang.md`. Downloaden kan alleen ingelogd, en gaat altijd
+als `attachment` met `no-store`, zodat een pdf nooit in de browser opent of in
+een cache blijft hangen.
+
 ```
 src/wachtwoord.js   scrypt-hashes, met de kosten in de hash
 src/totp.js         tweestapsverificatie en herstelcodes
 src/gebruikers.js   accounts, rollen, uitnodigingen, inloglinks, sessies
 src/mail.js         sjablonen en versturen via Resend of Postmark
-public/mijn.html    het klantportaal
+public/mijn.html    het klantportaal, inclusief het aanleveren van stukken
 public/shared/tijdlijn.js  de tijdlijn zoals de klant hem ziet
 db/                 het Postgres-schema, klaar voor de stap naar Supabase
 ```

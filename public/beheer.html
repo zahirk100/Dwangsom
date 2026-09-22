@@ -105,6 +105,13 @@
   .notitie__meta { font-size: .78rem; color: var(--tekst-zacht); margin-bottom: 4px; }
   .knoprij { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .leeg { text-align: center; padding: 54px 20px; color: var(--tekst-zacht); }
+
+  /* De beheerbalk heeft een merk, een chip en twee knoppen; op een telefoon
+     past dat niet naast elkaar en schoof de hele pagina zijwaarts. */
+  @media (max-width: 560px) {
+    .balk-weg-op-klein { display: none; }
+    .balk__inhoud .merk__naam { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -126,8 +133,9 @@
       <span class="label-chip" style="margin-left:6px">Beheer</span>
     </a>
     <nav id="balk-nav">
-      <a class="nav-secundair" href="/">Naar de site</a>
-      <a class="knop knop--zacht knop--klein" href="/aanvraag">Aanvraag doen</a>
+      <a class="nav-secundair balk-weg-op-klein" href="/">Naar de site</a>
+      <a class="knop knop--zacht knop--klein" href="/aanvraag">
+        <span class="nav-lang">Aanvraag doen</span><span class="nav-kort">Aanvraag</span></a>
     </nav>
   </div>
 </header>

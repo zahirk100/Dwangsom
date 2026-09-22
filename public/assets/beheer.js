@@ -285,8 +285,10 @@ function rendereWieBenIk() {
   if (bestaand) bestaand.remove();
   if (!ik) return;
   const rol = (rollen.find((r) => r.id === ik.rol) || {}).label || ik.rol;
+  // Op een telefoon past deze naam er niet bij; dan schoof de hele pagina
+  // zijwaarts. Wie is ingelogd, staat ook onder Accounts.
   nav.prepend(el('span', {
-    class: 'subtiel', id: 'wie-ben-ik',
+    class: 'subtiel balk-weg-op-klein', id: 'wie-ben-ik',
     style: 'font-size:.84rem; margin-right:10px; white-space:nowrap',
     tekst: `${ik.naam || ik.email} (${rol})`,
   }));

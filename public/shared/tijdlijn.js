@@ -11,6 +11,7 @@
  */
 
 import { UITKOMST } from './dwangsom.js';
+import { labelBestuursorgaan } from './catalogus.js';
 
 /** @typedef {{sleutel: string, titel: string, onder: string, staat: string, datum?: string}} Stap */
 
@@ -30,6 +31,12 @@ export function klantTijdlijn(dossier) {
   const status = (dossier && dossier.status) || 'nieuw';
   const afgerond = ['toegekend', 'afgewezen', 'afgesloten'].includes(status);
 
+  const orgaan = invoer.organisatienaam
+    || (invoer.bestuursorgaan ? labelBestuursorgaan(invoer.bestuursorgaan) : '')
+    || 'de instantie';
+
+  const Orgaan = orgaan.charAt(0).toUpperCase() + orgaan.slice(1);
+
   const stappen = [];
 
   // 1. Altijd klaar zodra het dossier bestaat.
@@ -46,9 +53,9 @@ export function klantTijdlijn(dossier) {
   const termijnLoopt = rapport.uitkomst === UITKOMST.TERMIJN_LOOPT;
   stappen.push({
     sleutel: 'melding',
-    titel: igsVerstuurd ? 'De melding is verstuurd' : 'Wij melden dat de instantie te laat is',
+    titel: igsVerstuurd ? 'De melding is verstuurd' : `Wij melden ${orgaan} dat zij te laat zijn`,
     onder: igsVerstuurd
-      ? 'De instantie weet nu dat de beslistermijn voorbij is.'
+      ? `${Orgaan} weet nu dat de beslistermijn voorbij is.`
       : (termijnLoopt
         ? 'Zodra de beslistermijn voorbij is, versturen wij deze melding.'
         : 'Wij stellen de brief op en versturen hem namens jou.'),
@@ -61,10 +68,10 @@ export function klantTijdlijn(dossier) {
   const tweeWekenVoorbij = igsVerstuurd && !tweeWekenLoopt;
   stappen.push({
     sleutel: 'hersteltermijn',
-    titel: 'De instantie krijgt nog twee weken',
+    titel: `${Orgaan} krijgt nog twee weken`,
     onder: tweeWekenLoopt
       ? 'Komt er nu een besluit, dan is de zaak daarmee klaar.'
-      : 'Na onze melding heeft de instantie nog twee weken om te beslissen.',
+      : `Na onze melding heeft ${orgaan} nog twee weken om te beslissen.`,
     staat: tweeWekenLoopt ? BEZIG : (tweeWekenVoorbij ? KLAAR : STRAKS),
   });
 
@@ -85,7 +92,7 @@ export function klantTijdlijn(dossier) {
     sleutel: 'afronding',
     titel: uitbetaald ? 'Het bedrag is uitbetaald' : 'Uitbetaling op jouw rekening',
     onder: uitbetaald
-      ? 'De instantie heeft het bedrag rechtstreeks aan jou overgemaakt.'
+      ? `${Orgaan} heeft het bedrag rechtstreeks aan jou overgemaakt.`
       : 'Een toegekende vergoeding wordt rechtstreeks aan jou overgemaakt.',
     staat: uitbetaald ? KLAAR : (afgerond ? BEZIG : STRAKS),
     datum: afhandeling ? afhandeling.uitbetaaldOp : null,
@@ -127,6 +134,14 @@ export function klantSamenvatting(dossier) {
   // Bewust niet rapport.kop: dat is de tekst van de rekenkern, en die zegt
   // dingen als "stel eerst in gebreke". De klant hoeft niets te stellen; wij
   // doen dat. Daarom hier een eigen zin per uitkomst.
+  //
+  // En met de naam erin: wie zijn eigen dossier opent weet dat het over UWV
+  // gaat, dus "de instantie" is hier alleen maar afstandelijk.
+  const invoer = (dossier && dossier.invoer) || {};
+  const orgaan = invoer.organisatienaam
+    || (invoer.bestuursorgaan ? labelBestuursorgaan(invoer.bestuursorgaan) : '')
+    || 'de instantie';
+  const Orgaan = orgaan.charAt(0).toUpperCase() + orgaan.slice(1);
   const perUitkomst = {
     [UITKOMST.RECHT]: {
       kop: 'Er loopt een dwangsom voor je',
@@ -134,19 +149,20 @@ export function klantSamenvatting(dossier) {
       kleur: 'goed',
     },
     [UITKOMST.HERSTELTERMIJN_LOOPT]: {
-      kop: 'De instantie heeft nog twee weken',
+      kop: `${Orgaan} heeft nog twee weken`,
       tekst: 'Wij hebben gemeld dat de termijn voorbij is. Komt er geen besluit, dan gaat de '
         + 'dwangsom lopen en vorderen wij die voor je.',
       kleur: 'info',
     },
     [UITKOMST.INGEBREKESTELLING_NODIG]: {
-      kop: 'Wij melden dat de instantie te laat is',
+      kop: `Wij melden ${orgaan} dat zij te laat zijn`,
       tekst: 'De beslistermijn is voorbij. Wij stellen de brief op en versturen hem namens jou.',
       kleur: 'info',
     },
     [UITKOMST.TERMIJN_LOOPT]: {
       kop: 'De termijn loopt nog',
-      tekst: 'Wij houden de datum in de gaten en komen in actie zodra die voorbij is.',
+      tekst: `Wij houden de datum in de gaten waarop ${orgaan} moet beslissen, en komen in actie `
+        + 'zodra die voorbij is.',
       kleur: 'info',
     },
     [UITKOMST.GEEN_RECHT]: {

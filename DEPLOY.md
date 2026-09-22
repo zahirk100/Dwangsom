@@ -3,6 +3,11 @@
 Twee fasen: eerst een **testdeploy** om alles te bekijken (vijf minuten, één
 instelling), later de **database en het eigen domein** voor echt gebruik.
 
+> **Ga je echt live, met echte klanten?** Dan is
+> **[docs/livegang.md](docs/livegang.md)** het draaiboek: domein en DNS, de
+> complete lijst omgevingsvariabelen, de eerste beheerder aanmaken, en wat er
+> juridisch geregeld moet zijn. Dit bestand gaat alleen over Vercel zelf.
+
 ---
 
 ## Nu: testdeploy
@@ -189,6 +194,7 @@ Dat laatste punt is het echte bewijs dat de opslag werkt.
 | `BEDRIJF_NAAM` | je bedrijfsnaam | komt op de machtiging te staan |
 | `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` | je vestigingsadres | idem |
 | `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | je KvK-nummer en contactgegevens | idem; wat leeg blijft wordt een invulregel |
+| `TARIEF_PERCENTAGE` *of* `TARIEF_VAST` | `25` of `129` | wat jullie rekenen bij een toegekende dwangsom. Staat er niets, dan noemt de site nergens een bedrag |
 | `FUNNEL` | `klassiek` | alleen nodig als je terug wilt naar de oude vragenwizard op `/aanvraag` |
 
 Zo'n geheim maak je met:
@@ -204,16 +210,18 @@ zetten. Verder niets nodig: de applicatie gebruikt geen vaste URL's.
 
 ### 7. Wat er nog niet in zit
 
-- **Geen e-mailnotificatie.** Een nieuwe aanvraag verschijnt in `/beheer`, maar
-  er gaat geen mail uit — naar jullie niet en naar de aanvrager niet. Iemand
-  moet dus in de beheeromgeving kijken.
-- **Eén gedeeld beheerwachtwoord.** Voor meerdere medewerkers wil je aparte
-  accounts met tweefactorauthenticatie. Controleer ook dat `BEHEER_OPEN` weg is.
-- **Privacy.** Er worden persoonsgegevens verwerkt: regel een
-  privacyverklaring, verwerkersovereenkomsten met Vercel en Upstash, een
-  bewaartermijn en een back-up.
+- **Bestanden staan in het dossier zelf**, als base64, met een grens van 3 MB.
+  Dat werkt, maar het hoort naar Vercel Blob of Supabase Storage.
+- **Het BSN staat onversleuteld in de opslag.**
+- **Statusmails worden niet automatisch verstuurd** als een behandelaar een stap
+  vastlegt; de sjablonen liggen wel klaar in `src/mail.js`.
 - **De standaardtermijnen** in `shared/catalogus.js` juridisch laten toetsen;
   zie het voorbehoud in README.md.
+
+De volledige lijst van wat er vóór de eerste echte klant geregeld moet zijn —
+grondslag voor het BSN, verwerkersovereenkomsten, bewaartermijnen, algemene
+voorwaarden, `BEHEER_OPEN` eruit — staat in
+[docs/livegang.md](docs/livegang.md), stap 9.
 
 ---
 

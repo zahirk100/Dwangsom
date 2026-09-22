@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="nl" data-instantie="belastingdienst">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -51,8 +51,8 @@
       <a class="nav-secundair" href="#kosten">Kosten</a>
       <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
-      <a class="knop knop--primair knop--klein" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag">
-        <span class="nav-lang">Upload mijn brief</span><span class="nav-kort">Starten</span>
+      <a class="knop knop--primair knop--klein" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag" data-cta>
+        <span class="nav-lang" data-cta-tekst>Upload mijn brief</span><span class="nav-kort">Starten</span>
       </a>
     </nav>
   </div>
@@ -60,13 +60,15 @@
 
 <main>
 
-  <!-- ============================================ herkenning vóór uitleg -->
+  <!-- ============================================= 1. herkenning + trigger -->
   <section class="hero">
     <div class="omhulsel hero__raster">
       <div class="hero__tekst">
-        <h1>Wacht je te lang op een beslissing over je toeslag?</h1>
-        <p class="hero__onder">Wij controleren of de Belastingdienst over de beslistermijn heen is en regelen wat daarna nodig is.</p>
-        <p class="hero__lead">Upload de brief over je toeslag waarin staat wanneer je een beslissing kon verwachten. Wij zoeken de datum voor je op.</p>
+        <h1 data-kop>Wacht je te lang op een beslissing over je toeslag?</h1>
+        <p class="hero__onder" data-onder>Wij controleren of de Belastingdienst over de beslistermijn heen is en regelen wat daarna nodig is.</p>
+        <p class="hero__lead" data-lead>Upload de brief over je toeslag waarin staat wanneer je een beslissing kon verwachten. Wij zoeken de datum voor je op.</p>
+        <p class="hero__trigger">Blijft een beslissing daarna uit? Dan kan je vergoeding
+           oplopen tot <strong>&euro; 1.442</strong>.</p>
 
         <div class="hero__knoppen">
           <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag">Upload mijn brief</a>
@@ -85,6 +87,7 @@
       </div>
 
       <aside class="hero__beeld" aria-label="Voorbeeld van de uitslag die je krijgt">
+        <p class="hero__beeldkop">Zo kan jouw uitslag eruitzien</p>
         <div class="proefkaart">
           <div class="proefkaart__balk">
             <span class="proefkaart__stip"></span>
@@ -92,11 +95,21 @@
             <span class="proefkaart__stip"></span>
           </div>
           <div class="proefkaart__lijf">
+            <!-- Het leesproces, zodat je ziet wat er met je brief gebeurt. -->
+            <ol class="leesstappen" aria-hidden="true">
+              <li class="leesstappen__bestand">Belastingdienst-brief.pdf</li>
+              <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="#3b7ad4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> instantie gevonden</li>
+              <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="#3b7ad4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> procedure gevonden</li>
+              <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="#3b7ad4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> beslisdatum gevonden</li>
+            </ol>
             <span class="chipje">Jouw uitslag</span>
-            <p class="proefkaart__kop">Het lijkt erop dat de Belastingdienst te laat is</p>
+            <p class="proefkaart__kop" data-proefkop>Het lijkt erop dat de Belastingdienst te laat is</p>
             <dl class="proefkaart__rijen">
-              <div><dt>Instantie</dt><dd>Belastingdienst</dd></div>
-              <div><dt>Procedure</dt><dd>Toeslag aanvragen of wijzigen</dd></div>
+              <div><dt>Instantie</dt><dd data-proefinstantie>Belastingdienst</dd></div>
+              <div><dt>Procedure</dt><dd data-proefprocedure>Toeslag aanvragen of wijzigen</dd></div>
               <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
               <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
             </dl>
@@ -109,19 +122,73 @@
     </div>
   </section>
 
-  <!-- ==================================== pas hier de mogelijke vergoeding -->
-  <section class="blok blok--papier" id="vergoeding">
+  <!-- ====================================================== 2. herken je dit -->
+  <section class="blok blok--papier" id="herkenning">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Is de instantie te laat?</h2>
-        <p>Dan kunnen wij namens jou de volgende stap regelen. Blijft een beslissing daarna uit,
-           dan kan onder de wettelijke regeling een dwangsom ontstaan. Die is voor jou, niet
-           voor ons.</p>
+        <h2>Herken je dit?</h2>
       </div>
+      <div class="herkenning">
+        <article class="kaart herkenning__geval">
+          <h3>De datum in je brief is voorbij</h3>
+          <p>Maar je hebt nog steeds geen beslissing gekregen.</p>
+        </article>
+        <article class="kaart herkenning__geval">
+          <h3>Je krijgt te horen dat je moet wachten</h3>
+          <p>Maar je weet niet hoe lang dat eigenlijk mag duren.</p>
+        </article>
+        <article class="kaart herkenning__geval">
+          <h3>Je weet niet wat je nu moet doen</h3>
+          <p>Nog bellen, afwachten, of officieel actie ondernemen?</p>
+        </article>
+      </div>
+      <div class="middenknop">
+        <p class="middenknop__zin">Je hoeft dat niet zelf uit te zoeken.
+           <strong>nubeslist.nl controleert het voor je.</strong></p>
+        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag" data-cta>
+          <span data-cta-tekst>Upload mijn brief</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ 3. de regeling in 20 sec -->
+  <section class="blok" id="vergoeding">
+    <div class="omhulsel">
+      <div class="sectiekop">
+        <h2>Je hoeft niet eindeloos te blijven wachten</h2>
+        <p>Voor beslissingen gelden termijnen. Is die termijn verstreken, dan kan
+           <span data-instantie-zin>de Belastingdienst</span> formeel worden gemeld dat zij te laat is.
+           Blijft een beslissing daarna uit, dan kan een dwangsom ontstaan.</p>
+      </div>
+
+      <!-- De hele regeling als één keten, zodat je hem in vijf seconden snapt. -->
+      <ol class="keten">
+        <li class="keten__stap">
+          <span class="keten__merk">1</span>
+          <div><strong>Beslistermijn verstreken</strong>
+            <span>De datum uit je brief is voorbij.</span></div>
+        </li>
+        <li class="keten__stap">
+          <span class="keten__merk">2</span>
+          <div><strong>Wij versturen de melding</strong>
+            <span>Officieel, met verzendbewijs.</span></div>
+        </li>
+        <li class="keten__stap">
+          <span class="keten__merk">3</span>
+          <div><strong>Nog twee weken</strong>
+            <span>Komt er een besluit, dan is het klaar.</span></div>
+        </li>
+        <li class="keten__stap keten__stap--geld">
+          <span class="keten__merk">4</span>
+          <div><strong>Nog geen beslissing?</strong>
+            <span>Dan telt de dwangsom op.</span></div>
+        </li>
+      </ol>
+
       <div class="vergoeding__raster">
         <div class="bedragkaart kaart">
-          <span class="bedragkaart__titel">Wettelijk maximum</span>
-          <span class="bedragkaart__bedrag">&euro; 1.442</span>
+          <span class="bedragkaart__titel">Mogelijke wettelijke dwangsom</span>
+          <span class="bedragkaart__bedrag">tot &euro; 1.442</span>
           <p class="bedragkaart__onder">De teller loopt ten hoogste 42 dagen en het bedrag per dag
              stijgt onderweg.</p>
           <div class="staaf" aria-hidden="true">
@@ -136,139 +203,181 @@
           </ul>
         </div>
         <div class="vergoeding__tekst">
-          <h3>Hoe het bedrag ontstaat</h3>
-          <p>Eerst moet er een formele melding naar de instantie dat de beslistermijn voorbij is.
-             Daarna krijgt de instantie nog twee weken om alsnog te beslissen. Komt er dan nog
-             steeds geen besluit, dan begint de teller te lopen.</p>
-          <p>Dat is precies het stuk waar mensen op afhaken, en precies het stuk dat wij
-             overnemen. Jij hoeft de data niet bij te houden.</p>
-          <p class="fijndruk">Of er recht ontstaat, hangt af van je zaak. Wij zeggen het eerlijk
-             als het er niet in zit.</p>
+          <h3>En het geld is van jou</h3>
+          <p>Een toegekende dwangsom wordt door de instantie <strong>rechtstreeks op je eigen
+             rekening</strong> gestort. Wij zitten niet tussen jou en je vergoeding.</p>
+          <p>Dat is ook de reden dat wij je rekeningnummer vragen: niet om het geld te ontvangen,
+             maar om het op de juiste rekening te laten uitbetalen.</p>
+          <p class="fijndruk">Of er in jouw zaak recht ontstaat, hangt af van de omstandigheden.
+             Wij zeggen het eerlijk als het er niet in zit.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- =========================================================== werkwijze -->
-  <section class="blok" id="werkwijze">
+  <!-- ============================================== 4. van brief naar uitslag -->
+  <section class="blok blok--papier" id="werkwijze">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Laten we kijken of de Belastingdienst te laat is</h2>
-        <p>Upload de brief waarin de Belastingdienst zegt wanneer je een beslissing kon verwachten. Wij zoeken de relevante datum voor je op.</p>
+        <h2>Van jouw brief naar duidelijkheid in 1 minuut</h2>
+        <p data-uploadtekst>Upload de brief waarin de Belastingdienst zegt wanneer je een beslissing kon verwachten. Wij zoeken de relevante datum voor je op.</p>
       </div>
 
-      <ol class="fasen">
-        <li class="fase">
-          <span class="fase__merk">1</span>
-          <div>
-            <h3>Je brief wordt gelezen</h3>
-            <p>Instantie, procedure, je gegevens en de uiterste beslisdatum. Wij halen het uit
-               het document, jij hoeft niets op te zoeken.</p>
-            <span class="fase__tijd">ongeveer 10 seconden</span>
-          </div>
-        </li>
-        <li class="fase">
-          <span class="fase__merk">2</span>
-          <div>
-            <h3>Je situatie staat vast</h3>
-            <p>Je ziet je eigen zaak terug: welke instantie, welke procedure, welke datum, en of
-               er al een beslissing is. Nog v&oacute;&oacute;r je iets invult.</p>
-            <span class="fase__tijd">direct op het scherm</span>
-          </div>
-        </li>
-        <li class="fase">
-          <span class="fase__merk">3</span>
-          <div>
-            <h3>Je machtigt ons</h3>
-            <p>Wat al uit je brief kwam staat voorgevuld. Je vult alleen aan wat wij nog missen
-               en zet één keer je handtekening op het scherm.</p>
-            <span class="fase__tijd">ongeveer een minuut</span>
-          </div>
-        </li>
-        <li class="fase">
-          <span class="fase__merk">4</span>
-          <div>
-            <h3>Wij regelen het</h3>
-            <p>Wij versturen de melding, bewaken de termijn die daarna gaat lopen en houden je
-               op de hoogte. Vanaf hier hoef jij niets meer bij te houden.</p>
-            <span class="fase__tijd">jij hoeft niets te doen</span>
-          </div>
-        </li>
-      </ol>
+      <div class="demo">
+        <ol class="fasen">
+          <li class="fase">
+            <span class="fase__merk">1</span>
+            <div>
+              <h3>Je uploadt je brief</h3>
+              <p>Een pdf, een foto of een screenshot. Weet je niet zeker welke brief? Upload wat je
+                 hebt, dan kijken wij mee.</p>
+              <span class="fase__tijd">ongeveer 10 seconden</span>
+            </div>
+          </li>
+          <li class="fase">
+            <span class="fase__merk">2</span>
+            <div>
+              <h3>Wij lezen hem uit</h3>
+              <p>Instantie, procedure, je gegevens en de uiterste beslisdatum. Jij hoeft niets op te
+                 zoeken en niets over te typen.</p>
+              <span class="fase__tijd">direct op het scherm</span>
+            </div>
+          </li>
+          <li class="fase">
+            <span class="fase__merk">3</span>
+            <div>
+              <h3>Je ziet je eigen zaak terug</h3>
+              <p>Met je eigen datum en je eigen procedure, nog v&oacute;&oacute;r je iets invult.</p>
+              <span class="fase__tijd">binnen een minuut</span>
+            </div>
+          </li>
+          <li class="fase">
+            <span class="fase__merk">4</span>
+            <div>
+              <h3>Je geeft akkoord</h3>
+              <p>Wat al uit je brief kwam staat voorgevuld. Je vult alleen aan wat wij missen en
+                 zet &eacute;&eacute;n keer je handtekening.</p>
+              <span class="fase__tijd">ongeveer een minuut</span>
+            </div>
+          </li>
+        </ol>
+
+        <!-- Het resultaatscherm, zodat stap 3 geen belofte is maar een demo. -->
+        <aside class="minischerm" aria-label="Voorbeeld van het controlescherm">
+          <div class="minischerm__kop"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> We hebben je brief gecontroleerd</div>
+          <dl class="minischerm__rijen">
+            <div><dt>Instantie</dt><dd data-proefinstantie>Belastingdienst</dd></div>
+            <div><dt>Procedure</dt><dd data-proefprocedure>Toeslag aanvragen of wijzigen</dd></div>
+            <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
+            <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
+          </dl>
+          <p class="minischerm__slot" data-proefkop>De Belastingdienst lijkt te laat.</p>
+        </aside>
+      </div>
 
       <div class="middenknop">
-        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag">Upload mijn brief</a>
-        <p class="fijndruk">Gratis en vrijblijvend. Je zit nergens aan vast.</p>
+        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag" data-cta>
+          <span data-cta-tekst>Upload mijn brief</span></a>
+        <p class="vertrouwenregel"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
+        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg> Je documenten worden beveiligd verwerkt en alleen
+           gebruikt om je zaak te controleren. Je machtigt ons pas als je zelf tekent.</p>
       </div>
     </div>
   </section>
 
-  <!-- ====================================================== het actieplan -->
-  <section class="blok blok--papier" id="actieplan">
+  <!-- ============================================ 5. dit doe jij / dit doen wij -->
+  <section class="blok" id="verdeling">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Dit gaan we dan voor je doen</h2>
-        <p>Geen brief versturen en dan afwachten. Een dwangsom ontstaat alleen als iemand de
-           data bijhoudt, en dat is vanaf je machtiging onze taak.</p>
+        <h2>Jij doet &eacute;&eacute;n ding. Wij de rest.</h2>
+        <p>Een dwangsom ontstaat alleen als iemand de data bijhoudt. Vanaf je handtekening is dat
+           onze taak, niet de jouwe.</p>
       </div>
-      <div class="plan">
-        <article class="plan__stap kaart">
-          <span class="plan__wanneer">Nu</span>
-          <h3>Wij melden dat de instantie te laat is</h3>
-          <p>De formele melding dat de beslistermijn voorbij is en dat je alsnog een besluit
-             wilt. Wij schrijven hem, versturen hem en bewaren het verzendbewijs.</p>
+      <div class="verdeling">
+        <article class="kaart verdeling__kant verdeling__kant--jij">
+          <span class="verdeling__wie">Dit doe jij</span>
+          <ul>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Je brief uploaden</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Controleren of onze gegevens kloppen</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>&Eacute;&eacute;n keer tekenen</span></li>
+          </ul>
+          <p class="verdeling__tijd">Samen ongeveer twee minuten.</p>
         </article>
-        <article class="plan__stap kaart">
-          <span class="plan__wanneer">Daarna</span>
-          <h3>Wij bewaken de termijn die gaat lopen</h3>
-          <p>Na onze melding krijgt de instantie nog twee weken. Komt er een besluit, dan is het
-             klaar en hoor je dat van ons.</p>
+        <article class="kaart verdeling__kant verdeling__kant--wij">
+          <span class="verdeling__wie">Vanaf dat moment doen wij</span>
+          <ul>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De formele melding opstellen en versturen</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Het verzendbewijs bewaren</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De vervolgtermijn bewaken</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De dwangsom berekenen en vorderen</span></li>
+            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De beschikking opvolgen</span></li>
+          </ul>
+          <p class="verdeling__tijd">Jij hoeft de procedure niet bij te houden.</p>
         </article>
-        <article class="plan__stap kaart">
-          <span class="plan__wanneer">Nog niets?</span>
-          <h3>Wij houden bij of er een dwangsom ontstaat</h3>
-          <p>En welk bedrag bij jouw situatie hoort. Wij vorderen het en de instantie betaalt
-             rechtstreeks aan jou.</p>
-        </article>
-      </div>
-
-      <div class="tijdlijnvoorbeeld">
-        <h3>Zo ziet je dossier er daarna uit</h3>
-        <ul class="tijdlijn">
-          <li class="tijdlijn__punt tijdlijn__punt--klaar">
-            <span class="tijdlijn__datum">Dag 1</span>
-            <span class="tijdlijn__tekst">Je zaak is aangemaakt</span>
-          </li>
-          <li class="tijdlijn__punt tijdlijn__punt--klaar">
-            <span class="tijdlijn__datum">Dag 2</span>
-            <span class="tijdlijn__tekst">Melding te late beslissing verzonden</span>
-          </li>
-          <li class="tijdlijn__punt tijdlijn__punt--bezig">
-            <span class="tijdlijn__datum">De twee weken daarna</span>
-            <span class="tijdlijn__tekst">De Belastingdienst heeft nu een wettelijke vervolgtermijn</span>
-          </li>
-          <li class="tijdlijn__punt">
-            <span class="tijdlijn__datum">Na die twee weken</span>
-            <span class="tijdlijn__tekst">Wij controleren of er inmiddels is beslist</span>
-          </li>
-          <li class="tijdlijn__punt">
-            <span class="tijdlijn__datum">Daarna</span>
-            <span class="tijdlijn__tekst">Loopt er een dwangsom op, dan vorderen wij die voor je</span>
-          </li>
-        </ul>
-        <p class="fijndruk">Je krijgt bericht bij elke stap. Geen nieuws betekent dat je niets
-           hoeft te doen.</p>
       </div>
     </div>
   </section>
 
-  <!-- ================================================= waar wacht je op ? -->
+  <!-- ====================================================== 6. het dossier -->
+  <section class="blok blok--papier" id="dossier">
+    <div class="omhulsel">
+      <div class="sectiekop">
+        <h2>En je kunt op elk moment zien waar het staat</h2>
+        <p>Na je handtekening krijg je een eigen dossier. Geen mappen, geen telefoontjes: één
+           scherm dat zegt wat er is gebeurd en wat er nu loopt.</p>
+      </div>
+
+      <div class="dossierdemo">
+        <div class="dossierdemo__kop">
+          <div>
+            <span class="dossierdemo__ref">DWS-2026-0148</span>
+            <h3 data-dossierkop>Jouw zaak bij Belastingdienst</h3>
+          </div>
+          <span class="dossierdemo__staat">Melding verzonden</span>
+        </div>
+
+        <div class="dossierdemo__klok">
+          <strong>11 dagen</strong>
+          <span data-dossierklok>De Belastingdienst heeft nog tot 6 oktober om alsnog
+             te beslissen.</span>
+        </div>
+
+        <ul class="tijdlijn">
+          <li class="klaar"><span class="tijdlijn__titel">Je brief gecontroleerd</span>
+            <span class="tijdlijn__datum">22 september</span></li>
+          <li class="klaar"><span class="tijdlijn__titel">Machtiging ontvangen</span>
+            <span class="tijdlijn__datum">22 september</span></li>
+          <li class="klaar"><span class="tijdlijn__titel">Melding te late beslissing verzonden</span>
+            <span class="tijdlijn__datum">22 september</span></li>
+          <li class="bezig"><span class="tijdlijn__titel">Vervolgtermijn loopt</span>
+            <span class="tijdlijn__datum">tot 6 oktober</span></li>
+          <li><span class="tijdlijn__titel">Eventuele dwangsom bewaken</span>
+            <span class="tijdlijn__datum">daarna</span></li>
+        </ul>
+
+        <p class="dossierdemo__rust"><strong>Je hoeft nu niets te doen.</strong> Krijg je
+           ondertussen post? Dan upload je die in je dossier en pakken wij het op.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================= 7. waar wacht je op -->
   <section class="blok" id="waarvoor">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Waar wacht je op?</h2>
-        <p>De regeling geldt bij vrijwel elke aanvraag en elk bezwaarschrift bij een
-           overheidsinstantie. Kies je situatie, dan passen wij de controle daarop aan.</p>
+        <h2 data-waarvoorkop>Waar wacht je op?</h2>
+        <p>De regeling geldt voor veel aanvragen en bezwaren bij overheidsinstanties. Of dat ook
+           voor jouw zaak geldt, controleren wij voor je.</p>
       </div>
       <div class="ingangen">
         <article class="kaart ingang">
@@ -304,13 +413,39 @@
     </div>
   </section>
 
-  <!-- ============================================================= kosten -->
-  <section class="blok blok--papier" id="kosten">
+  <!-- ================================================== 8. waarom nubeslist -->
+  <section class="blok blok--papier" id="waarom">
+    <div class="omhulsel">
+      <div class="sectiekop">
+        <h2>Waarom mensen dit aan ons overlaten</h2>
+        <p>Je kunt zo'n melding ook zelf sturen. Dit is wat je dan zelf moet uitzoeken en
+           bijhouden, en wat wij overnemen.</p>
+      </div>
+      <div class="redenen">
+        <article class="kaart"><h3>Geen termijnen uitzoeken</h3>
+          <p>Wij halen de datum uit je brief en bepalen welke termijn voor jouw zaak geldt.</p></article>
+        <article class="kaart"><h3>Geen formulieren uitzoeken</h3>
+          <p>Wij stellen de juiste vervolgstap op en versturen hem namens jou.</p></article>
+        <article class="kaart"><h3>Geen deadlines bewaken</h3>
+          <p>Wij houden bij wanneer er opnieuw iets moet gebeuren, en doen dat dan ook.</p></article>
+        <article class="kaart"><h3>Geen voorschot</h3>
+          <p>De eerste controle is gratis en je betaalt niets vooraf.</p></article>
+        <article class="kaart"><h3>Jij houdt overzicht</h3>
+          <p>In je dossier zie je precies waar je zaak staat en wat de volgende stap is.</p></article>
+        <article class="kaart"><h3>Het geld gaat naar jou</h3>
+          <p>De instantie betaalt rechtstreeks op je eigen rekening, niet aan ons.</p></article>
+      </div>
+      <p class="redenen__slot">Jij levert &eacute;&eacute;n keer je informatie aan. Vanaf daar
+         houden wij de procedure bij.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 9. kosten -->
+  <section class="blok" id="kosten">
     <div class="omhulsel">
       <div class="sectiekop">
         <h2>Wat kost het je?</h2>
-        <p>Niets vooraf. Wij gaan pas aan de slag nadat je hebt getekend, en wij verdienen pas
-           iets als er ook echt een vergoeding wordt toegekend.</p>
+        <p>Geen kleine lettertjes. Dit is wat je betaalt, en wanneer.</p>
       </div>
       <div class="kosten">
         <article class="kaart">
@@ -322,20 +457,64 @@
         <article class="kaart">
           <h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
         stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Geen vergoeding, geen kosten</h3>
-          <p>Wordt er geen dwangsom toegekend, dan brengen wij je niets in rekening. Het risico
+          <p>Wordt er geen dwangsom toegekend, dan betaal je <strong>&euro; 0</strong>. Het risico
              ligt bij ons.</p>
         </article>
-        <article class="kaart">
+        <article class="kaart kosten--tarief">
           <h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Het geld gaat naar jou</h3>
-          <p>Een toegekende dwangsom wordt door de instantie rechtstreeks op je eigen rekening
-             gestort.</p>
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Wel een vergoeding?</h3>
+          <p>Wordt er een dwangsom toegekend, dan hoor je vooraf precies wat onze vergoeding is.</p>
+          
         </article>
+      </div>
+      <p class="kosten__slot">Je weet altijd v&oacute;&oacute;rdat je tekent precies wat onze
+         vergoeding is. Die staat ook op het scherm waar je je handtekening zet.</p>
+    </div>
+  </section>
+
+  <!-- ======================================================= 10. vertrouwen -->
+  <section class="blok blok--papier" id="vertrouwen">
+    <div class="omhulsel">
+      <div class="sectiekop">
+        <h2>Aan wie geef je dit mee?</h2>
+      </div>
+      <div class="vertrouwen">
+        <article class="kaart vertrouwen__wie">
+          <h3>Achter nubeslist.nl</h3>
+          <p>nubeslist.nl is een Nederlandse particuliere dienstverlener die mensen helpt wanneer
+             een beslissing van een overheidsinstantie te lang uitblijft. Wij maken een procedure
+             die normaal bestaat uit brieven, termijnen en opvolging eenvoudig en inzichtelijk.</p>
+          <dl class="vertrouwen__gegevens">
+            <div><dt>Naam</dt><dd>nubeslist.nl</dd></div>
+            <div><dt>Vestiging</dt><dd></dd></div>
+            <div><dt>KvK</dt><dd></dd></div>
+            <div><dt>E-mail</dt><dd></dd></div>
+          </dl>
+          <p class="fijndruk">Wij zijn geen overheidsinstantie en niet verbonden aan UWV, DUO,
+             de SVB of een gemeente.</p>
+        </article>
+        <div class="vertrouwen__punten">
+          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
+        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg> Je gegevens</h3>
+            <p>Wij gebruiken je gegevens alleen om je zaak te beoordelen en de melding namens je te
+               doen. Wij verkopen niets door en delen niets met anderen dan de instantie waar je
+               zaak ligt.</p>
+            <p><a href="/privacy">Hoe wij met je gegevens omgaan</a></p></article>
+          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> De machtiging</h3>
+            <p>Je machtigt ons alleen voor deze ene procedure over de te late beslissing. Wij mogen
+               daarmee geen andere zaken van je behandelen.</p></article>
+          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> De uitbetaling</h3>
+            <p>Een toegekende dwangsom gaat rechtstreeks naar jouw rekening. Wij ontvangen jouw
+               vergoeding niet.</p></article>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ============================================================= vragen -->
+  <!-- ============================================================ 11. vragen -->
   <section class="blok" id="vragen">
     <div class="omhulsel">
       <div class="sectiekop">
@@ -345,11 +524,11 @@
       </div>
 
       <details class="vraag" open>
-        <summary>Welke brief moet ik uploaden?</summary>
-        <p>De brief waarin de instantie zegt wanneer je een beslissing kunt verwachten. Meestal
-           is dat de ontvangstbevestiging van je aanvraag of van je bezwaarschrift, uit je
-           berichtenbox of per post. Heb je later een brief gekregen dat het langer duurt? Upload
-           die dan ook, want die datum gaat voor.</p>
+        <summary data-vraag-brief>Welke brief moet ik uploaden?</summary>
+        <p>De brief waarin <span data-instantie-zin>de Belastingdienst</span> zegt wanneer je een
+           beslissing kunt verwachten. Meestal is dat de ontvangstbevestiging van je aanvraag of
+           van je bezwaarschrift, uit je berichtenbox of per post. Weet je het niet zeker? Upload
+           de brief die je hebt; wij kijken met je mee.</p>
       </details>
       <details class="vraag">
         <summary>Moet ik zelf weten wat de beslistermijn is?</summary>
@@ -358,17 +537,28 @@
            aanvraag.</p>
       </details>
       <details class="vraag">
+        <summary data-vraag-verlenging>Wat als ik te horen heb gekregen dat het langer duurt?</summary>
+        <p>Dan geldt die nieuwe datum. Upload die brief ook, dan rekenen wij met de juiste termijn.
+           Je hoeft zelf niet te beoordelen of zo'n brief juridisch een verlenging is; dat doen wij.</p>
+      </details>
+      <details class="vraag">
         <summary>Wat is die melding die jullie versturen?</summary>
         <p>Dat is de ingebrekestelling: een brief waarin staat dat de beslistermijn voorbij is en
            dat je alsnog een besluit wilt. Zonder die brief kan er geen dwangsom ontstaan. De
-           instantie krijgt daarna twee weken om alsnog te beslissen, en pas na die twee weken
-           begint de teller.</p>
+           instantie krijgt daarna twee weken om alsnog te beslissen, en pas na die twee weken kan
+           de teller gaan lopen.</p>
       </details>
       <details class="vraag">
         <summary>Hoeveel kan het opleveren?</summary>
         <p>De eerste veertien dagen is het &euro; 23 per dag, de volgende veertien dagen &euro; 35
            per dag en de laatste veertien dagen &euro; 45 per dag. Na 42 dagen stopt de teller op
            &euro; 1.442. Dat staat in artikel 4:17 van de Algemene wet bestuursrecht.</p>
+      </details>
+      <details class="vraag">
+        <summary data-vraag-uitbetaling>Krijg ik het geld, of gaat het naar jullie?</summary>
+        <p>Het geld gaat naar jou. De instantie betaalt een toegekende dwangsom rechtstreeks op je
+           eigen rekening. Daarom vragen wij je rekeningnummer: om het op de juiste rekening te
+           laten uitbetalen, niet om het te ontvangen.</p>
       </details>
       <details class="vraag">
         <summary>Wanneer kan er geen dwangsom ontstaan?</summary>
@@ -387,22 +577,24 @@
         <summary>Wat doen jullie met mijn gegevens?</summary>
         <p>Wij gebruiken je gegevens alleen om je zaak te beoordelen en de melding namens je te
            doen. Je burgerservicenummer hebben wij nodig omdat de instantie je zaak daarmee
-           terugvindt, en je IBAN omdat een toegekende vergoeding rechtstreeks aan jou wordt
-           uitbetaald. Wij verkopen niets door en delen niets met anderen dan de instantie waar
-           je zaak ligt.</p>
+           terugvindt, en je rekeningnummer omdat een toegekende vergoeding rechtstreeks aan jou
+           wordt uitbetaald. Wij verkopen niets door en delen niets met anderen dan de instantie
+           waar je zaak ligt.</p>
       </details>
       <details class="vraag">
         <summary>Mijn termijn is nog niet voorbij, kan ik mij alvast melden?</summary>
-        <p>Ja. Je doet dan een vooraanmelding. Wij noteren de datum waarop de beslistermijn
-           afloopt en nemen contact met je op zodra er iets moet gebeuren. Zo mis je het moment
-           niet waarop de melding de deur uit moet.</p>
+        <p>Ja, en dat is verstandig. Je doet dan een vooraanmelding. Wij noteren de datum waarop de
+           beslistermijn afloopt en komen automatisch in actie zodra die voorbij is. Zo mis je het
+           moment niet waarop de melding de deur uit moet, en hoef je er zelf niet aan te denken.</p>
       </details>
 
       <div class="oproep">
-        <h2>Wacht je te lang op een beslissing over je toeslag?</h2>
+        <h2 data-slotkop>Wacht je te lang op een beslissing over je toeslag?</h2>
         <p>Upload je brief en je weet binnen een minuut waar je aan toe bent.</p>
-        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag">Upload mijn brief</a>
-        <p class="oproep__fijn">Gratis, vrijblijvend en zonder account</p>
+        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag" data-cta>
+          <span data-cta-tekst>Upload mijn brief</span></a>
+        <p class="oproep__fijn">Gratis eerste controle &nbsp;&middot;&nbsp; Geen account nodig
+           &nbsp;&middot;&nbsp; Je zit nergens aan vast</p>
       </div>
     </div>
   </section>
@@ -432,11 +624,14 @@
       <li><a href="/aanvraag?instantie=belastingdienst&amp;zaak=bel-toeslag">Controle starten</a></li>
       <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
       <li><a href="#kosten">Kosten</a></li>
-      <li><a href="#vragen">Veelgestelde vragen</a></li>
+      <li><a href="#vertrouwen">Over ons</a></li>
+      <li><a href="/privacy">Privacy</a></li>
+      <li><a href="/voorwaarden">Voorwaarden</a></li>
       <li><a href="/beheer">Beheeromgeving</a></li>
     </ul>
   </div>
 </footer>
 
+<script type="module" src="/assets/landing.js"></script>
 </body>
 </html>

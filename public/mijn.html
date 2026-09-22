@@ -78,6 +78,26 @@
   .veldrij { display: grid; gap: 12px; margin-bottom: 16px; }
   @media (min-width: 560px) { .veldrij { grid-template-columns: 1fr 1fr; } }
 
+  /* De stukken die bij deze zaak horen. */
+  .stukken { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .stuk {
+    padding: 16px 18px; border: 1px solid var(--rand); border-radius: var(--radius);
+    background: var(--vlak);
+  }
+  .stuk--binnen { background: var(--groen-100); border-color: var(--groen-600); }
+  .stuk__kop { display: grid; grid-template-columns: 22px 1fr; gap: 11px; align-items: start; }
+  .stuk__merk { font-weight: 800; color: var(--tekst-zacht); line-height: 1.5; }
+  .stuk--binnen .stuk__merk { color: var(--groen-600); }
+  .stuk__label { display: block; font-weight: 640; font-size: .97rem; }
+  .stuk__uitleg { display: block; font-size: .87rem; color: var(--tekst-zacht); margin-top: 2px; }
+  .stuk__bestanden { list-style: none; padding: 0; margin: 10px 0 0 33px; display: grid; gap: 5px; }
+  .stuk__bestanden a { font-size: .88rem; font-weight: 600; }
+  .stuk__actie { margin: 12px 0 0 33px; }
+  .verborgen-invoer { display: none; }
+  @media (max-width: 520px) {
+    .stuk__bestanden, .stuk__actie { margin-left: 0; }
+  }
+
   .uitlogrij { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .hulp { margin-top: 30px; font-size: .88rem; color: var(--tekst-zacht); }
   .hulp a { font-weight: 600; }

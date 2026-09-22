@@ -30,6 +30,11 @@ kan iemand iets van een ander zien? (`test/portaal.test.js`)
 
 - **Het originele bestand van de brief wordt niet bewaard**, alleen de
   uitgelezen tekst. Daar is bestandsopslag voor nodig; zie stap 7.
+- **De stukken die de klant zelf aanlevert, gaan als base64 in het dossier**,
+  met een grens van 3 MB per bestand. Dat werkt, en het werkt zonder één
+  dependency, maar het is geen opslag: elk dossier wordt er groter van en de
+  opslaglimiet van Redis is niet oneindig. Dit hoort over naar Vercel Blob of
+  Supabase Storage zodra het domein er staat; zie stap 7.
 - **Geen OCR.** Een foto of gescande pdf zonder tekstlaag kan niet gelezen
   worden; de funnel vraagt dan om de gegevens met de hand.
 - **Het BSN staat onversleuteld in de opslag.** Zie stap 6.
@@ -167,6 +172,7 @@ echte klant.
 | `MAIL_ANTWOORD_AAN` | aanbevolen | Waar een antwoord van een klant heen gaat. |
 | `KANTOOR_EMAIL` | aanbevolen | Krijgt een melding bij elk nieuw dossier. |
 | `BEDRIJF_NAAM` · `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` · `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | **ja** | Komen op de machtiging. Wat leeg blijft wordt een stippellijn. |
+| `TARIEF_PERCENTAGE` *of* `TARIEF_VAST` | **ja** | Onze vergoeding: `25` (procent van de toegekende dwangsom) of `129` (vast bedrag). Staat er niets, dan noemt de site nergens een bedrag en zegt hij dat je het vooraf hoort. Dat is eerlijk, maar het kost conversie: zet het erin. |
 | `BEHEER_OPEN` | **moet weg** | Zet de beheeromgeving wagenwijd open. Alleen voor proefdraaien. |
 
 Een geheim maak je zo:
@@ -206,9 +212,18 @@ het in de applicatie vóór het opslaan, met een sleutel uit de omgeving. Dan is
 een gelekte database nog geen gelekt BSN. De maskering in beeld (`•••••2333`)
 staat er al.
 
-**b. De originele brief bewaren.** Nu wordt alleen de uitgelezen tekst bewaard.
-Voor een dossier dat standhoudt wil je het bestand zelf. Op Vercel gaat dat met
-Vercel Blob of Supabase Storage; op een eigen server met een map.
+**b. Echte bestandsopslag.** Twee dingen komen hier samen. De originele brief
+wordt niet bewaard, alleen de uitgelezen tekst, en voor een dossier dat
+standhoudt wil je het bestand zelf. En de stukken die de klant via `/mijn`
+aanlevert, gaan nu als base64 in het dossier — werkend, maar het laat de
+dossiers groeien en de opslag is er niet voor gemaakt. Beide horen naar Vercel
+Blob of Supabase Storage (op een eigen server: een map). In het dossier blijft
+dan alleen de verwijzing staan.
+
+Houd bij die verhuizing twee dingen overeind die er nu al in zitten: downloaden
+kan alleen ingelogd, en een bestand gaat altijd als `attachment` met `no-store`
+de deur uit. Een link die rechtstreeks naar de opslag wijst en voor iedereen
+werkt, is een datalek met een net randje.
 
 **c. Een auditlog.** Wie opende wanneer welk dossier. Bij BSN-verwerking hoort
 dat erbij, en het staat al in het schema klaar (`db/001-schema.sql`).
@@ -258,11 +273,23 @@ handtekening van mensen die vaak in een kwetsbare positie zitten.
       administratie.
 - [ ] **Back-up en herstel getest.** Niet "er is een back-up", maar: er is er
       één teruggezet en het werkte.
-- [ ] **Algemene voorwaarden**, met de no-cure-no-pay-afspraak erin.
+- [ ] **Algemene voorwaarden**, met de no-cure-no-pay-afspraak erin. Er staat nu
+      een pagina op `/voorwaarden` waar het vinkje boven de handtekening naar
+      linkt. Die beschrijft in gewone taal wat het systeem werkelijk doet — wat
+      wij overnemen, dat de dwangsom rechtstreeks aan de klant wordt betaald,
+      dat de machtiging alleen voor deze ene procedure geldt en in te trekken
+      is. Het is **geen door een jurist opgestelde set voorwaarden**, en de
+      pagina zegt dat zelf ook. Laat hem nakijken en vul aan wat een jurist
+      mist (opzegtermijn, aansprakelijkheid, geschillenregeling).
 - [ ] **KvK-inschrijving** en de `BEDRIJF_*`-variabelen invullen.
 - [ ] **Bevestiging van UWV** dat een digitaal gezette handtekening op de
       machtiging wordt geaccepteerd. Dit staat al langer open en is het enige punt
       dat de hele funnel kan laten omvallen: krijg het schriftelijk.
+- [ ] **Het tarief gekozen en ingesteld** (`TARIEF_PERCENTAGE` of
+      `TARIEF_VAST`). Zolang dit leeg is, staat er op de homepage, in de funnel
+      en in de voorwaarden geen bedrag. De code verzint er bewust geen: een
+      percentage dat niemand heeft besloten, op het scherm waar iemand tekent,
+      is erger dan geen percentage.
 - [ ] **`BEHEER_OPEN` weg** uit de omgevingsvariabelen.
 - [ ] **Tweestapsverificatie** staat aan bij elke medewerker (zichtbaar onder
       Accounts).

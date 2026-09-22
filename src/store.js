@@ -322,6 +322,56 @@ export class Store {
   }
 
   /** Bijwerken welke stukken binnen zijn. */
+  /**
+   * Een bestand dat de aanvrager aanlevert voor een van de gevraagde stukken.
+   *
+   * Het bestand gaat als base64 mee in het dossier. Dat is een bewuste
+   * tussenoplossing: het werkt op elke opslagdriver en er is geen externe
+   * dienst voor nodig. Het schaalt niet oneindig, want een Redis-waarde heeft
+   * een maximum, en daarom staat er een harde grens op. Voor productie hoort
+   * hier bestandsopslag (Vercel Blob of Supabase Storage) achter; zie
+   * docs/livegang.md.
+   */
+  async voegBestandToe(id, { stukId, bestandsnaam, mediaType, data, door }) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    const nu = new Date().toISOString();
+
+    if (!Array.isArray(aanvraag.bestanden)) aanvraag.bestanden = [];
+    const bestand = {
+      id: randomUUID(),
+      stukId: String(stukId || 'overig'),
+      bestandsnaam: String(bestandsnaam || 'bestand').slice(0, 160),
+      mediaType: String(mediaType || '').slice(0, 80),
+      bytes: Math.round((String(data).length * 3) / 4),
+      data: String(data),
+      doorKlant: door === 'klant',
+      aangemaaktOp: nu,
+    };
+    aanvraag.bestanden.push(bestand);
+
+    // Een aangeleverd stuk is meteen afgevinkt; anders staat het dossier te
+    // zeggen dat er iets ontbreekt dat er gewoon is.
+    if (!aanvraag.stukken) aanvraag.stukken = {};
+    aanvraag.stukken[bestand.stukId] = true;
+
+    aanvraag.historie.push({
+      op: nu,
+      door: door === 'klant' ? 'de aanvrager' : (door || 'beheerder'),
+      tekst: `Bestand toegevoegd: ${bestand.bestandsnaam}.`,
+    });
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
+  /** Eén bestand ophalen om te downloaden. */
+  async vindBestand(id, bestandId) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag || !Array.isArray(aanvraag.bestanden)) return null;
+    return aanvraag.bestanden.find((b) => b.id === bestandId) || null;
+  }
+
   async werkStukkenBij(id, stukken, door) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;

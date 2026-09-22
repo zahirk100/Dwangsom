@@ -20,7 +20,6 @@
 <link rel="icon" href="/merk.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icoon-180.png">
 <link rel="stylesheet" href="/assets/stijl.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
 <style>
   .funnel { max-width: 640px; margin: 0 auto; padding: 30px 16px 80px; }
   /* Fasen, geen nummers: de bezoeker ziet waar hij is in zijn eigen zaak. */
@@ -79,6 +78,65 @@
   .jouwzaak dl > div:first-child { border-top: 0; }
   .jouwzaak dt { font-size: .86rem; color: var(--tekst-zacht); margin: 0; }
   .jouwzaak dd { font-size: .89rem; font-weight: 640; margin: 0; text-align: right; }
+
+  /* Wat wij uit de brief haalden, met vinkjes. */
+  .gelezen { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .gelezen li {
+    display: flex; align-items: center; gap: 10px; font-size: .93rem;
+    padding: 9px 13px; border-radius: var(--radius-klein);
+    background: var(--groen-100); color: var(--groen-600); font-weight: 600;
+    animation: opkomen .25s ease-out both;
+  }
+  .gelezen li:nth-child(2) { animation-delay: .1s; }
+  .gelezen li:nth-child(3) { animation-delay: .2s; }
+  .gelezen li:nth-child(4) { animation-delay: .3s; }
+  .gelezen__vink { font-weight: 800; }
+
+  /* Wat wij overnemen, op het uitslagscherm. */
+  .wijdoen { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 7px; }
+  .wijdoen li { display: grid; grid-template-columns: 16px 1fr; gap: 9px; align-items: start; font-size: .93rem; }
+  .wijdoen__vink { font-weight: 800; }
+  .wijdoen__slot { margin: 12px 0 0; font-weight: 640; }
+
+  /* Wat het kost, vlak voor de handtekening. */
+  .kostenblok {
+    margin: 0 0 22px; padding: 18px 20px; border-radius: var(--radius);
+    border: 1px solid var(--rand); background: var(--vlak);
+  }
+  .kostenblok h2 { font-size: 1rem; margin: 0 0 12px; color: var(--blauw-900); }
+  .kostenlijst { list-style: none; padding: 0; margin: 0; }
+  .kostenlijst li {
+    display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
+    padding: 9px 0; border-top: 1px solid var(--rand); font-size: .93rem;
+  }
+  .kostenlijst li:first-child { border-top: 0; }
+  .kostenlijst strong { color: var(--blauw-800); white-space: nowrap; }
+  .kostenblok__zin { margin: 12px 0 0; font-size: .9rem; color: var(--tekst-zacht); }
+  .kostenblok__voorbeeld {
+    margin: 10px 0 0; padding: 10px 12px; border-radius: var(--radius-klein);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+    font-size: .88rem; color: var(--blauw-800);
+  }
+
+  .machtiging__uitleg {
+    margin: 0 0 14px; padding: 12px 14px; border-radius: var(--radius-klein);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100); font-size: .92rem;
+  }
+  .handtekening-gezet { color: var(--groen-600); font-weight: 640; }
+  @keyframes opkomen { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .gelezen li { animation: none; } }
+
+  .vertrouwenregel {
+    display: flex; align-items: flex-start; gap: 9px; margin: 14px 0 0;
+    font-size: .86rem; color: var(--tekst-zacht);
+  }
+  .vertrouwenregel svg { width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--groen-600); }
+
+  .uitleg-uitklap { margin-top: 14px; }
+  .uitleg-uitklap summary {
+    cursor: pointer; font-size: .92rem; font-weight: 600; color: var(--blauw-600);
+  }
+  .uitleg-uitklap p { margin: 10px 0 0; font-size: .91rem; color: var(--tekst-zacht); }
 
   .paneel { padding: 28px; }
   @media (max-width: 560px) { .paneel { padding: 20px 16px; } .funnel { padding-top: 18px; } }
@@ -201,12 +259,27 @@
         <input type="file" id="bestand" accept=".pdf,.txt,application/pdf,text/plain,image/*">
         <div class="dropzone__icoon">📄</div>
         <div class="dropzone__titel" id="dropzone-titel">Kies mijn brief of maak een foto</div>
-        <div class="dropzone__uitleg">Pdf of tekstbestand, duurt ongeveer tien seconden</div>
+        <div class="dropzone__uitleg">PDF, foto of screenshot</div>
       </label>
 
+      <p class="vertrouwenregel">
+        <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>
+        <span>Wij gebruiken je brief alleen om je situatie te controleren. Je machtigt ons nog
+          niet en zit nergens aan vast.</span>
+      </p>
+
+      <details class="uitleg-uitklap">
+        <summary id="welke-brief">Welke brief heb ik nodig?</summary>
+        <p>Zoek de brief waarin staat wanneer je een beslissing kunt verwachten. Meestal is dat de
+           ontvangstbevestiging van je aanvraag of van je bezwaarschrift. Weet je het niet zeker?
+           Upload de brief die je hebt; wij kijken met je mee.</p>
+      </details>
+
       <p class="of">of</p>
-      <details>
-        <summary style="cursor:pointer; font-size:.92rem">Brief niet digitaal? Plak de tekst</summary>
+      <details class="uitleg-uitklap">
+        <summary>Brief niet digitaal? Plak de tekst</summary>
         <div class="veld" style="margin-top:12px">
           <textarea id="plaktekst" rows="6" placeholder="Plak hier de tekst van je brief, met de datum waarop je een beslissing zou krijgen."></textarea>
           <button type="button" class="knop knop--zacht knop--klein" id="knop-plak" style="margin-top:10px">Deze tekst gebruiken</button>
@@ -214,8 +287,6 @@
       </details>
 
       <div id="upload-melding" style="margin-top:18px"></div>
-      <p class="fijndruk">Wij gebruiken je brief alleen om je zaak te beoordelen. Je zit nergens
-         aan vast tot je zelf tekent.</p>
     </section>
 
     <!-- ====================================================== 2. uitslag -->
@@ -240,6 +311,7 @@
            gevuld door funnel.js, zodat het over déze zaak gaat. -->
       <div id="actieplan"></div>
       <div id="jouwzaak"></div>
+      <div id="kostenblok"></div>
 
       <div class="machtigingtekst" id="machtigingtekst"></div>
 
@@ -251,7 +323,7 @@
         </div>
         <div class="handtekening-rij">
           <button type="button" class="knop knop--stil knop--klein" id="knop-wissen">Opnieuw</button>
-          <span class="subtiel" style="font-size:.82rem">Wij leggen datum en tijd vast bij je handtekening.</span>
+          <span class="subtiel" style="font-size:.82rem" id="handtekening-uitleg">Wij leggen datum en tijd vast bij je handtekening.</span>
         </div>
         <p class="veld__fout verborgen" data-fout="handtekening"></p>
       </div>
@@ -259,7 +331,8 @@
       <div class="veld">
         <div class="keuzes">
           <label class="keuze"><input type="checkbox" id="akkoord">
-            <span class="keuze__tekst">Ik machtig nubeslist.nl en ga akkoord met de voorwaarden
+            <span class="keuze__tekst">Ik machtig nubeslist.nl en ga akkoord met de
+              <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a>
               <span class="keuze__uitleg">Geen vergoeding toegekend, dan geen kosten</span></span></label>
         </div>
         <p class="veld__fout verborgen" data-fout="akkoord"></p>
@@ -277,9 +350,7 @@
         <p class="subtiel" style="font-size:.86rem">Je referentienummer</p>
         <div style="font-size:1.4rem; font-weight:780; letter-spacing:.02em" id="referentie"></div>
         <ul class="tracker" id="tracker"></ul>
-        <div style="margin-top:24px">
-          <a class="knop knop--zacht" href="/">Terug naar de site</a>
-        </div>
+        <div style="margin-top:26px" id="klaar-knoppen"></div>
       </div>
     </section>
 

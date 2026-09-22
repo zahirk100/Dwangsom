@@ -30,7 +30,7 @@ import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organ
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
 import { parseDatum } from './public/shared/datum.js';
-import { bepaalDossiereisen, dossierStatus } from './public/shared/dossier.js';
+import { bepaalDossiereisen, dossierStatus, stukkenVanKlant } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
@@ -58,6 +58,13 @@ const BEHEER_OPEN = process.env.BEHEER_OPEN === '1';
  * altijd bereikbaar op hun eigen adres, zodat terugschakelen niets kost.
  */
 const FUNNEL = process.env.FUNNEL === 'klassiek' ? 'klassiek' : 'nieuw';
+
+/**
+ * Harde grens per aangeleverd bestand, in base64-tekens. Drie megabyte is
+ * ruim voor een gescande brief en blijft binnen wat een Redis-waarde aankan.
+ * Gaan de dossiers straks naar echte bestandsopslag, dan mag dit omhoog.
+ */
+const MAX_BESTAND_BASE64 = 4 * 1024 * 1024;
 
 /**
  * De sleutel waarmee de sessiecookies worden ondertekend.
@@ -148,6 +155,17 @@ async function publiekeApi(req, res, url) {
       opslag: opslag.soort,
       beheerOpen: BEHEER_OPEN,
       tijd: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Wat de browser moet weten maar niet zelf kan bepalen: het tarief. Dat
+   * staat in de omgeving, en de funnel is een statisch bestand.
+   */
+  if (url.pathname === '/api/instellingen' && req.method === 'GET') {
+    return stuurJson(res, 200, {
+      TARIEF_PERCENTAGE: process.env.TARIEF_PERCENTAGE || '',
+      TARIEF_VAST: process.env.TARIEF_VAST || '',
     });
   }
 
@@ -378,7 +396,63 @@ async function klantApi(req, res, url) {
     return stuurJson(res, 200, { dossier: voorKlant(bijgewerkt) });
   }
 
+  // Een eerder aangeleverd bestand terugkijken.
+  const bestandPad = /^\/api\/mijn\/dossiers\/([A-Za-z0-9-]+)\/bestanden\/([A-Za-z0-9-]+)$/
+    .exec(url.pathname);
+  if (bestandPad && req.method === 'GET') {
+    const dossiers = await store.vanGebruiker(klant.id);
+    const dossier = dossiers.find((d) => d.id === bestandPad[1]);
+    if (!dossier) return stuurFout(res, 404, 'Onbekend dossier.');
+    const bestand = await store.vindBestand(dossier.id, bestandPad[2]);
+    if (!bestand) return stuurFout(res, 404, 'Onbekend bestand.');
+    return stuurBestandInhoud(res, bestand);
+  }
+
+  // Een gevraagd stuk aanleveren.
+  const stukPad = /^\/api\/mijn\/dossiers\/([A-Za-z0-9-]+)\/stuk$/.exec(url.pathname);
+  if (stukPad && req.method === 'POST') {
+    const dossiers = await store.vanGebruiker(klant.id);
+    const dossier = dossiers.find((d) => d.id === stukPad[1]);
+    if (!dossier) return stuurFout(res, 404, 'Onbekend dossier.');
+
+    const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+    // Alleen stukken die in deze zaak ook echt gevraagd worden.
+    const gevraagd = new Set(stukkenVanKlant(dossier).map((stuk) => stuk.id));
+    if (!gevraagd.has(String(body.stukId))) {
+      return stuurFout(res, 400, 'Dit stuk wordt in deze zaak niet gevraagd.');
+    }
+    const data = String(body.data || '');
+    if (!data) return stuurFout(res, 400, 'Er is geen bestand meegestuurd.');
+    if (data.length > MAX_BESTAND_BASE64) {
+      return stuurFout(res, 413, 'Dit bestand is groter dan 3 MB. Stuur een kleinere versie.');
+    }
+
+    const bijgewerkt = await store.voegBestandToe(dossier.id, {
+      stukId: body.stukId,
+      bestandsnaam: body.bestandsnaam,
+      mediaType: body.mediaType,
+      data,
+      door: 'klant',
+    });
+    return stuurJson(res, 200, { dossier: voorKlant(bijgewerkt) });
+  }
+
   return false;
+}
+
+/** Een opgeslagen bestand teruggeven als download. */
+function stuurBestandInhoud(res, bestand) {
+  const lijf = Buffer.from(bestand.data, 'base64');
+  res.writeHead(200, {
+    'Content-Type': bestand.mediaType || 'application/octet-stream',
+    'Content-Length': lijf.length,
+    // Altijd als download, nooit inline: een geüpload bestand in het domein
+    // laten renderen is een onnodig risico.
+    'Content-Disposition': `attachment; filename="${bestand.bestandsnaam.replace(/["\\]/g, '')}"`,
+    'Cache-Control': 'private, no-store',
+  });
+  res.end(lijf);
+  return true;
 }
 
 /**
@@ -440,6 +514,18 @@ function voorKlant(a) {
     ontbreekt: eisen.gegevens
       .filter((g) => g.verplicht && !String(contact[g.id] || '').trim())
       .map((g) => ({ id: g.id, label: g.label, reden: g.reden })),
+    // Welke stukken deze zaak nodig heeft, en wat er al binnen is. Per
+    // zaaktype anders; die regel staat in shared/dossier.js.
+    stukken: stukkenVanKlant(a).map((stuk) => ({
+      id: stuk.id,
+      label: stuk.label,
+      uitleg: stuk.uitleg,
+      verplicht: stuk.verplicht,
+      binnen: Boolean((a.stukken || {})[stuk.id]),
+      bestanden: (a.bestanden || [])
+        .filter((b) => b.stukId === stuk.id)
+        .map((b) => ({ id: b.id, bestandsnaam: b.bestandsnaam, aangemaaktOp: b.aangemaaktOp })),
+    })),
     machtigingGetekend: Boolean(a.machtiging && a.machtiging.ondertekendOp),
   };
 }
@@ -658,7 +744,8 @@ async function beheerApi(req, res, url) {
     });
   }
 
-  const detail = /^\/api\/beheer\/aanvragen\/([A-Za-z0-9-]+)(\/[a-z]+)?$/.exec(url.pathname);
+  const detail = /^\/api\/beheer\/aanvragen\/([A-Za-z0-9-]+)((?:\/[a-z]+)(?:\/[A-Za-z0-9-]+)?)?$/
+    .exec(url.pathname);
   if (detail) {
     const aanvraag = await store.vind(detail[1]);
     if (!aanvraag) return stuurFout(res, 404, 'Aanvraag niet gevonden.');
@@ -762,6 +849,13 @@ async function beheerApi(req, res, url) {
         toelichting: body.toelichting || 'Berekening opnieuw uitgevoerd.',
       });
       return stuurJson(res, 200, { aanvraag: bijgewerkt });
+    }
+
+    const bestandId = /^\/bestanden\/([A-Za-z0-9-]+)$/.exec(subpad || '');
+    if (bestandId && req.method === 'GET') {
+      const bestand = await store.vindBestand(aanvraag.id, bestandId[1]);
+      if (!bestand) return stuurFout(res, 404, 'Onbekend bestand.');
+      return stuurBestandInhoud(res, bestand);
     }
 
     if (subpad === '/brief' && req.method === 'GET') {
@@ -895,6 +989,8 @@ const PAGINAS = {
   '/beheer': 'beheer.html',
   '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
+  '/privacy': 'privacy.html',
+  '/voorwaarden': 'voorwaarden.html',
   // Elke advertentie-ingang is een echt bestand, gemaakt door
   // scripts/maak-paginas.mjs. Hier alleen het pad zonder .html erbij, zodat
   // lokaal hetzelfde werkt als cleanUrls op Vercel.

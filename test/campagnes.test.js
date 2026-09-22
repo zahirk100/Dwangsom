@@ -74,7 +74,7 @@ test('de knop neemt de instantie en het zaaktype mee naar de funnel', () => {
 
   // De algemene pagina kiest niets voor de bezoeker, die vraagt het hem.
   const algemeen = landingHtml(ALGEMEEN);
-  assert.match(algemeen, /Op welke instantie wacht je\?/);
+  assert.match(algemeen, /Op wie wacht je\?/);
   assert.ok(!/href="\/aanvraag\?instantie=[a-z]+&amp;zaak=/.test(algemeen),
     'de homepage hoort geen zaaktype voor te selecteren');
 });
@@ -126,4 +126,63 @@ test('de teksten spreken de bezoeker aan met je, niet met u', () => {
       assert.ok(!/\b(uw|Uw)\b/.test(tekst), `"${ingang.slug || '/'}" gebruikt "uw" in ${veld}: ${tekst}`);
     }
   }
+});
+
+// --------------------------------------------------- de nieuwe indeling ---
+
+test('de pagina volgt de volgorde van de bezoeker, niet die van een brochure', () => {
+  const html = landingHtml(ALGEMEEN);
+  const volgorde = ['id="herkenning"', 'id="vergoeding"', 'id="werkwijze"', 'id="verdeling"',
+    'id="dossier"', 'id="waarvoor"', 'id="waarom"', 'id="kosten"', 'id="vertrouwen"', 'id="vragen"'];
+  let vorige = -1;
+  for (const merk of volgorde) {
+    const plek = html.indexOf(merk);
+    assert.ok(plek > vorige, `${merk} staat op de verkeerde plek`);
+    vorige = plek;
+  }
+});
+
+test('het bedrag staat al in het eerste scherm, niet pas verderop', () => {
+  const html = landingHtml(ALGEMEEN);
+  const hero = html.slice(0, html.indexOf('id="herkenning"'));
+  assert.match(hero, /1\.442/, 'de belangrijkste trigger hoort boven de vouw');
+});
+
+test('zonder ingesteld tarief noemt de kostensectie geen getal', () => {
+  const html = landingHtml(ALGEMEEN, {});
+  const kosten = html.slice(html.indexOf('id="kosten"'), html.indexOf('id="vertrouwen"'));
+  assert.match(kosten, /vooraf precies wat onze vergoeding is/);
+  assert.ok(!/\d+%/.test(kosten), 'er hoort geen verzonnen percentage te staan');
+});
+
+test('met een ingesteld tarief staat het bedrag er wél, met rekenvoorbeeld', () => {
+  const html = landingHtml(ALGEMEEN, { TARIEF_PERCENTAGE: '25' });
+  const kosten = html.slice(html.indexOf('id="kosten"'), html.indexOf('id="vertrouwen"'));
+  assert.match(kosten, /25%/);
+  assert.match(kosten, /Rekenvoorbeeld/);
+});
+
+test('de te brede belofte over "vrijwel elke aanvraag" staat er niet meer', () => {
+  // Die zin was juridisch te ruim: art. 4:17 kent voorwaarden en uitzonderingen.
+  for (const ingang of alleIngangen()) {
+    const html = landingHtml(ingang);
+    assert.ok(!/vrijwel elke aanvraag/.test(html),
+      `"${ingang.slug || '/'}" belooft nog te veel`);
+  }
+});
+
+test('elke pagina zegt wie erachter zit en dat het geld naar de klant gaat', () => {
+  const html = landingHtml(ALGEMEEN);
+  assert.match(html, /Achter nubeslist\.nl/);
+  assert.match(html, /KvK/);
+  assert.match(html, /rechtstreeks op je eigen\s+rekening/);
+  assert.match(html, /href="\/privacy"/);
+});
+
+test('de algemene pagina vraagt om een instantie en laadt het script dat dat verwerkt', () => {
+  const html = landingHtml(ALGEMEEN);
+  assert.match(html, /id="instantiekeuze"/);
+  assert.match(html, /id="procedurekeuze"/);
+  assert.match(html, /data-instantie="uwv"/);
+  assert.match(html, /assets\/landing\.js/);
 });

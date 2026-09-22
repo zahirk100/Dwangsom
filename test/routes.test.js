@@ -60,3 +60,23 @@ test('de gedeelde modules staan waar de browser ze verwacht', () => {
     );
   }
 });
+
+/**
+ * Het vinkje boven de handtekening zegt "ga akkoord met de voorwaarden".
+ * Daar hoorde lange tijd geen pagina bij: je tekende voor iets wat nergens
+ * stond. Zo'n dode verwijzing mag niet ongemerkt terugkomen.
+ */
+test('de voorwaarden waar de aanvrager voor tekent, bestaan ook echt', () => {
+  assert.equal(PAGINAS['/voorwaarden'], 'voorwaarden.html');
+
+  const funnel = fs.readFileSync(path.join(WORTEL, 'public', PAGINAS['/aanvraag']), 'utf8');
+  const vinkje = funnel.slice(funnel.indexOf('id="akkoord"'), funnel.indexOf('id="akkoord"') + 400);
+  assert.match(vinkje, /href="\/voorwaarden"/, 'het akkoordvinkje moet naar de voorwaarden linken');
+});
+
+test('de voorwaarden noemen geen bedrag dat niet is ingesteld', () => {
+  const tekst = fs.readFileSync(path.join(WORTEL, 'public', 'voorwaarden.html'), 'utf8');
+  const body = tekst.slice(tekst.indexOf('<main'), tekst.indexOf('</main>')).replace(/\s+/g, ' ');
+  assert.doesNotMatch(body, /\d+\s*%/, 'een percentage hoort uit de omgeving te komen, niet uit de pagina');
+  assert.match(body, /hoor je vooraf precies wat onze vergoeding is/);
+});

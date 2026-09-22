@@ -278,3 +278,240 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
   .proefkaart__lijf { padding: 18px; }
   .proefkaart__rijen > div { gap: 10px; }
 }
+
+/* ==========================================================================
+   Toevoegingen voor de nieuwe indeling: herkenning, keten, verdeling,
+   dossiervoorbeeld, redenen en vertrouwen.
+   ========================================================================== */
+
+/* De prijstrigger in de hero: het antwoord op "waarom nu?". */
+.hero__trigger {
+  margin: 14px 0 0; font-size: 1rem; color: var(--blauw-800);
+  padding: 11px 15px; border-radius: var(--radius-klein);
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+}
+.hero__trigger strong { font-weight: 780; }
+.hero__beeldkop {
+  margin: 0 0 8px; font-size: .76rem; font-weight: 720; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--tekst-zacht);
+}
+
+/* De keuzekaarten zijn knoppen geworden: ze personaliseren de pagina. */
+.keuzekaart { font: inherit; text-align: left; cursor: pointer; }
+.keuzekaart.gekozen {
+  border-color: var(--blauw-600); background: var(--blauw-50);
+  box-shadow: inset 0 0 0 1px var(--blauw-600);
+}
+.keuzekaarten__vervolg { margin-top: 18px; }
+.keuzeknoppen { display: flex; flex-wrap: wrap; gap: 8px; }
+.keuzeknop {
+  font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer;
+  padding: 9px 15px; border-radius: 999px; background: var(--vlak);
+  border: 1.5px solid var(--rand-sterk); color: var(--blauw-800);
+  transition: border-color .15s, background .15s;
+}
+.keuzeknop:hover { border-color: var(--blauw-500); }
+.keuzeknop.gekozen { border-color: var(--blauw-600); background: var(--blauw-600); color: #fff; }
+
+/* Het leesproces in de voorbeeldkaart. */
+.leesstappen {
+  list-style: none; padding: 0 0 14px; margin: 0 0 14px;
+  border-bottom: 1px solid var(--rand); display: grid; gap: 6px;
+}
+.leesstappen li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .82rem; color: var(--tekst-zacht);
+}
+.leesstappen svg { width: 15px; height: 15px; flex: none; }
+.leesstappen__bestand {
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem;
+  color: var(--blauw-700); background: var(--papier); border-radius: 6px;
+  padding: 5px 9px; display: inline-block;
+}
+
+/* ------------------------------------------------------------ herkenning -- */
+.herkenning { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.herkenning__geval { padding: 24px; }
+.herkenning__geval h3 { font-size: 1.02rem; margin-bottom: 7px; color: var(--blauw-900); }
+.herkenning__geval p { font-size: .94rem; color: var(--tekst-zacht); margin: 0; }
+.middenknop__zin { font-size: 1.04rem; margin: 0 0 18px; color: var(--blauw-900); }
+
+/* ----------------------------------------------------------------- keten -- */
+.keten {
+  list-style: none; padding: 0; margin: 0 0 34px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.keten__stap {
+  position: relative; padding: 18px 16px; border-radius: var(--radius);
+  background: var(--vlak); border: 1px solid var(--rand);
+}
+/* Het pijltje tussen de stappen; op mobiel wijst hij naar beneden. */
+.keten__stap::after {
+  content: ""; position: absolute; right: -12px; top: 50%; width: 12px; height: 2px;
+  background: var(--rand-sterk); transform: translateY(-50%);
+}
+.keten__stap:last-child::after { display: none; }
+.keten__merk {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  color: var(--blauw-600); font-weight: 780; font-size: .82rem; margin-bottom: 10px;
+}
+.keten__stap strong { display: block; font-size: .96rem; color: var(--blauw-900); margin-bottom: 3px; }
+.keten__stap span { font-size: .86rem; color: var(--tekst-zacht); }
+.keten__stap--geld { background: var(--blauw-50); border-color: var(--blauw-100); }
+
+/* --------------------------------------------------------- de demo + scherm */
+.demo { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 26px; align-items: start; }
+.minischerm {
+  border-radius: var(--radius); overflow: hidden; position: sticky; top: 84px;
+  border: 1px solid var(--blauw-100); box-shadow: 0 16px 40px rgba(20, 45, 90, .1);
+  background: var(--vlak);
+}
+.minischerm__kop {
+  display: flex; align-items: center; gap: 9px; padding: 15px 20px;
+  background: var(--blauw-600); color: #fff; font-weight: 660; font-size: .95rem;
+}
+.minischerm__kop svg { width: 18px; height: 18px; flex: none; }
+.minischerm__rijen { margin: 0; padding: 6px 20px 4px; }
+.minischerm__rijen > div {
+  display: flex; justify-content: space-between; gap: 14px;
+  padding: 10px 0; border-top: 1px solid var(--rand);
+}
+.minischerm__rijen > div:first-child { border-top: 0; }
+.minischerm__rijen dt { font-size: .85rem; color: var(--tekst-zacht); margin: 0; }
+.minischerm__rijen dd { font-size: .88rem; font-weight: 660; margin: 0; text-align: right; }
+.minischerm__slot {
+  margin: 0; padding: 14px 20px; background: var(--blauw-50);
+  border-top: 1px solid var(--blauw-100);
+  font-weight: 700; color: var(--blauw-700); font-size: .95rem;
+}
+
+.vertrouwenregel {
+  display: inline-flex; align-items: flex-start; gap: 8px; text-align: left;
+  margin: 16px auto 0; max-width: 54ch; font-size: .85rem; color: var(--tekst-zacht);
+}
+.vertrouwenregel svg { width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--groen-600); }
+
+/* ------------------------------------------------------------- verdeling -- */
+.verdeling { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+.verdeling__kant { padding: 26px 24px; }
+.verdeling__kant--wij { background: var(--blauw-50); border-color: var(--blauw-100); }
+.verdeling__wie {
+  display: block; font-size: .74rem; font-weight: 740; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--blauw-600); margin-bottom: 14px;
+}
+.verdeling__kant ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 11px; }
+.verdeling__kant li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; }
+.verdeling__kant li svg { width: 18px; height: 18px; margin-top: 2px; }
+.verdeling__kant li span { font-size: .95rem; }
+.verdeling__tijd { margin: 16px 0 0; font-size: .86rem; color: var(--tekst-zacht); font-style: italic; }
+
+/* -------------------------------------------------------- dossiervoorbeeld -- */
+.dossierdemo {
+  max-width: 640px; padding: 26px; border-radius: 18px; background: var(--vlak);
+  border: 1px solid var(--rand); box-shadow: 0 16px 40px rgba(20, 45, 90, .08);
+}
+.dossierdemo__kop {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 18px;
+}
+.dossierdemo__ref {
+  font-size: .74rem; font-weight: 740; letter-spacing: .07em; color: var(--blauw-600);
+}
+.dossierdemo__kop h3 { margin: 4px 0 0; font-size: 1.14rem; color: var(--blauw-900); }
+.dossierdemo__staat {
+  padding: 5px 12px; border-radius: 999px; font-size: .8rem; font-weight: 660;
+  background: var(--groen-100); color: var(--groen-600); white-space: nowrap;
+}
+.dossierdemo__klok {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 16px 18px; margin-bottom: 20px; border-radius: var(--radius-klein);
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+}
+.dossierdemo__klok strong {
+  font-size: 1.5rem; font-weight: 800; color: var(--blauw-800); letter-spacing: -.02em;
+}
+.dossierdemo__klok span { font-size: .9rem; color: var(--blauw-700); }
+.dossierdemo .tijdlijn { list-style: none; padding: 0; margin: 0; }
+.dossierdemo .tijdlijn li { position: relative; padding: 0 0 18px 32px; }
+.dossierdemo .tijdlijn li::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--vlak); border: 2px solid var(--rand-sterk);
+}
+.dossierdemo .tijdlijn li::after {
+  content: ""; position: absolute; left: 8.5px; top: 18px; bottom: 0; width: 2px; background: var(--rand);
+}
+.dossierdemo .tijdlijn li:last-child { padding-bottom: 0; }
+.dossierdemo .tijdlijn li:last-child::after { display: none; }
+.dossierdemo .tijdlijn li.klaar::before { background: var(--groen-600); border-color: var(--groen-600); }
+.dossierdemo .tijdlijn li.bezig::before {
+  background: var(--blauw-600); border-color: var(--blauw-600);
+  box-shadow: 0 0 0 4px var(--blauw-100);
+}
+.dossierdemo .tijdlijn__titel { display: block; font-weight: 620; font-size: .96rem; }
+.dossierdemo .tijdlijn__datum { display: block; font-size: .82rem; color: var(--tekst-zacht); margin-top: 2px; }
+.dossierdemo__rust {
+  margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--rand);
+  font-size: .93rem; color: var(--tekst-zacht);
+}
+
+/* --------------------------------------------------------------- redenen -- */
+.redenen { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.redenen article { padding: 22px; }
+.redenen h3 { font-size: 1rem; margin-bottom: 7px; color: var(--blauw-900); }
+.redenen p { font-size: .92rem; color: var(--tekst-zacht); margin: 0; }
+.redenen__slot {
+  margin: 26px 0 0; font-size: 1.02rem; color: var(--blauw-900); font-weight: 600;
+  text-align: center; text-wrap: balance;
+}
+
+/* ---------------------------------------------------------------- kosten -- */
+.kosten--tarief { background: var(--blauw-50); border-color: var(--blauw-100); }
+.kosten__voorbeeld {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: var(--radius-klein);
+  background: var(--vlak); border: 1px solid var(--blauw-100);
+  font-size: .88rem; color: var(--blauw-800);
+}
+.kosten__slot { margin: 24px 0 0; font-size: .93rem; color: var(--tekst-zacht); }
+
+/* ------------------------------------------------------------ vertrouwen -- */
+.vertrouwen { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.vertrouwen__wie { padding: 26px 24px; }
+.vertrouwen__wie h3 { font-size: 1.04rem; margin-bottom: 10px; color: var(--blauw-900); }
+.vertrouwen__wie p { font-size: .94rem; color: var(--tekst-zacht); }
+.vertrouwen__gegevens { margin: 18px 0; }
+.vertrouwen__gegevens > div {
+  display: flex; justify-content: space-between; gap: 14px;
+  padding: 9px 0; border-top: 1px solid var(--rand);
+}
+.vertrouwen__gegevens dt { font-size: .86rem; color: var(--tekst-zacht); margin: 0; }
+.vertrouwen__gegevens dd { font-size: .89rem; font-weight: 620; margin: 0; text-align: right; }
+.vertrouwen__punten { display: grid; gap: 16px; }
+.vertrouwen__punten article { padding: 22px; }
+.vertrouwen__punten h3 {
+  display: flex; align-items: center; gap: 9px; font-size: 1rem; margin-bottom: 8px;
+  color: var(--blauw-900);
+}
+.vertrouwen__punten h3 svg { width: 19px; height: 19px; flex: none; color: var(--groen-600); }
+.vertrouwen__punten p { font-size: .92rem; color: var(--tekst-zacht); margin: 0; }
+.vertrouwen__punten p + p { margin-top: 8px; }
+
+/* --------------------------------------------------------------- mobiel --- */
+@media (max-width: 980px) {
+  .keten { grid-template-columns: 1fr 1fr; }
+  .keten__stap::after { display: none; }
+  .demo { grid-template-columns: 1fr; }
+  .minischerm { position: static; max-width: 460px; }
+  .vertrouwen { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .keten { grid-template-columns: 1fr; gap: 10px; }
+  .keten__stap { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; }
+  .keten__merk { margin-bottom: 0; }
+  .herkenning__geval, .verdeling__kant, .redenen article,
+  .vertrouwen__wie, .vertrouwen__punten article { padding: 20px 18px; }
+  .dossierdemo { padding: 20px 18px; }
+  .dossierdemo__klok strong { font-size: 1.3rem; }
+  .hero__trigger { font-size: .95rem; }
+}

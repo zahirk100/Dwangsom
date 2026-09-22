@@ -153,6 +153,13 @@ function rendereDossier(dossier) {
       aanvulformulier(dossier));
   }
 
+  // De stukken die bij déze zaak horen. Per zaaktype anders, en daarom pas
+  // hier op te halen: welke brieven nodig zijn hangt af van wat er speelt.
+  if (dossier.stukken && dossier.stukken.length > 0) {
+    blok.append(el('div', { class: 'kolomkop', tekst: 'Stukken bij je zaak' }),
+      stukkenlijst(dossier));
+  }
+
   blok.append(el('div', { class: 'kolomkop', tekst: 'Jouw gegevens' }), mijnGegevens);
 
   const wijzig = el('button', { class: 'knop knop--zacht knop--klein', type: 'button' },
@@ -163,6 +170,128 @@ function rendereDossier(dossier) {
   blok.append(el('div', { style: 'margin-top:16px' }, wijzig));
 
   return blok;
+}
+
+/**
+ * Wat er bij deze zaak aan stukken nodig is, met per stuk een uploadknop.
+ *
+ * De lijst komt van de server en verschilt per zaaktype: bij een bezwaar is
+ * dat het primaire besluit plus het bezwaarschrift, bij een aanvraag de
+ * ontvangstbevestiging. De aanvrager hoeft dat niet te weten; hij ziet alleen
+ * wat er van hém nodig is en of het al binnen is.
+ */
+function stukkenlijst(dossier) {
+  const houder = el('div', {});
+  const open = dossier.stukken.filter((s) => !s.binnen && s.verplicht);
+
+  if (open.length > 0) {
+    houder.append(el('div', { class: 'melding melding--let-op', style: 'margin-bottom:16px' },
+      el('strong', { tekst: open.length === 1 ? 'Eén stuk hebben wij nog nodig' : `Nog ${open.length} stukken nodig` }),
+      el('p', { tekst: 'Zonder deze stukken kunnen wij je zaak niet onderbouwen. Je kunt ze hier '
+        + 'uploaden; een foto van het papier is ook goed.' })));
+  }
+
+  const lijst = el('ul', { class: 'stukken' });
+  for (const stuk of dossier.stukken) lijst.append(stukregel(dossier, stuk));
+  houder.append(lijst);
+  return houder;
+}
+
+/**
+ * De stukkenlijst komt uit dezelfde module als de beheeromgeving, en daar is
+ * hij geschreven vanuit de behandelaar: "de eigen ingebrekestelling van de
+ * aanvrager". Dat is precies de verkeerde toon tegen de aanvrager zelf, die
+ * hier zijn eigen zaak leest. Vandaar een eigen woordenlijst voor dit scherm;
+ * staat een stuk er niet in, dan blijft de gedeelde tekst gewoon staan.
+ */
+const KLANTTEKST = {
+  ontvangstbevestiging: ['Bewijs van je aanvraag',
+    'De ontvangstbevestiging, of iets anders waaruit blijkt wanneer je hebt aangevraagd.'],
+  termijnbrief: ['De brief met de uiterste beslisdatum',
+    'Daarin staat wanneer je een besluit zou krijgen.'],
+  verdagingsbrief: ['De brief waarin je beslissing is uitgesteld',
+    'Daarmee weten wij tot wanneer zij de tijd hadden.'],
+  opschortingsbrief: ['De brief waarin om aanvullende gegevens is gevraagd',
+    'Daarmee controleren wij hoeveel dagen de termijn heeft stilgestaan.'],
+  'primair-besluit': ['Het besluit waartegen je bezwaar maakte',
+    'Daaruit blijkt vanaf wanneer de bezwaartermijn liep.'],
+  bezwaarschrift: ['Je bezwaarschrift en het verzendbewijs',
+    'Bijvoorbeeld de ontvangstbevestiging of het verzendbewijs van de post.'],
+  ingebrekestelling: ['De melding die je zelf hebt verstuurd',
+    'De brief of e-mail waarin je om een besluit vroeg.'],
+  verzendbewijs: ['Het verzendbewijs van die melding',
+    'Dit is het belangrijkste bewijsstuk: het bepaalt vanaf welke dag de dwangsom telt.'],
+  besluit: ['Het besluit dat je inmiddels hebt ontvangen',
+    'Daarmee stellen wij vast tot welke dag de dwangsom is opgelopen.'],
+};
+
+function stukregel(dossier, stuk) {
+  const regel = el('li', { class: stuk.binnen ? 'stuk stuk--binnen' : 'stuk' });
+  const fout = el('div', {});
+  const eigen = KLANTTEKST[stuk.id] || [];
+  const label = eigen[0] || stuk.label;
+  const uitleg = eigen[1] || stuk.uitleg;
+
+  regel.append(el('div', { class: 'stuk__kop' },
+    el('span', { class: 'stuk__merk', tekst: stuk.binnen ? '\u2713' : '\u25cb' }),
+    el('div', {},
+      el('span', { class: 'stuk__label', tekst: label }),
+      uitleg ? el('span', { class: 'stuk__uitleg', tekst: uitleg }) : null,
+      stuk.verplicht ? null : el('span', { class: 'stuk__uitleg', tekst: 'Mag ook later.' }))));
+
+  // Wat er al ligt, met een link om het terug te kijken.
+  if (stuk.bestanden.length > 0) {
+    const bestanden = el('ul', { class: 'stuk__bestanden' });
+    for (const bestand of stuk.bestanden) {
+      bestanden.append(el('li', {},
+        el('a', {
+          href: `/api/mijn/dossiers/${dossier.id}/bestanden/${bestand.id}`,
+          tekst: bestand.bestandsnaam,
+        })));
+    }
+    regel.append(bestanden);
+  }
+
+  const invoer = el('input', {
+    type: 'file', accept: '.pdf,.txt,application/pdf,text/plain,image/*',
+    id: `stuk-${stuk.id}`, class: 'verborgen-invoer',
+  });
+  const knop = el('button', { class: 'knop knop--zacht knop--klein', type: 'button' },
+    stuk.binnen ? 'Nog een bestand toevoegen' : 'Bestand toevoegen');
+  knop.addEventListener('click', () => invoer.click());
+
+  invoer.addEventListener('change', async () => {
+    const bestand = invoer.files && invoer.files[0];
+    if (!bestand) return;
+    fout.textContent = '';
+    knop.disabled = true;
+    knop.textContent = 'Bezig met uploaden…';
+    try {
+      const buffer = await bestand.arrayBuffer();
+      let ruw = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.length; i += 8192) {
+        ruw += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      }
+      await api(`/api/mijn/dossiers/${dossier.id}/stuk`, {
+        method: 'POST',
+        body: JSON.stringify({
+          stukId: stuk.id,
+          bestandsnaam: bestand.name,
+          mediaType: bestand.type,
+          data: btoa(ruw),
+        }),
+      });
+      await laad();
+    } catch (err) {
+      knop.disabled = false;
+      knop.textContent = 'Bestand toevoegen';
+      melding(fout, 'fout', err.message);
+    }
+  });
+
+  regel.append(el('div', { class: 'stuk__actie' }, invoer, knop), fout);
+  return regel;
 }
 
 /**
