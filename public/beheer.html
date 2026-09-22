@@ -122,11 +122,10 @@
   .papierroute summary { cursor: pointer; font-size: .88rem; color: var(--tekst-zacht); }
   @media (max-width: 520px) { .bijlagen { margin-left: 0; } }
 
-  /* De beheerbalk heeft een merk, een chip en twee knoppen; op een telefoon
-     past dat niet naast elkaar en schoof de hele pagina zijwaarts. */
+  /* De naam van de ingelogde medewerker past er op een telefoon niet bij; die
+     staat ook onder Accounts. De rest zit in het uitklapmenu. */
   @media (max-width: 560px) {
     .balk-weg-op-klein { display: none; }
-    .balk__inhoud .merk__naam { display: none; }
   }
 </style>
 </head>
@@ -276,5 +275,6 @@
 </main>
 
 <script type="module" src="/assets/beheer.js"></script>
+<script type="module" src="/assets/menu.js"></script>
 </body>
 </html>

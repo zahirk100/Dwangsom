@@ -72,6 +72,21 @@ in de bron te staan, niet door javascript te worden ingevuld. `test/campagnes.te
 vergelijkt de uitgeschreven bestanden met het template, zodat er nooit een oude tekst
 online staat terwijl de broncode al bij is.
 
+## De balk op een telefoon
+
+Elke pagina met een balk heeft een uitklapmenu (`public/assets/menu.js`). Dat
+verving een regel die er onschuldig uitzag: `.balk nav a.nav-secundair {
+display: none }` onder 720px. "Hoe het werkt", "Kosten" en "Vragen" waren
+daarmee op een telefoon niet te bereiken — geen responsief ontwerp maar
+verlies.
+
+Wat er in de balk blijft staan is het merk en de hoofdknop; de rest zit achter
+de menuknop. Zonder javascript staat het menu gewoon open en loopt de balk door
+op meerdere regels: onbereikbare links zijn erger dan een balk die wat hoger is.
+
+In die navigatie staat nu ook **Mijn dossier**. Dat ontbrak overal: wie
+terugkwam voor zijn eigen zaak had geen enkele link om op te klikken.
+
 ## De reis van de bezoeker
 
 De landingspagina is geen brochure maar een intake. De opbouw volgt wat iemand in de
