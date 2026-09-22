@@ -449,7 +449,7 @@ export class Gebruikers {
     const gebruiker = await this.vind(sessie.gebruikerId);
     if (!gebruiker) return 'geen-gebruiker';
     if (gebruiker.actief === false) return 'niet-actief';
-    return `rol-${gebruiker.rol}`;
+    return `onbekend-rol-${gebruiker.rol}`;
   }
 
   async uitCookie(waarde) {

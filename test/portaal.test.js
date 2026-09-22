@@ -389,3 +389,40 @@ test('nieuwe post is voor de klant terug te lezen', async () => {
   assert.equal(antwoord.status, 200);
   assert.match(antwoord.headers.get('content-disposition'), /attachment/);
 });
+
+test('wie ook medewerker is, komt wel in zijn eigen dossier', async () => {
+  // Zo kwam dit aan het licht: degene die de eerste beheerder aanmaakte deed
+  // daarna met hetzelfde e-mailadres een testaanvraag. Die zaak werd aan zijn
+  // bestaande account gehangen, de inloglink maakte een sessie voor dat
+  // account, en het portaal wees hem af op zijn rol - zonder foutmelding,
+  // alsof de link stuk was.
+  const { Gebruikers } = await import('../src/gebruikers.js');
+  const { sessieSleutel } = await import('../src/sessie.js');
+  const hulp = new Gebruikers({ opslag, sleutel: sessieSleutel(process.env) });
+
+  const klant = (await opslag.rijen('gebruikers')).find((g) => g.email === 'een@voorbeeld.nl');
+  await opslag.zetRij('gebruikers', klant.id, { ...klant, rol: 'beheerder' });
+
+  const token = await hulp.maakKoppeling(klant.id, 'magic');
+  const inloggen = await haal('/api/mijn/koppeling', {
+    method: 'POST', body: JSON.stringify({ token }),
+  });
+  assert.equal(inloggen.status, 200);
+  const cookie = inloggen.headers.getSetCookie().join('; ');
+
+  const sessie = await (await haal('/api/mijn/sessie', { headers: { cookie } })).json();
+  assert.equal(sessie.ingelogd, true, `het portaal hoort hem binnen te laten (${sessie.detail})`);
+
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  assert.ok(data.dossiers.length > 0, 'en hij ziet zijn eigen zaak');
+
+  await opslag.zetRij('gebruikers', klant.id, klant);
+});
+
+test('het klantcookie geeft geen toegang tot de beheeromgeving', async () => {
+  // De rolcontrole is uit het portaal gehaald; dan moet vaststaan dat dit
+  // cookie niet alsnog ergens anders binnenkomt.
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const beheer = await haal('/api/beheer/aanvragen', { headers: { cookie } });
+  assert.equal(beheer.status, 401, 'de beheeromgeving vraagt een eigen cookie, met tweede factor');
+});

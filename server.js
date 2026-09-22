@@ -134,10 +134,25 @@ async function huidigeMedewerker(req) {
 }
 
 /** De aanvrager achter het klantcookie. */
+/**
+ * De aanvrager achter het klantcookie.
+ *
+ * Bewust geen eis dat de rol `klant` is. Iemand kan allebei zijn: een
+ * medewerker die zelf te lang op een beslissing wacht, of - en zo kwam het aan
+ * het licht - degene die de eerste beheerder aanmaakte en daarna met hetzelfde
+ * e-mailadres een testaanvraag deed. Zijn zaak werd aan zijn bestaande account
+ * gehangen, de inloglink maakte een sessie voor dat account, en het portaal
+ * wees hem af op zijn rol. Zonder foutmelding, alsof de link stuk was.
+ *
+ * Veilig, want dit cookie wordt alleen uitgegeven na een inloglink naar dat
+ * e-mailadres, en het portaal toont uitsluitend dossiers die aan deze
+ * gebruiker hangen. Het geeft geen toegang tot de beheeromgeving: daar hoort
+ * een eigen cookie bij, mét tweede factor.
+ */
 async function huidigeKlant(req) {
   const cookie = parseCookies(req.headers.cookie)[COOKIE_KLANT];
   const sessie = await gebruikers.uitCookie(cookie);
-  if (!sessie || sessie.gebruiker.rol !== ROL_KLANT) return null;
+  if (!sessie || sessie.gebruiker.actief === false) return null;
   return sessie.gebruiker;
 }
 
