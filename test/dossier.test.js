@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { berekenDwangsom } from '../public/shared/dwangsom.js';
+import { berekenDwangsom, UITKOMST } from '../public/shared/dwangsom.js';
 import { bepaalDossiereisen, dossierStatus, stukkenVanKlant } from '../public/shared/dossier.js';
 
 const verplicht = (dossier) => bepaalDossiereisen(dossier).gegevens.filter((g) => g.verplicht).map((g) => g.id);
@@ -118,4 +118,45 @@ test('optionele stukken blokkeren een compleet dossier niet', () => {
   });
   assert.equal(status.compleet, true, 'alleen de termijnbrief ontbreekt nog, en die is optioneel');
   assert.deepEqual(status.ontbreekt.map((s) => s.id), ['termijnbrief']);
+});
+
+test('bij een verstreken termijn met machtiging hoort de machtiging in de stukken', () => {
+  // Dit ging mis: zo'n zaak heet intern een vooraanmelding, dus stond de
+  // machtiging niet in de stukkenlijst terwijl de aanvrager al getekend had
+  // en er een ingebrekestelling namens hem de deur uit moest.
+  const eisen = bepaalDossiereisen({
+    invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2026-01-05' },
+    contact: { machtiging: true },
+    rapport: {
+      uitkomst: UITKOMST.INGEBREKESTELLING_NODIG,
+      vervolg: { soort: 'vooraanmelding' },
+    },
+  });
+  assert.ok(eisen.stukken.some((s) => s.id === 'machtiging'), 'de machtiging hoort erbij');
+  const verplicht = eisen.gegevens.filter((g) => g.verplicht).map((g) => g.id);
+  assert.ok(verplicht.includes('adres'), 'zonder adres kan de brief niet verstuurd worden');
+  assert.ok(verplicht.includes('bsn'), 'het bestuursorgaan vindt de zaak met het BSN terug');
+});
+
+test('loopt de termijn nog, dan vragen wij niet meer dan contactgegevens', () => {
+  const eisen = bepaalDossiereisen({
+    invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2026-09-01' },
+    contact: { machtiging: true },
+    rapport: { uitkomst: UITKOMST.TERMIJN_LOOPT, vervolg: { soort: 'vooraanmelding' } },
+  });
+  const verplicht = eisen.gegevens.filter((g) => g.verplicht).map((g) => g.id);
+  assert.ok(!verplicht.includes('bsn'), 'er gebeurt nog niets, dus dit hoeft nog niet');
+  assert.ok(!verplicht.includes('adres'));
+});
+
+test('zonder machtiging vragen wij niets extra, ook niet bij een verstreken termijn', () => {
+  // Dan sturen wij niets namens deze persoon; het dossier is een vraag.
+  const eisen = bepaalDossiereisen({
+    invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2026-01-05' },
+    contact: { machtiging: false },
+    rapport: { uitkomst: UITKOMST.INGEBREKESTELLING_NODIG, vervolg: { soort: 'vooraanmelding' } },
+  });
+  const verplicht = eisen.gegevens.filter((g) => g.verplicht).map((g) => g.id);
+  assert.ok(!verplicht.includes('bsn'));
+  assert.ok(!eisen.stukken.some((s) => s.id === 'machtiging'));
 });

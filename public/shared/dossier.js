@@ -12,7 +12,7 @@
  */
 
 import { TERMIJN_VANAF, vraagtBsn, zoekZaaktype } from './catalogus.js';
-import { DOSSIERSOORT } from './dwangsom.js';
+import { DOSSIERSOORT, UITKOMST } from './dwangsom.js';
 
 /** Contactvelden die het formulier kent, met hun vaste label. */
 export const CONTACTVELDEN = {
@@ -54,27 +54,37 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
   const soort = rapport.vervolg ? rapport.vervolg.soort : null;
   const isBezwaar = Boolean(zaaktype && zaaktype.termijnVanaf === TERMIJN_VANAF.BEZWAARTERMIJN);
   const machtiging = Boolean(contact.machtiging);
-  // Alleen als wij nu al namens iemand gaan optreden, hebben wij de gegevens
-  // nodig die op de brieven en de machtiging komen. Bij een vooraanmelding
-  // gebeurt er nog niets, dus vragen wij niet meer dan contactgegevens; de
-  // rest halen wij op zodra de zaak in behandeling gaat.
-  const treedtOp = soort === DOSSIERSOORT.AANVRAAG;
+  // Treden wij nu namens iemand op? Dan hebben wij de gegevens nodig die op de
+  // brieven en de machtiging komen.
+  //
+  // Dit hing eerder aan het soort dossier, en dat klopte niet: een zaak waarin
+  // de termijn al verstreken is, heet intern een vooraanmelding, maar wij
+  // sturen er wel degelijk een ingebrekestelling in. Zonder naam, adres en
+  // burgerservicenummer kan die brief niet de deur uit, en de machtiging stond
+  // niet eens in de stukkenlijst terwijl hij al getekend was. Alleen bij een
+  // termijn die nog loopt gebeurt er echt nog niets.
+  //
+  // Zonder machtiging sturen wij niets, dus dan vragen wij ook niets extra's:
+  // dat dossier is een vraag, geen opdracht.
+  const nuIetsTeDoen = rapport.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
+    || rapport.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
+  const treedtOp = soort === DOSSIERSOORT.AANVRAAG || (machtiging && nuIetsTeDoen);
   const briefNodig = treedtOp;
 
   const gegevens = [
     veld('naam', true, 'Staat op alle stukken die wij indienen.'),
-    veld('email', true, 'Hierop houden wij u op de hoogte.'),
+    veld('email', true, 'Hierop houden wij de aanvrager op de hoogte.'),
     // Bewust niet verplicht: niet iedereen wil een nummer afgeven, en het is
     // geen voorwaarde om de zaak te kunnen indienen.
     veld('telefoon', false, briefNodig
-      ? 'Handig bij een lopende termijn, dan kunnen wij u snel bereiken.'
+      ? 'Handig bij een lopende termijn: dan is de aanvrager snel te bereiken.'
       : 'Handig als wij iets willen navragen.'),
     veld('adres', briefNodig, 'Wordt als afzender op de brieven gezet.'),
     veld('postcode', briefNodig, 'Hoort bij het adres op de brieven.'),
     veld('woonplaats', briefNodig, 'Hoort bij het adres op de brieven.'),
     veld('geboortedatum', treedtOp && machtiging, treedtOp && machtiging
-      ? 'Staat op de machtiging, zodat het bestuursorgaan u kan herkennen.'
-      : 'Vragen wij pas als wij namens u gaan optreden.'),
+      ? 'Staat op de machtiging, zodat het bestuursorgaan de aanvrager kan herkennen.'
+      : 'Vragen wij pas als wij namens de aanvrager gaan optreden.'),
     // Zonder deze twee kan een zaak niet worden ingediend of uitbetaald.
     // Ze horen daarom in het overzicht van wat ontbreekt, niet pas op het
     // moment dat de behandelaar de machtiging opent.
@@ -89,18 +99,18 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
   const stukken = [];
 
   if (isBezwaar) {
-    stukken.push(stuk('primair-besluit', 'Het besluit waartegen u bezwaar maakte',
+    stukken.push(stuk('primair-besluit', 'Het besluit waartegen bezwaar is gemaakt',
       { uitleg: 'Daaruit blijkt vanaf wanneer de bezwaartermijn liep.' }));
     stukken.push(stuk('bezwaarschrift', 'Het bezwaarschrift en het verzendbewijs',
       { uitleg: 'Bijvoorbeeld de ontvangstbevestiging of het verzendbewijs van de post.' }));
   } else {
     stukken.push(stuk('ontvangstbevestiging', 'Bewijs van de aanvraag',
-      { uitleg: 'De ontvangstbevestiging, of een ander bewijs van de datum waarop u aanvroeg.' }));
+      { uitleg: 'De ontvangstbevestiging, of een ander bewijs van de aanvraagdatum.' }));
   }
 
   if (invoer.termijnBekend) {
     stukken.push(stuk('termijnbrief', 'De brief met de uiterste beslisdatum',
-      { uitleg: 'Daarin noemt het bestuursorgaan zelf wanneer u een besluit krijgt.', verplicht: false }));
+      { uitleg: 'Daarin noemt het bestuursorgaan zelf de uiterste beslisdatum.', verplicht: false }));
   }
   if (invoer.verdaagd) {
     stukken.push(stuk('verdagingsbrief', 'De brief waarin de beslissing is uitgesteld',
@@ -121,7 +131,7 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
         door: doorOns ? 'wij' : 'klant',
         uitleg: doorOns
           ? 'Wij stelden zelf in gebreke; de brief zit in dit dossier.'
-          : 'De brief of e-mail waarin u om een besluit vroeg.',
+          : 'De brief of e-mail waarin de aanvrager om een besluit vroeg.',
       }));
     stukken.push(stuk('verzendbewijs', 'Het verzendbewijs van die ingebrekestelling',
       {
@@ -130,7 +140,7 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
       }));
   }
   if (invoer.besluitGenomen) {
-    stukken.push(stuk('besluit', 'Het besluit dat u inmiddels heeft ontvangen',
+    stukken.push(stuk('besluit', 'Het besluit dat inmiddels is ontvangen',
       { uitleg: 'Daarmee stellen wij vast tot welke dag de dwangsom is opgelopen.' }));
   }
 

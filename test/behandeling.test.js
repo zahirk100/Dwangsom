@@ -217,21 +217,24 @@ test('een afgehandeld dossier valt uit de werklijst, ook als de datum is bereikt
   assert.ok(!na.aanvragen.some((a) => a.id === dossier.id), 'afgehandeld werk komt niet terug');
 });
 
-test('een vooraanmelding die aanvraag wordt, meldt zelf welke gegevens nog ontbreken', async () => {
-  // Bij een vooraanmelding treden wij nog niet op, dus het BSN is dan niet
-  // verplicht. Zodra er wel opgetreden kan worden, moet het er zijn - en dat
-  // hoort de behandelaar te zien zonder het dossier door te spitten.
+test('zodra wij iets gaan doen, meldt het dossier zelf welke gegevens ontbreken', async () => {
+  // Loopt de beslistermijn nog, dan gebeurt er niets en vragen wij niet meer
+  // dan contactgegevens. Zodra de termijn voorbij is gaat er een brief namens
+  // de aanvrager de deur uit, en dan moeten naam, adres en burgerservicenummer
+  // er zijn - dat hoort de behandelaar te zien zonder het dossier door te
+  // spitten.
   const dossier = await dienIn({
-    invoer: { basisdatum: dagenGeleden(200), ingebrekeGesteld: false },
+    invoer: { basisdatum: dagenGeleden(10), ingebrekeGesteld: false },
     contact: { naam: 'O. Onvolledig', bsn: '', geboortedatum: '' },
   });
   assert.equal(dossier.soort, 'vooraanmelding');
-  assert.equal(dossier.gegevensOntbreken, 0, 'voor een vooraanmelding is dit nog niet nodig');
+  assert.equal(dossier.gegevensOntbreken, 0, 'zolang de termijn loopt is dit nog niet nodig');
 
   const { aanvraag } = await (await haal(`/api/beheer/aanvragen/${dossier.id}/bijwerken`, {
     method: 'POST',
     body: JSON.stringify({
       invoer: {
+        basisdatum: dagenGeleden(200),
         ingebrekeGesteld: true, ingebrekestellingDatum: dagenGeleden(60),
         ingebrekestellingDoorOns: true,
       },

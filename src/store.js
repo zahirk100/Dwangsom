@@ -7,6 +7,15 @@ import { randomUUID } from 'node:crypto';
 import { kiesOpslag } from './opslag.js';
 import { DOSSIERSOORT } from '../public/shared/dwangsom.js';
 
+/**
+ * Bakken die geen gevraagd stuk zijn en dus niets afvinken.
+ *
+ * `nieuwe-post` is wat de instantie rechtstreeks naar de aanvrager stuurde,
+ * `correspondentie` is wat wij zelf in het dossier hangen: onze verstuurde
+ * brieven, een e-mailwisseling, een telefoonnotitie als pdf.
+ */
+export const LOSSE_BAKKEN = ['nieuwe-post', 'correspondentie'];
+
 export const SOORTEN = [
   { id: DOSSIERSOORT.AANVRAAG, label: 'Aanvragen', enkelvoud: 'Aanvraag',
     uitleg: 'Er is een dwangsom opgebouwd; deze kan gevorderd worden.' },
@@ -332,7 +341,7 @@ export class Store {
    * hier bestandsopslag (Vercel Blob of Supabase Storage) achter; zie
    * docs/livegang.md.
    */
-  async voegBestandToe(id, { stukId, bestandsnaam, mediaType, data, door }) {
+  async voegBestandToe(id, { stukId, bestandsnaam, mediaType, data, door, toelichting = '' }) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const nu = new Date().toISOString();
@@ -346,19 +355,58 @@ export class Store {
       bytes: Math.round((String(data).length * 3) / 4),
       data: String(data),
       doorKlant: door === 'klant',
+      door: door === 'klant' ? 'de aanvrager' : (door || 'beheerder'),
+      toelichting: String(toelichting || '').slice(0, 300),
       aangemaaktOp: nu,
     };
     aanvraag.bestanden.push(bestand);
 
     // Een aangeleverd stuk is meteen afgevinkt; anders staat het dossier te
-    // zeggen dat er iets ontbreekt dat er gewoon is.
-    if (!aanvraag.stukken) aanvraag.stukken = {};
-    aanvraag.stukken[bestand.stukId] = true;
+    // zeggen dat er iets ontbreekt dat er gewoon is. Losse correspondentie is
+    // geen gevraagd stuk en vinkt dus niets af.
+    if (!LOSSE_BAKKEN.includes(bestand.stukId)) {
+      if (!aanvraag.stukken) aanvraag.stukken = {};
+      aanvraag.stukken[bestand.stukId] = true;
+    }
 
     aanvraag.historie.push({
       op: nu,
-      door: door === 'klant' ? 'de aanvrager' : (door || 'beheerder'),
-      tekst: `Bestand toegevoegd: ${bestand.bestandsnaam}.`,
+      door: bestand.door,
+      tekst: `Bestand toegevoegd: ${bestand.bestandsnaam}.`
+        + (bestand.toelichting ? ` (${bestand.toelichting})` : ''),
+    });
+    aanvraag.gewijzigdOp = nu;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
+  }
+
+  /**
+   * Een bestand uit het dossier halen.
+   *
+   * Een verkeerd geüpload stuk moet weg kunnen, maar het spoor blijft: in de
+   * historie staat wie wat heeft weggehaald. Was dit het enige bestand bij een
+   * gevraagd stuk, dan gaat het vinkje er ook weer af, anders staat het dossier
+   * te zeggen dat er iets ligt dat er niet is.
+   */
+  async verwijderBestand(id, bestandId, door) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag || !Array.isArray(aanvraag.bestanden)) return null;
+    const bestand = aanvraag.bestanden.find((b) => b.id === bestandId);
+    if (!bestand) return null;
+
+    aanvraag.bestanden = aanvraag.bestanden.filter((b) => b.id !== bestandId);
+    const nu = new Date().toISOString();
+
+    const restVoorStuk = aanvraag.bestanden.filter((b) => b.stukId === bestand.stukId);
+    if (restVoorStuk.length === 0 && !LOSSE_BAKKEN.includes(bestand.stukId)
+      && aanvraag.stukken && aanvraag.stukken[bestand.stukId]) {
+      aanvraag.stukken[bestand.stukId] = false;
+    }
+
+    aanvraag.historie.push({
+      op: nu,
+      door: door || 'beheerder',
+      tekst: `Bestand verwijderd: ${bestand.bestandsnaam}.`,
     });
     aanvraag.gewijzigdOp = nu;
     await this.opslag.zet(aanvraag);

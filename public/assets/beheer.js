@@ -584,7 +584,7 @@ function rendereLade() {
         el('h2', { tekst: a.referentie }),
         el('div', { style: 'display:flex; gap:8px; margin-top:6px; flex-wrap:wrap' },
           chip(uitkomst.tekst, uitkomst.kleur),
-          chip(a.contact.machtiging ? 'Machtiging gewenst' : 'Geen machtiging'),
+          machtigingChip(a),
         )),
       el('button', { class: 'knop knop--stil knop--klein', type: 'button', id: 'sluit-lade', style: 'margin-left:auto' }, '✕'),
     ),
@@ -654,11 +654,10 @@ function rendereLade() {
     machtigingBlok(a),
 
     el('div', { class: 'kolomkop', tekst: 'Documenten' }),
-    el('div', { class: 'knoprij' },
-      el('a', { class: 'knop knop--zacht knop--klein', href: `/api/beheer/aanvragen/${a.id}/brief?soort=ingebrekestelling` }, '⬇ Ingebrekestelling'),
-      el('a', { class: 'knop knop--zacht knop--klein', href: `/api/beheer/aanvragen/${a.id}/brief?soort=claim` }, '⬇ Dwangsomclaim'),
-      herberekenKnop,
-    ),
+    brievenBlok(a, herberekenKnop),
+
+    el('div', { class: 'kolomkop', tekst: 'Correspondentie' }),
+    correspondentieBlok(a),
 
     el('div', { class: 'kolomkop', tekst: 'Afhandeling' }),
     afhandelingBlok(a),
@@ -684,6 +683,118 @@ function rendereLade() {
   ladeHouder.append(overlay, lade);
   lade.querySelector('#sluit-lade').addEventListener('click', sluitLade);
   lade.scrollTop = 0;
+}
+
+/**
+ * Onze eigen brieven: opstellen, en bewaren in het dossier.
+ *
+ * Downloaden alleen was niet genoeg. Een brief die in de map Downloads van
+ * een behandelaar staat, is voor het dossier niet verstuurd - en de volgende
+ * behandelaar kan niet zien wat er precies de deur uit is gegaan.
+ */
+function brievenBlok(a, herberekenKnop) {
+  const houder = el('div', {});
+  const melding = el('div', {});
+
+  async function bewaar(soort, knop) {
+    knop.disabled = true;
+    const oudeTekst = knop.textContent;
+    knop.textContent = 'Bezig…';
+    try {
+      const data = await api(`/api/beheer/aanvragen/${a.id}/brief`, {
+        method: 'POST', body: JSON.stringify({ soort }),
+      });
+      actieveAanvraag = data.aanvraag;
+      rendereLade();
+    } catch (err) {
+      knop.disabled = false;
+      knop.textContent = oudeTekst;
+      melding.textContent = '';
+      melding.append(el('div', { class: 'melding melding--fout' }, el('strong', { tekst: err.message })));
+    }
+  }
+
+  for (const [soort, label] of [['ingebrekestelling', 'Ingebrekestelling'], ['claim', 'Dwangsomclaim']]) {
+    const bewaarKnop = el('button', { class: 'knop knop--stil knop--klein', type: 'button' },
+      'In dossier bewaren');
+    bewaarKnop.addEventListener('click', () => bewaar(soort, bewaarKnop));
+    houder.append(el('div', { class: 'knoprij' },
+      el('a', {
+        class: 'knop knop--zacht knop--klein',
+        href: `/api/beheer/aanvragen/${a.id}/brief?soort=${soort}`,
+      }, `\u2b07 ${label}`),
+      bewaarKnop));
+  }
+  houder.append(el('div', { class: 'knoprij' }, herberekenKnop), melding);
+  return houder;
+}
+
+/**
+ * Alles wat bij deze zaak hoort maar geen gevraagd stuk is: onze verstuurde
+ * brieven, een e-mailwisseling, post die de instantie rechtstreeks naar de
+ * aanvrager stuurde.
+ */
+function correspondentieBlok(a) {
+  const houder = el('div', {});
+  const eigen = (a.bestanden || []).filter((b) => b.stukId === 'correspondentie');
+  const post = (a.bestanden || []).filter((b) => b.stukId === 'nieuwe-post');
+
+  if (post.length) {
+    houder.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', {}, `Post van de instantie (${post.length})`),
+      el('p', {}, 'De aanvrager kreeg dit rechtstreeks toegestuurd. Controleer of het de '
+        + 'berekening verandert.'),
+      bestandenlijst(a, post)));
+  }
+
+  houder.append(eigen.length
+    ? bestandenlijst(a, eigen)
+    : el('p', { class: 'subtiel', style: 'font-size:.9rem', tekst: 'Nog niets in het dossier gehangen.' }));
+
+  houder.append(uploadknop(a, 'correspondentie', 'Document toevoegen'));
+  return houder;
+}
+
+/**
+ * Eén uploadknop, overal dezelfde. `stukId` bepaalt waar het bestand landt.
+ */
+function uploadknop(a, stukId, label) {
+  const fout = el('div', {});
+  const invoer = el('input', {
+    type: 'file', accept: '.pdf,.txt,application/pdf,text/plain,image/*',
+    class: 'verborgen-invoer',
+  });
+  const knop = el('button', { class: 'knop knop--zacht knop--klein', type: 'button' }, label);
+  knop.addEventListener('click', () => invoer.click());
+
+  invoer.addEventListener('change', async () => {
+    const bestand = invoer.files && invoer.files[0];
+    if (!bestand) return;
+    fout.textContent = '';
+    knop.disabled = true;
+    knop.textContent = 'Bezig met uploaden…';
+    try {
+      const bytes = new Uint8Array(await bestand.arrayBuffer());
+      let ruw = '';
+      for (let i = 0; i < bytes.length; i += 8192) ruw += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      const data = await api(`/api/beheer/aanvragen/${a.id}/bestanden`, {
+        method: 'POST',
+        body: JSON.stringify({
+          stukId, bestandsnaam: bestand.name, mediaType: bestand.type, data: btoa(ruw),
+        }),
+      });
+      actieveAanvraag = data.aanvraag;
+      rendereLade();
+      laadLijst();
+    } catch (err) {
+      knop.disabled = false;
+      knop.textContent = label;
+      fout.textContent = '';
+      fout.append(el('div', { class: 'melding melding--fout' }, el('strong', { tekst: err.message })));
+    }
+  });
+
+  return el('div', { style: 'margin-top:10px' }, invoer, knop, fout);
 }
 
 /**
@@ -713,27 +824,20 @@ function stukkenBlok(a) {
     // Wat de aanvrager hiervoor uploadde, meteen te openen. Anders moet een
     // behandelaar hem bellen voor iets dat hij al heeft opgestuurd.
     const bijlagen = (a.bestanden || []).filter((b) => b.stukId === stuk.id);
-    houder.append(el('label', { class: 'stuk-rij' }, vakje,
-      el('span', {},
-        el('span', { tekst: stuk.label }),
-        stuk.door === 'wij' ? chip('wij regelen dit', 'blauw') : null,
-        stuk.verplicht ? null : chip('optioneel', ''),
-        bijlagen.length ? chip(`${bijlagen.length} bestand${bijlagen.length === 1 ? '' : 'en'}`, 'groen') : null,
-        el('span', { class: 'stuk-rij__uitleg', style: 'display:block', tekst: stuk.uitleg }),
-        bijlagen.length ? bestandenlijst(a, bijlagen) : null,
-      )));
+    // Het vinkje zegt alleen dát iets binnen is. Hier kan het stuk er ook echt
+    // in: wat de aanvrager opstuurt per e-mail, of wat wij zelf ontvangen.
+    houder.append(el('div', { class: 'stuk-blok' },
+      el('label', { class: 'stuk-rij' }, vakje,
+        el('span', {},
+          el('span', { tekst: stuk.label }),
+          stuk.door === 'wij' ? chip('wij regelen dit', 'blauw') : null,
+          stuk.verplicht ? null : chip('optioneel', ''),
+          bijlagen.length ? chip(`${bijlagen.length} bestand${bijlagen.length === 1 ? '' : 'en'}`, 'groen') : null,
+          el('span', { class: 'stuk-rij__uitleg', style: 'display:block', tekst: stuk.uitleg }))),
+      bijlagen.length ? bestandenlijst(a, bijlagen) : null,
+      uploadknop(a, stuk.id, 'Bestand toevoegen')));
   }
 
-  // Post die de instantie rechtstreeks naar de aanvrager stuurde. Staat los
-  // van de gevraagde stukken en is vaak het belangrijkste nieuws in de zaak.
-  const post = (a.bestanden || []).filter((b) => b.stukId === 'nieuwe-post');
-  if (post.length) {
-    houder.append(el('div', { class: 'melding melding--let-op', style: 'margin-top:14px' },
-      el('strong', {}, `Nieuwe post van de instantie (${post.length})`),
-      el('p', {}, 'De aanvrager kreeg dit rechtstreeks toegestuurd. Controleer of het de '
-        + 'berekening verandert.'),
-      bestandenlijst(a, post)));
-  }
   return houder;
 }
 
@@ -741,6 +845,17 @@ function stukkenBlok(a) {
 function bestandenlijst(a, bestanden) {
   const lijst = el('ul', { class: 'bijlagen' });
   for (const bestand of bestanden) {
+    const wis = el('button', { class: 'bijlagen__wis', type: 'button', title: 'Uit het dossier halen' }, '\u2715');
+    wis.addEventListener('click', async () => {
+      // Een bestand weghalen is niet terug te draaien; de historie houdt wel
+      // bij wie het deed.
+      if (!window.confirm(`"${bestand.bestandsnaam}" uit het dossier halen?`)) return;
+      wis.disabled = true;
+      const data = await api(`/api/beheer/aanvragen/${a.id}/bestanden/${bestand.id}`, { method: 'DELETE' });
+      actieveAanvraag = data.aanvraag;
+      rendereLade();
+      laadLijst();
+    });
     lijst.append(el('li', {},
       el('a', {
         href: `/api/beheer/aanvragen/${a.id}/bestanden/${bestand.id}`,
@@ -748,8 +863,10 @@ function bestandenlijst(a, bestanden) {
         tekst: bestand.bestandsnaam,
       }),
       el('span', { class: 'bijlagen__meta',
-        tekst: `${bestand.doorKlant ? 'door de aanvrager' : 'door ons'}`
-          + `${bestand.aangemaaktOp ? ` op ${datumTijd(bestand.aangemaaktOp)}` : ''}` })));
+        tekst: `${bestand.doorKlant ? 'door de aanvrager' : `door ${bestand.door || 'ons'}`}`
+          + `${bestand.aangemaaktOp ? ` op ${datumTijd(bestand.aangemaaktOp)}` : ''}`
+          + `${bestand.toelichting ? ` \u00b7 ${bestand.toelichting}` : ''}` }),
+      wis));
   }
   return lijst;
 }
@@ -758,6 +875,22 @@ function bestandenlijst(a, bestanden) {
  * Machtiging: in één klik opgemaakt uit de gegevens die al bekend zijn, en
  * daarna bijhouden of hij verstuurd en ondertekend terug is.
  */
+/**
+ * Wat de machtiging op dít moment is, niet wat wij ervan hopen.
+ *
+ * Hier stond "Machtiging gewenst" boven een dossier waarin de aanvrager al
+ * digitaal had getekend. Een behandelaar die dat leest, gaat bellen over iets
+ * dat al binnen is.
+ */
+function machtigingChip(a) {
+  const m = a.machtiging || {};
+  if (m.ondertekendOp) return chip('Digitaal getekend', 'groen');
+  if (m.ontvangenOp) return chip('Machtiging binnen', 'groen');
+  if (m.verstuurdOp) return chip('Machtiging verstuurd', 'blauw');
+  if (a.contact && a.contact.machtiging) return chip('Machtiging nodig', 'oranje');
+  return chip('Geen machtiging');
+}
+
 function machtigingBlok(a) {
   const status = actieveMachtiging || {};
   const houder = el('div', {});
@@ -804,13 +937,37 @@ function machtigingBlok(a) {
     laadLijst();
   }
 
+  const digitaal = Boolean(status.ondertekendOp);
   const knoppen = el('div', { class: 'knoprij' },
     el('a', {
       class: 'knop knop--primair knop--klein',
       href: `/api/beheer/aanvragen/${a.id}/machtiging`,
       target: '_blank', rel: 'noopener',
-    }, 'Opstellen en afdrukken'),
+    }, digitaal ? 'Machtiging openen' : 'Opstellen en afdrukken'),
   );
+
+  // Is er digitaal getekend, dan is de papieren route niet de gewone gang van
+  // zaken maar een uitzondering: sommige bestuursorganen willen een natte
+  // handtekening. Die knoppen horen dan niet als volgende stap te oogsten.
+  if (digitaal) {
+    houder.append(knoppen);
+    if (!status.verstuurdOp && !status.ontvangenOp) {
+      const extra = el('details', { class: 'papierroute' },
+        el('summary', {}, 'Toch per post laten tekenen'),
+        el('p', { class: 'subtiel', style: 'font-size:.88rem; margin:8px 0' },
+          'Alleen nodig als het bestuursorgaan een natte handtekening eist. De digitale '
+          + 'machtiging blijft in het dossier staan.'));
+      const papier = el('div', { class: 'knoprij' },
+        maakKnop('Markeer als verstuurd', () => zet('verstuurd'), 'knop--stil'),
+        maakKnop('Ondertekend ontvangen', () => zet('ontvangen'), 'knop--stil'));
+      extra.append(papier);
+      houder.append(extra);
+    } else {
+      houder.append(el('div', { class: 'knoprij' },
+        maakKnop('Terugzetten', () => zet('ingetrokken'), 'knop--stil')));
+    }
+    return houder;
+  }
 
   if (!status.verstuurdOp) {
     knoppen.append(maakKnop('Markeer als verstuurd', () => zet('verstuurd')));

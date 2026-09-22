@@ -106,10 +106,21 @@
   .knoprij { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .leeg { text-align: center; padding: 54px 20px; color: var(--tekst-zacht); }
 
-  .bijlagen { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 5px; }
+  .stuk-blok { padding: 12px 0; border-top: 1px solid var(--rand); }
+  .stuk-blok:first-child { border-top: 0; }
+  .bijlagen { list-style: none; padding: 0; margin: 8px 0 0 30px; display: grid; gap: 5px; }
   .bijlagen li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .bijlagen a { font-size: .88rem; font-weight: 620; }
   .bijlagen__meta { font-size: .78rem; color: var(--tekst-zacht); }
+  .bijlagen__wis {
+    margin-left: auto; border: 0; background: none; cursor: pointer; font-size: .82rem;
+    color: var(--tekst-zacht); padding: 2px 6px; border-radius: 6px;
+  }
+  .bijlagen__wis:hover { background: var(--rood-100); color: var(--rood-600); }
+  .verborgen-invoer { display: none; }
+  .papierroute { margin-top: 12px; }
+  .papierroute summary { cursor: pointer; font-size: .88rem; color: var(--tekst-zacht); }
+  @media (max-width: 520px) { .bijlagen { margin-left: 0; } }
 
   /* De beheerbalk heeft een merk, een chip en twee knoppen; op een telefoon
      past dat niet naast elkaar en schoof de hele pagina zijwaarts. */

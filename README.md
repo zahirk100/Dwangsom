@@ -375,7 +375,9 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/machtiging` | De machtiging als afdrukbare pagina |
 | `POST /api/beheer/aanvragen/:id/machtiging` | Status: `verstuurd`, `ontvangen` of `ingetrokken` |
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
-| `GET /api/beheer/aanvragen/:id/bestanden/:bestandId` | Een stuk dat de aanvrager aanleverde |
+| `POST /api/beheer/aanvragen/:id/bestanden` | Zelf een stuk of correspondentie aan het dossier toevoegen |
+| `GET` · `DELETE /api/beheer/aanvragen/:id/bestanden/:bestandId` | Een stuk openen of uit het dossier halen |
+| `POST /api/beheer/aanvragen/:id/brief` | De opgestelde brief in het dossier bewaren |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
 Klantportaal (eigen sessiecookie, alleen het eigen dossier):
@@ -489,6 +491,14 @@ instantie**. Krijgt iemand rechtstreeks een besluit of een brief dat het langer
 duurt, dan legt hij dat in zijn eigen dossier neer in plaats van te bellen. In
 de beheeromgeving verschijnt dat als een aparte melding boven de stukkenlijst,
 want het verandert meestal de berekening.
+
+De behandelaar kan er zelf ook iets in hangen: bij elk stuk zit een
+uploadknop, en er is een blok **Correspondentie** voor alles wat geen gevraagd
+stuk is — onze verstuurde brieven, een e-mailwisseling. De ingebrekestelling en
+de dwangsomclaim die wij opstellen hebben naast "downloaden" ook **In dossier
+bewaren**: een brief die alleen in de map Downloads van een behandelaar staat,
+is voor het dossier niet verstuurd, en de volgende behandelaar kan dan niet
+zien wat er precies de deur uit ging.
 
 Alles wat binnenkomt is voor de behandelaar te openen
 (`GET /api/beheer/aanvragen/:id/bestanden/:bestandId`). Dat is geen detail: een

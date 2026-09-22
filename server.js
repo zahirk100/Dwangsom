@@ -12,7 +12,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Store, STATUSSEN, SOORTEN, isGeldigeStatus, labelVoorStatus, labelVoorSoort } from './src/store.js';
+import { Store, STATUSSEN, SOORTEN, isGeldigeStatus, labelVoorStatus, labelVoorSoort, LOSSE_BAKKEN } from './src/store.js';
 import { kiesOpslag } from './src/opslag.js';
 import { sessieSleutel } from './src/sessie.js';
 import {
@@ -895,6 +895,63 @@ async function beheerApi(req, res, url) {
       return stuurTekst(res, 200, tekst, {
         'Content-Disposition': `attachment; filename="${briefBestandsnaam(soort, aanvraag.referentie)}"`,
       });
+    }
+
+    // Dezelfde brief, maar dan blijvend in het dossier. Een brief die alleen
+    // in de map Downloads van een behandelaar staat, is voor het dossier niet
+    // verstuurd.
+    if (subpad === '/brief' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
+      const body = await leesJsonBody(req);
+      const soort = body.soort === 'claim' ? 'claim' : 'ingebrekestelling';
+      const maker = soort === 'claim' ? claimBrief : ingebrekestellingBrief;
+      const tekst = maker({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport });
+      const bijgewerkt = await store.voegBestandToe(aanvraag.id, {
+        stukId: 'correspondentie',
+        bestandsnaam: briefBestandsnaam(soort, aanvraag.referentie),
+        mediaType: 'text/plain; charset=utf-8',
+        data: Buffer.from(tekst, 'utf8').toString('base64'),
+        door: ik.naam || ik.email,
+        toelichting: soort === 'claim' ? 'Dwangsomclaim, door ons opgesteld' : 'Ingebrekestelling, door ons opgesteld',
+      });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
+    }
+
+    // Zelf een stuk aan het dossier toevoegen: een ontvangen brief, een
+    // verzendbewijs, een e-mailwisseling.
+    if (subpad === '/bestanden' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
+      const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+      const data = String(body.data || '');
+      if (!data) return stuurFout(res, 400, 'Er is geen bestand meegestuurd.');
+      if (data.length > MAX_BESTAND_BASE64) {
+        return stuurFout(res, 413, 'Dit bestand is groter dan 3 MB. Stuur een kleinere versie.');
+      }
+      // De behandelaar mag bij elk stuk van deze zaak iets hangen, plus in de
+      // twee losse bakken. Een verzonnen stukId hoort er niet in te komen.
+      const toegestaan = new Set([
+        ...bepaalDossiereisen(aanvraag).stukken.map((stuk) => stuk.id),
+        ...LOSSE_BAKKEN,
+      ]);
+      const stukId = String(body.stukId || 'correspondentie');
+      if (!toegestaan.has(stukId)) return stuurFout(res, 400, 'Dit stuk hoort niet bij deze zaak.');
+
+      const bijgewerkt = await store.voegBestandToe(aanvraag.id, {
+        stukId,
+        bestandsnaam: body.bestandsnaam,
+        mediaType: body.mediaType,
+        data,
+        door: ik.naam || ik.email,
+        toelichting: body.toelichting,
+      });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
+    }
+
+    if (bestandPad && req.method === 'DELETE') {
+      const nee = magNietWijzigen(); if (nee) return nee;
+      const bijgewerkt = await store.verwijderBestand(aanvraag.id, bestandPad[1], ik.naam || ik.email);
+      if (!bijgewerkt) return stuurFout(res, 404, 'Onbekend bestand.');
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
     }
   }
 
