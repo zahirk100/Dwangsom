@@ -30,6 +30,7 @@
 import { tarief, tariefSplitsing } from '../public/shared/tarief.js';
 import { TARIEF } from '../public/shared/dwangsom.js';
 import { organisatiegegevens } from './organisatie.js';
+import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
 
 const SITE = 'https://nubeslist.nl';
 
@@ -243,7 +244,7 @@ export function campagneHtml(env = process.env) {
   const omschrijving = 'Upload je UWV-brief. Wij zoeken gratis uit of UWV al had moeten beslissen '
     + `en wat je nu kunt doen. Blijft een beslissing uit, dan kan je vergoeding oplopen tot € ${maximum}.`;
 
-  return `<!doctype html>
+  const pagina = `<!doctype html>
 <html lang="nl">
 <head>
 <meta charset="utf-8">
@@ -767,6 +768,25 @@ ${vragen(t, prijs)}
 </body>
 </html>
 `;
+
+  const url = `${SITE}${CAMPAGNE_PAD}`;
+  return metSchema(pagina, [
+    organisatieSchema(bedrijf),
+    siteSchema(),
+    // De vijftien vragen op deze pagina staan zichtbaar op het scherm, dus
+    // mogen ze ook als FAQPage mee. Ze worden uit de pagina zelf gelezen.
+    faqSchema(pagina, url),
+    kruimelSchema([
+      { naam: 'nubeslist.nl', pad: '/' },
+      { naam: 'UWV te laat', pad: CAMPAGNE_PAD },
+    ]),
+    dienstSchema({
+      url,
+      naam: 'Dwangsom bij een te late beslissing van UWV',
+      omschrijving,
+      instantie: 'UWV',
+    }),
+  ]);
 }
 
 /** Het bestand dat scripts/maak-paginas.mjs schrijft. */

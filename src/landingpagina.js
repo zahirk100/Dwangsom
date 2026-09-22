@@ -23,6 +23,7 @@ import { ALGEMEEN, CAMPAGNES } from '../public/shared/campagnes.js';
 import { labelBestuursorgaan, zoekZaaktype } from '../public/shared/catalogus.js';
 import { tarief, tariefZin, tariefVoorbeeld } from '../public/shared/tarief.js';
 import { organisatiegegevens } from './organisatie.js';
+import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
 
 const SITE = 'https://nubeslist.nl';
 
@@ -156,7 +157,7 @@ export function landingHtml(ingang, env = process.env) {
 
   const uploadkop = ingang.uploadkop || `Laten we kijken of ${naam} te laat is`;
 
-  return `<!doctype html>
+  const pagina = `<!doctype html>
 <html lang="nl"${bekend ? ` data-instantie="${veilig(ingang.instantie)}"` : ''}>
 <head>
 <meta charset="utf-8">
@@ -771,6 +772,39 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
 </body>
 </html>
 `;
+
+  // De gestructureerde gegevens gaan er ná het bouwen in, zodat de vragen uit
+  // de pagina zelf komen en het schema niet van de zichtbare tekst kan
+  // afwijken. Dat laatste is wat Google eist.
+  return metSchema(pagina, [
+    organisatieSchema(bedrijf),
+    siteSchema(),
+    faqSchema(pagina, url),
+    kruimelSchema(kruimelpad(ingang)),
+    dienstSchema({
+      url,
+      naam: ingang.kop,
+      omschrijving: ingang.omschrijving,
+      instantie: bekend ? naam : '',
+    }),
+  ]);
+}
+
+/**
+ * Waar een ingang in de structuur hangt.
+ *
+ * Een campagnepagina over de WIA hangt onder UWV, en UWV onder de startpagina.
+ * In het zoekresultaat staat dan een leesbaar pad in plaats van een url.
+ */
+function kruimelpad(ingang) {
+  const kruimels = [{ naam: 'nubeslist.nl', pad: '/' }];
+  if (!ingang.slug) return kruimels;
+  const ouder = CAMPAGNES.find((c) => c.instantie === ingang.instantie && !c.zaak);
+  if (ouder && ouder.slug !== ingang.slug) {
+    kruimels.push({ naam: labelBestuursorgaan(ouder.instantie), pad: `/${ouder.slug}` });
+  }
+  kruimels.push({ naam: ingang.kort ? metHoofdletter(ingang.kort) : ingang.kop, pad: `/${ingang.slug}` });
+  return kruimels;
 }
 
 /** Alle pagina's die gegenereerd moeten worden, als {bestandsnaam, html}. */

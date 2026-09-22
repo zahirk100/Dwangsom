@@ -1,0 +1,12 @@
+# nubeslist.nl
+
+User-agent: *
+Allow: /
+
+# Achter een inlog. Hier valt niets te indexeren en het kost alleen
+# verzoeken aan onze kant.
+Disallow: /beheer
+Disallow: /mijn
+Disallow: /api/
+
+Sitemap: https://nubeslist.nl/sitemap.xml

@@ -24,9 +24,10 @@ export const ALGEMEEN = {
   instantie: '',
   zaak: '',
   titel: 'nubeslist.nl, wacht je te lang op een beslissing?',
-  omschrijving: 'Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en '
-    + 'krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de '
-    + 'beslistermijn is verstreken en regelen wat daarna nodig is.',
+  // Boven ~160 tekens kapt Google de omschrijving af, en dan verdwijnt juist
+  // de zin die tot klikken aanzet. Kort houden is hier geen stijlkeuze.
+  omschrijving: 'Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief: '
+    + 'nubeslist.nl controleert gratis of de beslistermijn is verstreken.',
   kop: 'Wacht je te lang op een beslissing?',
   onder: 'Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.',
   lead: 'Wacht je op UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut '
@@ -272,9 +273,8 @@ export const CAMPAGNES = [
     uploadtekst: 'Upload de brief waarin staat wanneer je een beslissing kunt verwachten. '
       + 'Wij zoeken de relevante datum voor je op.',
     titel: 'Beslissing duurt lang? Zo weet je wanneer de termijn voorbij is',
-    omschrijving: 'Wacht je op een beslissing van UWV, DUO, de SVB of je gemeente en duurt het '
-      + 'lang? Upload je brief; nubeslist.nl zegt wanneer de beslistermijn afloopt en komt in '
-      + 'actie zodra die voorbij is.',
+    omschrijving: 'Duurt je beslissing lang? Upload je brief: nubeslist.nl zegt wanneer de '
+      + 'beslistermijn afloopt en komt in actie zodra die voorbij is.',
   },
 ];
 
