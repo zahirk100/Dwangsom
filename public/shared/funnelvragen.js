@@ -11,7 +11,7 @@
  */
 
 import { bsnKlopt, ibanKlopt } from './identiteit.js';
-import { vraagtBsn } from './catalogus.js';
+import { vraagtBsn, labelBestuursorgaan } from './catalogus.js';
 
 /**
  * @param {{herkenning?: object, contact?: object, bestuursorgaan?: string, geforceerd?: Array<string>}} zaak
@@ -19,6 +19,9 @@ import { vraagtBsn } from './catalogus.js';
  */
 export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan = '', geforceerd = [] } = {}) {
   const afgedwongen = new Set(geforceerd);
+  // Bij de gevoelige velden hoort de naam van de instantie: "nodig om je bij
+  // UWV te identificeren" is een reden, "vraagt de instantie" is een frase.
+  const orgaan = bestuursorgaan ? labelBestuursorgaan(bestuursorgaan) : 'de instantie';
   const waardeVan = (id) => String(contact[id] || herkenning[id] || '').trim();
   const ontbreekt = (id) => waardeVan(id) === '' || afgedwongen.has(id);
 
@@ -35,7 +38,7 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
 
   velden.push({
     id: 'geboortedatum', label: 'Geboortedatum', type: 'date', verplicht: true,
-    hulp: 'Nodig op de machtiging, zodat de instantie je kan herkennen.',
+    hulp: `Staat op de machtiging, zodat ${orgaan} je kan herkennen.`,
   });
 
   if (vraagtBsn(bestuursorgaan)) {
@@ -46,7 +49,9 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
         id: 'bsn', label: 'Burgerservicenummer', type: 'text', verplicht: true,
         hulp: onbruikbaar
           ? 'Wij lazen een nummer uit je brief dat geen geldig burgerservicenummer is. Vul het hier in.'
-          : 'Vraagt de instantie om je zaak te kunnen vinden.',
+          : `Nodig om je bij ${orgaan} correct te identificeren.`,
+        // Hier neemt de weerstand toe; dan hoort er te staan wat wij ermee doen.
+        slot: 'Beveiligd verwerkt. Je burgerservicenummer staat nooit in een e-mail.',
       });
     }
   }
@@ -56,7 +61,8 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
     id: 'iban', label: 'IBAN', type: 'text', verplicht: true,
     hulp: gelezenIban !== '' && !ibanKlopt(gelezenIban)
       ? 'Het rekeningnummer uit je brief klopt niet. Vul het hier in.'
-      : 'Een eventuele vergoeding wordt rechtstreeks aan jou uitbetaald.',
+      : `Een eventuele vergoeding wordt door ${orgaan} rechtstreeks aan jou uitbetaald.`,
+    slot: 'Wij ontvangen jouw vergoeding niet; het geld komt op jouw rekening binnen.',
   });
   velden.push({
     id: 'email', label: 'E-mailadres', type: 'email', verplicht: true,

@@ -1,27 +1,27 @@
 <!doctype html>
-<html lang="nl" data-instantie="uwv">
+<html lang="nl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Geen beslissing over je WW-aanvraag? Controleer de termijn</title>
-<meta name="description" content="Wacht je al weken op een beslissing over je WW-uitkering? Upload je brief van UWV en nubeslist.nl controleert of de beslistermijn is verstreken.">
-<link rel="canonical" href="https://nubeslist.nl/uwv-ww">
+<title>Beslissing duurt lang? Zo weet je wanneer de termijn voorbij is</title>
+<meta name="description" content="Wacht je op een beslissing van UWV, DUO, de SVB of je gemeente en duurt het lang? Upload je brief; nubeslist.nl zegt wanneer de beslistermijn afloopt en komt in actie zodra die voorbij is.">
+<link rel="canonical" href="https://nubeslist.nl/nog-niet-te-laat">
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="nubeslist.nl">
 <meta property="og:locale" content="nl_NL">
-<meta property="og:url" content="https://nubeslist.nl/uwv-ww">
-<meta property="og:title" content="Wacht je te lang op je WW-uitkering?">
-<meta property="og:description" content="Wacht je al weken op een beslissing over je WW-uitkering? Upload je brief van UWV en nubeslist.nl controleert of de beslistermijn is verstreken.">
+<meta property="og:url" content="https://nubeslist.nl/nog-niet-te-laat">
+<meta property="og:title" content="Duurt je beslissing lang, maar is de termijn nog niet voorbij?">
+<meta property="og:description" content="Wacht je op een beslissing van UWV, DUO, de SVB of je gemeente en duurt het lang? Upload je brief; nubeslist.nl zegt wanneer de beslistermijn afloopt en komt in actie zodra die voorbij is.">
 <meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Het merkteken van nubeslist.nl">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Wacht je te lang op je WW-uitkering?">
-<meta name="twitter:description" content="Wacht je al weken op een beslissing over je WW-uitkering? Upload je brief van UWV en nubeslist.nl controleert of de beslistermijn is verstreken.">
+<meta name="twitter:title" content="Duurt je beslissing lang, maar is de termijn nog niet voorbij?">
+<meta name="twitter:description" content="Wacht je op een beslissing van UWV, DUO, de SVB of je gemeente en duurt het lang? Upload je brief; nubeslist.nl zegt wanneer de beslistermijn afloopt en komt in actie zodra die voorbij is.">
 <meta name="twitter:image" content="https://nubeslist.nl/deelkaart.png">
 
 <link rel="icon" href="/merk.svg" type="image/svg+xml">
@@ -51,8 +51,8 @@
       <a class="nav-secundair" href="#kosten">Kosten</a>
       <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
-      <a class="knop knop--primair knop--klein" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww" data-cta>
-        <span class="nav-lang" data-cta-tekst>Upload mijn UWV-brief</span><span class="nav-kort">Starten</span>
+      <a class="knop knop--primair knop--klein" href="/aanvraag" data-cta>
+        <span class="nav-lang" data-cta-tekst>Houd mijn termijn bij</span><span class="nav-kort">Starten</span>
       </a>
     </nav>
   </div>
@@ -64,17 +64,36 @@
   <section class="hero">
     <div class="omhulsel hero__raster">
       <div class="hero__tekst">
-        <h1 data-kop>Wacht je te lang op je WW-uitkering?</h1>
-        <p class="hero__onder" data-onder>Wij controleren of UWV over de beslistermijn heen is en regelen wat daarna nodig is.</p>
-        <p class="hero__lead" data-lead>Upload de brief van UWV over je WW-aanvraag. Wij zoeken de uiterste beslisdatum voor je op.</p>
+        <h1 data-kop>Duurt je beslissing lang, maar is de termijn nog niet voorbij?</h1>
+        <p class="hero__onder" data-onder>Wij noteren de datum waarop er beslist moet zijn en komen in actie zodra die voorbij is.</p>
+        <p class="hero__lead" data-lead>Upload de brief waarin staat wanneer je een beslissing kunt verwachten. Wij zeggen je meteen of de termijn al voorbij is, en houden hem anders voor je bij.</p>
         <p class="hero__trigger">Blijft een beslissing daarna uit? Dan kan je vergoeding
            oplopen tot <strong>&euro; 1.442</strong>.</p>
 
-        <div class="hero__knoppen">
-          <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww">Upload mijn UWV-brief</a>
-          <a class="knop knop--zacht" href="#werkwijze">Eerst lezen hoe het werkt</a>
+        <div class="keuzekaarten" id="instantiekeuze">
+          <p class="keuzekaarten__vraag">Op wie wacht je?</p>
+          <div class="keuzekaarten__rij" role="group" aria-label="Op wie wacht je?">
+            <button type="button" class="keuzekaart" data-instantie="uwv">
+              <span class="keuzekaart__naam">UWV</span>
+              <span class="keuzekaart__onder">WIA, WW, Wajong, Ziektewet</span>
+            </button>
+            <button type="button" class="keuzekaart" data-instantie="gemeente">
+              <span class="keuzekaart__naam">Mijn gemeente</span>
+              <span class="keuzekaart__onder">Bijstand, Wmo, jeugdhulp</span>
+            </button>
+            <button type="button" class="keuzekaart" data-instantie="duo">
+              <span class="keuzekaart__naam">DUO</span>
+              <span class="keuzekaart__onder">Studiefinanciering</span>
+            </button>
+            <button type="button" class="keuzekaart" data-instantie="anders">
+              <span class="keuzekaart__naam">Andere instantie</span>
+              <span class="keuzekaart__onder">SVB, Belastingdienst, overig</span>
+            </button>
+          </div>
+          <div class="keuzekaarten__vervolg verborgen" id="procedurekeuze"></div>
+          <p class="keuzekaarten__over">Weet je het niet zeker?
+            <a href="/aanvraag">Upload je brief, dan zoeken wij het uit</a>.</p>
         </div>
-        <p class="hero__anders">Wacht je op iets anders? <a href="/">Begin dan hier</a>.</p>
 
         <ul class="waarborgen">
           <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
@@ -109,7 +128,7 @@
             <p class="proefkaart__kop" data-proefkop>Het lijkt erop dat UWV te laat is</p>
             <dl class="proefkaart__rijen">
               <div><dt>Instantie</dt><dd data-proefinstantie>UWV</dd></div>
-              <div><dt>Procedure</dt><dd data-proefprocedure>WW-uitkering aanvragen</dd></div>
+              <div><dt>Procedure</dt><dd data-proefprocedure>WIA-aanvraag</dd></div>
               <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
               <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
             </dl>
@@ -145,8 +164,8 @@
       <div class="middenknop">
         <p class="middenknop__zin">Je hoeft dat niet zelf uit te zoeken.
            <strong>nubeslist.nl controleert het voor je.</strong></p>
-        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww" data-cta>
-          <span data-cta-tekst>Upload mijn UWV-brief</span></a>
+        <a class="knop knop--primair knop--groot" href="/aanvraag" data-cta>
+          <span data-cta-tekst>Houd mijn termijn bij</span></a>
       </div>
     </div>
   </section>
@@ -220,7 +239,7 @@
     <div class="omhulsel">
       <div class="sectiekop">
         <h2>Van jouw brief naar duidelijkheid in 1 minuut</h2>
-        <p data-uploadtekst>Upload de brief waarin UWV zegt wanneer je een beslissing kon verwachten. Wij zoeken de relevante datum voor je op.</p>
+        <p data-uploadtekst>Upload de brief waarin staat wanneer je een beslissing kunt verwachten. Wij zoeken de relevante datum voor je op.</p>
       </div>
 
       <div class="demo">
@@ -268,7 +287,7 @@
         stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> We hebben je brief gecontroleerd</div>
           <dl class="minischerm__rijen">
             <div><dt>Instantie</dt><dd data-proefinstantie>UWV</dd></div>
-            <div><dt>Procedure</dt><dd data-proefprocedure>WW-uitkering aanvragen</dd></div>
+            <div><dt>Procedure</dt><dd data-proefprocedure>WIA-aanvraag</dd></div>
             <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
             <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
           </dl>
@@ -277,8 +296,8 @@
       </div>
 
       <div class="middenknop">
-        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww" data-cta>
-          <span data-cta-tekst>Upload mijn UWV-brief</span></a>
+        <a class="knop knop--primair knop--groot" href="/aanvraag" data-cta>
+          <span data-cta-tekst>Houd mijn termijn bij</span></a>
         <p class="vertrouwenregel"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg> Je documenten worden beveiligd verwerkt en alleen
@@ -456,7 +475,7 @@
              denken. Upload je brief, dan noteren wij de datum waarop
              <span data-instantie-zin>de instantie</span> uiterlijk moet beslissen. Blijft een
              beslissing uit, dan komen wij vanzelf in actie. Jij hoeft er niet aan te denken.</p>
-          <a class="knop knop--zacht" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww" data-cta>Houd mijn termijn bij</a>
+          <a class="knop knop--zacht" href="/aanvraag" data-cta>Houd mijn termijn bij</a>
         </div>
         <ul class="nogniet__punten">
           <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
@@ -619,10 +638,10 @@
       </details>
 
       <div class="oproep">
-        <h2 data-slotkop>Wacht je te lang op je WW-uitkering?</h2>
+        <h2 data-slotkop>Duurt je beslissing lang, maar is de termijn nog niet voorbij?</h2>
         <p>Upload je brief en je weet binnen een minuut waar je aan toe bent.</p>
-        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww" data-cta>
-          <span data-cta-tekst>Upload mijn UWV-brief</span></a>
+        <a class="knop knop--primair knop--groot" href="/aanvraag" data-cta>
+          <span data-cta-tekst>Houd mijn termijn bij</span></a>
         <p class="oproep__fijn">Gratis eerste controle &nbsp;&middot;&nbsp; Geen account nodig
            &nbsp;&middot;&nbsp; Je zit nergens aan vast</p>
       </div>
@@ -651,7 +670,7 @@
        geen juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
     <ul class="voet__links">
       <li><a href="/">Startpagina</a></li>
-      <li><a href="/aanvraag?instantie=uwv&amp;zaak=uwv-ww">Controle starten</a></li>
+      <li><a href="/aanvraag">Controle starten</a></li>
       <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
       <li><a href="#kosten">Kosten</a></li>
       <li><a href="#vertrouwen">Over ons</a></li>

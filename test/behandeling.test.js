@@ -316,3 +316,37 @@ test('de brief van de aanvrager telt als aangeleverd stuk, zodat niets ten onrec
   assert.equal(detail.aanvraag.stukken.ontvangstbevestiging, true, 'de brief uit de funnel telt mee');
   assert.equal(detail.aanvraag.stukken.machtiging, true, 'de digitale handtekening telt mee');
 });
+
+test('een bestand van de aanvrager is voor de behandelaar te openen', async () => {
+  // Zonder deze route komt een upload van de klant in een la die niemand
+  // opent. Dan is de uploadknop erger dan geen uploadknop.
+  const dossier = await dienIn({
+    invoer: { basisdatum: dagenGeleden(120), ingebrekeGesteld: true, ingebrekestellingDatum: dagenGeleden(30) },
+    contact: { email: 'bijlage@voorbeeld.nl' },
+  });
+
+  const { store } = await import('../server.js');
+  await store.voegBestandToe(dossier.id, {
+    stukId: 'nieuwe-post',
+    bestandsnaam: 'besluit.pdf',
+    mediaType: 'application/pdf',
+    data: Buffer.from('%PDF-1.4 besluit').toString('base64'),
+    door: 'klant',
+  });
+
+  const detail = await (await haal(`/api/beheer/aanvragen/${dossier.id}`)).json();
+  const bijlage = detail.aanvraag.bestanden[0];
+  assert.ok(bijlage, 'de behandelaar hoort te zien dat er iets ligt');
+  assert.equal(bijlage.bestandsnaam, 'besluit.pdf');
+  assert.equal(bijlage.doorKlant, true);
+  assert.equal(bijlage.data, undefined,
+    'de inhoud hoort niet in elk dossierantwoord mee te reizen; die komt via de downloadroute');
+
+  const bestand = await haal(`/api/beheer/aanvragen/${dossier.id}/bestanden/${bijlage.id}`);
+  assert.equal(bestand.status, 200);
+  assert.match(bestand.headers.get('content-disposition'), /attachment/);
+  assert.match(await bestand.text(), /besluit/);
+
+  const onbekend = await haal(`/api/beheer/aanvragen/${dossier.id}/bestanden/bestaat-niet`);
+  assert.equal(onbekend.status, 404);
+});

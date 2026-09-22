@@ -33,7 +33,9 @@ test('elke ingang heeft alle teksten die de pagina nodig heeft', () => {
 
 test('de instantie en het zaaktype van een ingang bestaan echt', () => {
   for (const c of CAMPAGNES) {
-    assert.ok(BESTUURSORGANEN.some((b) => b.id === c.instantie),
+    // Een lege instantie mag: "nog-niet-te-laat" gaat over een termijn die
+    // nog loopt, bij welke instantie dan ook. Een gevulde moet kloppen.
+    assert.ok(c.instantie === '' || BESTUURSORGANEN.some((b) => b.id === c.instantie),
       `"${c.slug}" verwijst naar onbekende instantie ${c.instantie}`);
     if (c.zaak) {
       const zaaktype = zoekZaaktype(c.zaak);
@@ -185,4 +187,13 @@ test('de algemene pagina vraagt om een instantie en laadt het script dat dat ver
   assert.match(html, /id="procedurekeuze"/);
   assert.match(html, /data-instantie="uwv"/);
   assert.match(html, /assets\/landing\.js/);
+});
+
+test('er is een ingang voor wie nog niet te laat is', () => {
+  // Deze bezoeker kan vandaag niets vorderen en is op elke andere pagina een
+  // afhaker. Hij hoort een eigen voordeur te hebben, geen voetnoot in de FAQ.
+  const ingang = CAMPAGNES.find((c) => c.slug === 'nog-niet-te-laat');
+  assert.ok(ingang, 'de vooraanmelding hoort een eigen ingang te zijn');
+  assert.equal(ingang.instantie, '', 'deze ingang geldt voor elke instantie');
+  assert.match(ingang.knop, /bijhouden|bijhoud|Houd/i);
 });

@@ -11,7 +11,7 @@
  * van je sessie.
  */
 
-import { klantTijdlijn, klantSamenvatting } from '/shared/tijdlijn.js';
+import { klantTijdlijn, klantSamenvatting, klantAftelling } from '/shared/tijdlijn.js';
 import { euro } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum } from '/shared/datum.js';
 import { labelBestuursorgaan, zoekZaaktype } from '/shared/catalogus.js';
@@ -143,8 +143,26 @@ function rendereDossier(dossier) {
     mijnGegevens.append(el('div', {}, el('dt', { tekst: naam }), el('dd', { tekst: waarde })));
   }
 
-  const blok = el('div', {}, kop,
-    el('div', { class: 'kolomkop', tekst: 'Zo staat je zaak ervoor' }), lijst,
+  const blok = el('div', {}, kop);
+
+  // De aftelling: het enige getal waar iemand voor terugkomt. Wat hij hier
+  // niet ziet, gaat hij zelf bijhouden - en dat is nou juist wat wij doen.
+  const aftelling = klantAftelling(dossier);
+  if (aftelling) {
+    blok.append(el('div', { class: 'aftelling' },
+      el('div', { class: 'aftelling__getal' },
+        el('strong', { tekst: String(aftelling.dagen) }),
+        el('span', { tekst: aftelling.dagen === 1 ? 'dag' : 'dagen' })),
+      el('div', {},
+        el('span', { class: 'aftelling__kop', tekst: aftelling.kop }),
+        el('span', { class: 'aftelling__onder', tekst: aftelling.onder }))));
+  }
+
+  blok.append(el('div', { class: 'rustregel' },
+    el('strong', {}, 'Je hoeft nu niets te doen.'),
+    el('span', {}, ' Wij houden dit voor je bij en laten van ons horen zodra er iets verandert.')));
+
+  blok.append(el('div', { class: 'kolomkop', tekst: 'Zo staat je zaak ervoor' }), lijst,
     el('div', { class: 'kolomkop', tekst: 'Je zaak' }), gegevens);
 
   // Wat er nog ontbreekt, met de velden er meteen onder.
@@ -159,6 +177,9 @@ function rendereDossier(dossier) {
     blok.append(el('div', { class: 'kolomkop', tekst: 'Stukken bij je zaak' }),
       stukkenlijst(dossier));
   }
+
+  blok.append(el('div', { class: 'kolomkop', tekst: 'Post van de instantie' }),
+    nieuwePostblok(dossier));
 
   blok.append(el('div', { class: 'kolomkop', tekst: 'Jouw gegevens' }), mijnGegevens);
 
@@ -292,6 +313,77 @@ function stukregel(dossier, stuk) {
 
   regel.append(el('div', { class: 'stuk__actie' }, invoer, knop), fout);
   return regel;
+}
+
+/**
+ * Nieuwe post van de instantie.
+ *
+ * Dit lost een operationeel probleem op: stuurt de instantie rechtstreeks een
+ * besluit of een verlengingsbrief naar de aanvrager, dan weten wij dat nu pas
+ * als hij belt. Eén knop in zijn eigen dossier maakt hem onderdeel van de
+ * keten zonder dat hij de procedure hoeft te snappen.
+ */
+function nieuwePostblok(dossier) {
+  const orgaan = dossier.invoer.organisatienaam
+    || labelBestuursorgaan(dossier.invoer.bestuursorgaan) || 'de instantie';
+  const fout = el('div', {});
+  const binnen = dossier.nieuwePost || [];
+
+  const houder = el('div', { class: 'nieuwepost' },
+    el('strong', { tekst: `Kreeg je intussen bericht van ${orgaan}?` }),
+    el('p', { tekst: 'Een besluit, een brief dat het langer duurt, of iets anders: zet het hier '
+      + 'neer. Dan rekenen wij ermee en hoef je ons niet te bellen.' }));
+
+  if (binnen.length > 0) {
+    const lijst = el('ul', { class: 'stuk__bestanden', style: 'margin-left:0' });
+    for (const bestand of binnen) {
+      lijst.append(el('li', {}, el('a', {
+        href: `/api/mijn/dossiers/${dossier.id}/bestanden/${bestand.id}`,
+        tekst: bestand.bestandsnaam,
+      })));
+    }
+    houder.append(lijst);
+  }
+
+  const invoer = el('input', {
+    type: 'file', accept: '.pdf,.txt,application/pdf,text/plain,image/*',
+    id: 'nieuwe-post', class: 'verborgen-invoer',
+  });
+  const knop = el('button', { class: 'knop knop--zacht knop--klein', type: 'button' },
+    `Nieuw bericht van ${orgaan} uploaden`);
+  knop.addEventListener('click', () => invoer.click());
+  invoer.addEventListener('change', () => stuurBestand({
+    dossier, stukId: 'nieuwe-post', invoer, knop, fout,
+    knoptekst: `Nieuw bericht van ${orgaan} uploaden`,
+  }));
+
+  houder.append(el('div', { style: 'margin-top:12px' }, invoer, knop), fout);
+  return houder;
+}
+
+/** Eén bestand naar de server, in blokjes omdat btoa geen grote arrays lust. */
+async function stuurBestand({ dossier, stukId, invoer, knop, fout, knoptekst }) {
+  const bestand = invoer.files && invoer.files[0];
+  if (!bestand) return;
+  fout.textContent = '';
+  knop.disabled = true;
+  knop.textContent = 'Bezig met uploaden…';
+  try {
+    const bytes = new Uint8Array(await bestand.arrayBuffer());
+    let ruw = '';
+    for (let i = 0; i < bytes.length; i += 8192) ruw += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    await api(`/api/mijn/dossiers/${dossier.id}/stuk`, {
+      method: 'POST',
+      body: JSON.stringify({
+        stukId, bestandsnaam: bestand.name, mediaType: bestand.type, data: btoa(ruw),
+      }),
+    });
+    await laad();
+  } catch (err) {
+    knop.disabled = false;
+    knop.textContent = knoptekst;
+    melding(fout, 'fout', err.message);
+  }
 }
 
 /**

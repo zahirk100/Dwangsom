@@ -492,8 +492,6 @@ function toonTweedeUpload(vak, direct = false) {
 
 // -------------------------------------------------------------- stap 3 ----
 
-let aanpasmodus = false;
-
 const UIT_BRIEF_VELDEN = [
   { id: 'naam', label: 'Naam' },
   { id: 'adres', label: 'Adres' },
@@ -511,75 +509,100 @@ const UIT_BRIEF_VELDEN = [
  */
 const geforceerdeVelden = new Set();
 
+/**
+ * "Klopt dit?" - wat wij uit de brief haalden.
+ *
+ * Eerder opende "Iets aanpassen" het hele formulier weer: elf velden, terwijl
+ * er meestal één postcode fout is. Nu is elke regel zelf aan te klikken en
+ * verandert alleen die ene regel in een invoerveld. Dat is het verschil tussen
+ * "controleren" en "toch weer invullen".
+ */
 function rendereControle() {
   const vak = document.getElementById('uitbrief');
   vak.textContent = '';
   const h = zaak.herkenning;
   const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
+  const wordtGevraagd = new Set(ontbrekendeVelden().map((v) => v.id));
 
-  if (!aanpasmodus) {
-    // Wat hieronder alsnog gevraagd wordt, hoort hier niet nog eens te staan.
-    const wordtGevraagd = new Set(ontbrekendeVelden().map((v) => v.id));
-    const lijst = el('dl', {});
-    for (const veld of UIT_BRIEF_VELDEN) {
-      if (wordtGevraagd.has(veld.id)) continue;
-      if (!zaak.contact[veld.id] && !h[veld.id]) continue;
-      lijst.append(el('div', {},
-        el('dt', { tekst: veld.label }),
-        el('dd', { tekst: zaak.contact[veld.id] || h[veld.id] })));
-    }
-    lijst.append(el('div', {},
-      el('dt', {}, 'Zaak'),
-      el('dd', { tekst: zaaktype ? zaaktype.label : 'Onbekend' })));
-    lijst.append(el('div', {},
-      el('dt', {}, 'Instantie'),
-      el('dd', { tekst: zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan) })));
-    if (zaak.invoer.termijnEinddatum) {
-      lijst.append(el('div', {},
-        el('dt', {}, 'Uiterste beslisdatum'),
-        el('dd', { tekst: datumTekst(zaak.invoer.termijnEinddatum) })));
-    }
-
-    const kaart = el('div', { class: 'kaartje' }, el('div', { class: 'uit-brief', tekst: 'uit je brief' }), lijst);
-    vak.append(kaart);
-    const knop = el('button', { class: 'knop knop--stil knop--klein', type: 'button', style: 'margin-top:10px' }, 'Iets aanpassen');
-    knop.addEventListener('click', () => { aanpasmodus = true; rendereControle(); });
-    vak.append(knop);
-    return;
-  }
-
+  // Elke regel: waar hij vandaan komt, hoe hij heet en waar hij heen gaat.
+  const regels = [];
   for (const veld of UIT_BRIEF_VELDEN) {
-    vak.append(tekstveld(veld.id, veld.label, zaak.contact[veld.id] || h[veld.id] || ''));
+    if (wordtGevraagd.has(veld.id)) continue;
+    if (!zaak.contact[veld.id] && !h[veld.id]) continue;
+    regels.push({
+      id: veld.id, label: veld.label, soort: 'text',
+      waarde: zaak.contact[veld.id] || h[veld.id],
+      zet: (waarde) => { zaak.contact[veld.id] = waarde; },
+    });
   }
-  vak.append(tekstveld('organisatienaam', 'Instantie', zaak.invoer.organisatienaam || '', (waarde) => {
-    zaak.invoer.organisatienaam = waarde;
-  }));
-  vak.append(datumveld('termijnEinddatum', 'Uiterste beslisdatum uit de brief', zaak.invoer.termijnEinddatum || '', (waarde) => {
-    zaak.invoer.termijnEinddatum = waarde;
-    zaak.invoer.termijnBekend = Boolean(waarde);
-    herbereken();
-  }));
-  const klaar = el('button', { class: 'knop knop--zacht knop--klein', type: 'button' }, 'Klaar met aanpassen');
-  klaar.addEventListener('click', () => { aanpasmodus = false; rendereControle(); });
-  vak.append(klaar);
-}
-
-function tekstveld(id, label, waarde, bijWijziging) {
-  const invoerveld = el('input', { type: 'text', id: `veld-${id}`, value: waarde, maxlength: '120' });
-  invoerveld.value = waarde;
-  invoerveld.addEventListener('input', () => {
-    if (bijWijziging) bijWijziging(invoerveld.value);
-    else zaak.contact[id] = invoerveld.value;
+  regels.push({
+    id: 'organisatienaam', label: 'Instantie', soort: 'text',
+    waarde: zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan),
+    zet: (waarde) => { zaak.invoer.organisatienaam = waarde; },
   });
-  return el('div', { class: 'veld' }, el('label', { for: `veld-${id}`, tekst: label }), invoerveld,
-    el('p', { class: 'veld__fout verborgen', 'data-fout': id }));
+  // De zaak zelf is een keuze uit de catalogus, geen vrije tekst: die laten
+  // wij hier zien maar niet bewerken.
+  regels.push({ id: 'zaak', label: 'Zaak', waarde: zaaktype ? zaaktype.label : 'Onbekend', vast: true });
+  if (zaak.invoer.termijnEinddatum) {
+    regels.push({
+      id: 'termijnEinddatum', label: 'Uiterste beslisdatum', soort: 'date',
+      waarde: zaak.invoer.termijnEinddatum,
+      toon: datumTekst(zaak.invoer.termijnEinddatum),
+      zet: (waarde) => {
+        zaak.invoer.termijnEinddatum = waarde;
+        zaak.invoer.termijnBekend = Boolean(waarde);
+        herbereken();
+      },
+    });
+  }
+
+  const lijst = el('dl', {});
+  for (const regel of regels) lijst.append(controleregel(regel));
+  vak.append(el('div', { class: 'kaartje' },
+    el('div', { class: 'uit-brief', tekst: 'automatisch uit je brief gehaald' }), lijst));
+  vak.append(el('p', { class: 'veld__hulp', style: 'margin-top:10px' },
+    'Klopt er iets niet? Klik op die regel om hem aan te passen.'));
 }
 
-function datumveld(id, label, waarde, bijWijziging) {
-  const invoerveld = el('input', { type: 'date', id: `veld-${id}` });
-  invoerveld.value = waarde;
-  invoerveld.addEventListener('change', () => bijWijziging(invoerveld.value));
-  return el('div', { class: 'veld' }, el('label', { for: `veld-${id}`, tekst: label }), invoerveld);
+/** Eén regel die in zichzelf bewerkbaar is. */
+function controleregel({ id, label, waarde, toon, soort, zet, vast }) {
+  const rij = el('div', { class: vast ? 'controleregel controleregel--vast' : 'controleregel' },
+    el('dt', { tekst: label }));
+
+  if (vast) {
+    rij.append(el('dd', { tekst: waarde }));
+    return rij;
+  }
+
+  const knop = el('button', { class: 'controleregel__waarde', type: 'button' },
+    el('span', { tekst: toon || waarde }),
+    el('span', { class: 'controleregel__pen', 'aria-hidden': 'true', tekst: '\u270E' }));
+  knop.setAttribute('aria-label', `${label} aanpassen`);
+
+  const dd = el('dd', {}, knop);
+  knop.addEventListener('click', () => {
+    const invoerveld = el('input', {
+      type: soort === 'date' ? 'date' : 'text', id: `veld-${id}`, maxlength: '120',
+    });
+    invoerveld.value = waarde;
+    const bewaar = () => {
+      if (soort !== 'date' && invoerveld.value.trim() === '') return; // leeg is geen correctie
+      zet(soort === 'date' ? invoerveld.value : invoerveld.value.trim());
+      rendereControle();
+    };
+    invoerveld.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); bewaar(); }
+      if (e.key === 'Escape') rendereControle();
+    });
+    invoerveld.addEventListener('blur', bewaar);
+    dd.textContent = '';
+    dd.append(invoerveld, el('p', { class: 'veld__fout verborgen', 'data-fout': id }));
+    invoerveld.focus();
+    if (soort !== 'date') invoerveld.select();
+  });
+
+  rij.append(dd);
+  return rij;
 }
 
 /** Alleen wat nog niet bekend is - de regel zelf staat in shared/funnelvragen.js. */
@@ -611,6 +634,11 @@ function rendereAanvullen() {
         veld.verplicht ? null : el('span', { class: 'subtiel', tekst: ' (optioneel)' })),
       veld.hulp ? el('p', { class: 'veld__hulp', tekst: veld.hulp }) : null,
       invoerveld,
+      // Bij het burgerservicenummer en het rekeningnummer hoort er onder het
+      // veld te staan wat wij ermee doen. Daar haakt iemand anders af.
+      veld.slot ? el('p', { class: 'veld__slot' },
+        el('span', { class: 'veld__slot-teken', 'aria-hidden': 'true', tekst: '\u{1F512}' }),
+        el('span', { tekst: veld.slot })) : null,
       el('p', { class: 'veld__fout verborgen', 'data-fout': veld.id })));
   }
 }

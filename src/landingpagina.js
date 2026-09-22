@@ -556,6 +556,33 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
     </div>
   </section>
 
+  <!-- ================================================= 8b. nog niet te laat -->
+  <!--
+    De bezoeker wiens termijn nog loopt is geen verloren bezoeker. Hij is een
+    klant van over drie weken, en op dat moment moet iemand eraan denken. Dat
+    is precies wat wij verkopen, dus dit hoort op de pagina en niet verstopt
+    in een vraag onderaan.
+  -->
+  <section class="blok" id="nog-niet">
+    <div class="omhulsel">
+      <div class="nogniet">
+        <div>
+          <h2>Is je termijn nog niet voorbij?</h2>
+          <p>Dan hoef je nu niets te doen &mdash; maar je moet er over een paar weken wel aan
+             denken. Upload je brief, dan noteren wij de datum waarop
+             <span data-instantie-zin>de instantie</span> uiterlijk moet beslissen. Blijft een
+             beslissing uit, dan komen wij vanzelf in actie. Jij hoeft er niet aan te denken.</p>
+          <a class="knop knop--zacht" href="${pad}" data-cta>Houd mijn termijn bij</a>
+        </div>
+        <ul class="nogniet__punten">
+          <li>${VINK()} Wij bewaken de datum uit je brief</li>
+          <li>${VINK()} Je hoort van ons zodra er iets kan</li>
+          <li>${VINK()} Ook hier: geen vergoeding, geen kosten</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
   <!-- ============================================================ 9. kosten -->
   <section class="blok" id="kosten">
     <div class="omhulsel">

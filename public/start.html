@@ -188,6 +188,29 @@
   .kaartje dt { color: var(--tekst-zacht); }
   .kaartje dd { margin: 0; font-weight: 620; text-align: right; }
   .uit-brief { font-size: .74rem; color: var(--groen-600); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .uit-brief::before { content: "\2713 "; }
+
+  /* Elke regel is zelf aan te klikken; alleen die regel wordt een invoerveld. */
+  .controleregel { align-items: baseline; }
+  .controleregel__waarde {
+    font: inherit; font-weight: 620; color: var(--tekst); text-align: right;
+    background: none; border: 0; border-radius: 7px; padding: 3px 6px; margin: -3px -6px;
+    cursor: pointer; display: inline-flex; align-items: baseline; gap: 7px;
+  }
+  .controleregel__waarde:hover, .controleregel__waarde:focus-visible {
+    background: var(--blauw-50); color: var(--blauw-700);
+  }
+  .controleregel__pen { font-size: .8rem; color: var(--blauw-600); opacity: .55; }
+  .controleregel__waarde:hover .controleregel__pen { opacity: 1; }
+  .controleregel dd input {
+    width: 100%; max-width: 230px; padding: 7px 10px; font: inherit; font-size: .93rem;
+    border: 1px solid var(--blauw-500); border-radius: 8px; background: var(--vlak); color: var(--tekst);
+  }
+  @media (max-width: 460px) {
+    .kaartje dl > div { display: block; }
+    .kaartje dd, .controleregel__waarde { text-align: left; }
+    .controleregel dd input { max-width: 100%; }
+  }
 
   /* --------------------------------------------------------- machtiging -- */
   .machtigingtekst {

@@ -710,15 +710,48 @@ function stukkenBlok(a) {
       rendereLade();
       laadLijst();
     });
+    // Wat de aanvrager hiervoor uploadde, meteen te openen. Anders moet een
+    // behandelaar hem bellen voor iets dat hij al heeft opgestuurd.
+    const bijlagen = (a.bestanden || []).filter((b) => b.stukId === stuk.id);
     houder.append(el('label', { class: 'stuk-rij' }, vakje,
       el('span', {},
         el('span', { tekst: stuk.label }),
         stuk.door === 'wij' ? chip('wij regelen dit', 'blauw') : null,
         stuk.verplicht ? null : chip('optioneel', ''),
+        bijlagen.length ? chip(`${bijlagen.length} bestand${bijlagen.length === 1 ? '' : 'en'}`, 'groen') : null,
         el('span', { class: 'stuk-rij__uitleg', style: 'display:block', tekst: stuk.uitleg }),
+        bijlagen.length ? bestandenlijst(a, bijlagen) : null,
       )));
   }
+
+  // Post die de instantie rechtstreeks naar de aanvrager stuurde. Staat los
+  // van de gevraagde stukken en is vaak het belangrijkste nieuws in de zaak.
+  const post = (a.bestanden || []).filter((b) => b.stukId === 'nieuwe-post');
+  if (post.length) {
+    houder.append(el('div', { class: 'melding melding--let-op', style: 'margin-top:14px' },
+      el('strong', {}, `Nieuwe post van de instantie (${post.length})`),
+      el('p', {}, 'De aanvrager kreeg dit rechtstreeks toegestuurd. Controleer of het de '
+        + 'berekening verandert.'),
+      bestandenlijst(a, post)));
+  }
   return houder;
+}
+
+/** Downloadlinks bij een stuk. */
+function bestandenlijst(a, bestanden) {
+  const lijst = el('ul', { class: 'bijlagen' });
+  for (const bestand of bestanden) {
+    lijst.append(el('li', {},
+      el('a', {
+        href: `/api/beheer/aanvragen/${a.id}/bestanden/${bestand.id}`,
+        target: '_blank', rel: 'noopener',
+        tekst: bestand.bestandsnaam,
+      }),
+      el('span', { class: 'bijlagen__meta',
+        tekst: `${bestand.doorKlant ? 'door de aanvrager' : 'door ons'}`
+          + `${bestand.aangemaaktOp ? ` op ${datumTijd(bestand.aangemaaktOp)}` : ''}` })));
+  }
+  return lijst;
 }
 
 /**

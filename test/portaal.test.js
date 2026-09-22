@@ -319,3 +319,44 @@ test('een te groot bestand wordt geweigerd met uitleg', async () => {
   assert.equal(antwoord.status, 413);
   assert.match((await antwoord.json()).fout, /3 MB/);
 });
+
+test('nieuwe post van de instantie mag altijd geüpload worden', async () => {
+  // Dit is geen gevraagd stuk maar een open bak: krijgt iemand rechtstreeks
+  // een besluit, dan moeten wij dat weten zonder dat hij belt.
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const dossier = data.dossiers[0];
+
+  const antwoord = await haal(`/api/mijn/dossiers/${dossier.id}/stuk`, {
+    method: 'POST',
+    headers: { cookie },
+    body: JSON.stringify({
+      stukId: 'nieuwe-post',
+      bestandsnaam: 'besluit-van-uwv.pdf',
+      mediaType: 'application/pdf',
+      data: Buffer.from('%PDF-1.4 een besluit').toString('base64'),
+    }),
+  });
+  const tekst = await antwoord.text();
+  assert.equal(antwoord.status, 200, tekst);
+
+  const bijgewerkt = JSON.parse(tekst).dossier;
+  assert.equal(bijgewerkt.nieuwePost.length, 1);
+  assert.equal(bijgewerkt.nieuwePost[0].bestandsnaam, 'besluit-van-uwv.pdf');
+  // En hij hoort niet tussen de gevraagde stukken te gaan staan.
+  assert.ok(!bijgewerkt.stukken.some((s) => s.id === 'nieuwe-post'));
+});
+
+test('nieuwe post is voor de klant terug te lezen', async () => {
+  const cookie = await logInAlsKlant('een@voorbeeld.nl');
+  const data = await (await haal('/api/mijn/dossiers', { headers: { cookie } })).json();
+  const dossier = data.dossiers[0];
+  const bestand = dossier.nieuwePost[0];
+  assert.ok(bestand, 'de zojuist geüploade post hoort er te staan');
+
+  const antwoord = await haal(`/api/mijn/dossiers/${dossier.id}/bestanden/${bestand.id}`, {
+    headers: { cookie },
+  });
+  assert.equal(antwoord.status, 200);
+  assert.match(antwoord.headers.get('content-disposition'), /attachment/);
+});

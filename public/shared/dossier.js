@@ -37,6 +37,15 @@ function stuk(id, label, { uitleg = '', verplicht = true, door = 'klant' } = {})
 }
 
 /**
+ * Post die de instantie rechtstreeks aan de aanvrager stuurt.
+ *
+ * Dit is geen gevraagd stuk maar een open bak, en hij is er vooral voor ons:
+ * krijgt iemand alsnog een besluit of een verlengingsbrief, dan horen wij dat
+ * nu pas als hij belt. Eén knop in zijn dossier lost dat op.
+ */
+export const NIEUWE_POST = 'nieuwe-post';
+
+/**
  * @param {{invoer?: object, contact?: object, rapport?: object}} dossier
  * @returns {{gegevens: Array, stukken: Array}}
  */
@@ -141,6 +150,11 @@ export function verplichteVelden(dossier) {
 /** Wat de aanvrager zelf moet aanleveren. */
 export function stukkenVanKlant(dossier) {
   return bepaalDossiereisen(dossier).stukken.filter((s) => s.door === 'klant');
+}
+
+/** Wat de aanvrager mag uploaden: de gevraagde stukken plus nieuwe post. */
+export function magUploaden(dossier) {
+  return [...stukkenVanKlant(dossier).map((s) => s.id), NIEUWE_POST];
 }
 
 /**

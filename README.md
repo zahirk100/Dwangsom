@@ -51,7 +51,14 @@ ingang de tekst van zijn eigen landingspagina, en schrijft
 /uwv /uwv-wia /uwv-ww /uwv-wajong /uwv-ziektewet /uwv-bezwaar
 /gemeente /bijstand /wmo /jeugdhulp /schuldhulp /gemeente-bezwaar
 /duo /studiefinanciering /svb /aow /toeslagen
+/nog-niet-te-laat     voor wie zoekt of het al te lang duurt
 ```
+
+Die laatste is er voor de bezoeker wiens termijn nog lóópt. Die kan vandaag
+niets vorderen en is op elke andere pagina een afhaker, terwijl hij over drie
+weken precies de klant is die wij zoeken. Hij levert zijn brief in, wij noteren
+de datum en komen vanzelf in actie. Op de homepage staat dezelfde uitnodiging
+als eigen blok (`#nog-niet`), niet als voetnoot in de vragenlijst.
 
 Elke pagina heeft zijn eigen `<title>`, `description`, `canonical`, og-tags en `h1` in
 de bron, want dat is wat een advertentie en een zoekmachine nodig hebben. Achter elke
@@ -368,6 +375,7 @@ Beheer (sessiecookie vereist):
 | `GET /api/beheer/aanvragen/:id/machtiging` | De machtiging als afdrukbare pagina |
 | `POST /api/beheer/aanvragen/:id/machtiging` | Status: `verstuurd`, `ontvangen` of `ingetrokken` |
 | `GET /api/beheer/aanvragen/:id/brief?soort=` | `ingebrekestelling` of `claim` |
+| `GET /api/beheer/aanvragen/:id/bestanden/:bestandId` | Een stuk dat de aanvrager aanleverde |
 | `GET /api/beheer/export.csv` | Export voor de administratie |
 
 Klantportaal (eigen sessiecookie, alleen het eigen dossier):
@@ -475,6 +483,18 @@ De teksten erboven zijn wél anders. De gedeelde module schrijft voor de
 behandelaar ("de eigen ingebrekestelling van de aanvrager"), en dat is precies
 de verkeerde toon tegen de aanvrager zelf. `mijn.js` heeft daarom een eigen
 woordenlijst; staat een stuk daar niet in, dan blijft de gedeelde tekst staan.
+
+Naast de gevraagde stukken is er één open bak: **nieuwe post van de
+instantie**. Krijgt iemand rechtstreeks een besluit of een brief dat het langer
+duurt, dan legt hij dat in zijn eigen dossier neer in plaats van te bellen. In
+de beheeromgeving verschijnt dat als een aparte melding boven de stukkenlijst,
+want het verandert meestal de berekening.
+
+Alles wat binnenkomt is voor de behandelaar te openen
+(`GET /api/beheer/aanvragen/:id/bestanden/:bestandId`). Dat is geen detail: een
+uploadknop waarvan niemand de uitkomst ziet, is erger dan geen uploadknop. De
+inhoud reist niet mee in het dossierantwoord — `zonderBestandsinhoud()` haalt
+hem eruit, anders gaan er megabytes over de lijn bij elk geopend dossier.
 
 **Voorlopig** gaan die bestanden als base64 in het dossier zelf, met een grens
 van 3 MB per bestand. Dat is een noodoplossing om het werkend te hebben zonder

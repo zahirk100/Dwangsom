@@ -12,6 +12,7 @@
 
 import { UITKOMST } from './dwangsom.js';
 import { labelBestuursorgaan } from './catalogus.js';
+import { parseDatum, formatDatum, toonDatum, plusDagen, verschilDagen, vandaag } from './datum.js';
 
 /** @typedef {{sleutel: string, titel: string, onder: string, staat: string, datum?: string}} Stap */
 
@@ -176,5 +177,53 @@ export function klantSamenvatting(dossier) {
     kop: 'Wij zijn met je zaak bezig',
     tekst: 'Je hoeft zelf niets te doen; je hoort van ons zodra er iets verandert.',
     kleur: 'info',
+  };
+}
+
+/**
+ * De aftelling: hoeveel dagen heeft de instantie nog?
+ *
+ * Dit is wat iemand die zijn dossier opent als eerste wil weten, en het is
+ * precies wat hij zelf niet bijhoudt - daar betaalt hij ons voor. Daarom één
+ * concrete datum en één getal, geen procedureuitleg.
+ *
+ * @returns {{datum: string, dagen: number, kop: string, onder: string}|null}
+ *   null als er niets af te tellen valt (afgehandeld, of de dwangsom loopt al)
+ */
+export function klantAftelling(dossier, nu = vandaag()) {
+  const rapport = (dossier && dossier.rapport) || {};
+  const status = (dossier && dossier.status) || 'nieuw';
+  if (['toegekend', 'afgewezen', 'afgesloten'].includes(status)) return null;
+
+  const invoer = (dossier && dossier.invoer) || {};
+  const orgaan = invoer.organisatienaam
+    || (invoer.bestuursorgaan ? labelBestuursorgaan(invoer.bestuursorgaan) : '')
+    || 'de instantie';
+
+  let tot = null;
+  let onder = '';
+  if (rapport.uitkomst === UITKOMST.TERMIJN_LOOPT && rapport.beslistermijn) {
+    tot = parseDatum(rapport.beslistermijn.einddatum);
+    onder = 'Beslist men niet op tijd, dan melden wij dat voor je.';
+  } else if (rapport.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT
+    && rapport.berekening && rapport.berekening.eersteDag) {
+    // De dwangsom begint op eersteDag, dus de dag ervoor is de laatste kans.
+    const eerste = parseDatum(rapport.berekening.eersteDag);
+    tot = eerste === null ? null : plusDagen(eerste, -1);
+    onder = 'Komt er geen besluit, dan gaat vanaf de dag erna een dwangsom lopen.';
+  }
+  if (tot === null) return null;
+
+  // verschilDagen(datum, vandaag) is positief als die datum al voorbij is,
+  // dus voor "nog te gaan" draaien we het om.
+  const dagen = -verschilDagen(tot, nu) + 1;
+  if (dagen < 0) return null;
+  return {
+    datum: formatDatum(tot),
+    dagen,
+    kop: dagen === 0
+      ? `Vandaag is de laatste dag voor ${orgaan}`
+      : `${orgaan} heeft nog ${dagen} ${dagen === 1 ? 'dag' : 'dagen'}`,
+    onder: `Tot en met ${toonDatum(tot)}. ${onder}`,
   };
 }

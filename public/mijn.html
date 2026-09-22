@@ -98,6 +98,35 @@
     .stuk__bestanden, .stuk__actie { margin-left: 0; }
   }
 
+  /* De aftelling: het getal waarvoor iemand terugkomt. */
+  .aftelling {
+    display: flex; gap: 18px; align-items: center; margin: 18px 0 0;
+    padding: 18px 20px; border-radius: var(--radius);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .aftelling__getal {
+    flex: none; display: flex; flex-direction: column; align-items: center;
+    min-width: 64px; line-height: 1;
+  }
+  .aftelling__getal strong {
+    font-size: 2.1rem; font-weight: 800; color: var(--blauw-700);
+    font-variant-numeric: tabular-nums; letter-spacing: -.03em;
+  }
+  .aftelling__getal span { font-size: .78rem; color: var(--blauw-600); margin-top: 3px; }
+  .aftelling__kop { display: block; font-weight: 660; font-size: 1rem; color: var(--blauw-900); }
+  .aftelling__onder { display: block; font-size: .89rem; color: var(--blauw-700); margin-top: 3px; }
+  @media (max-width: 460px) { .aftelling { gap: 14px; padding: 16px; } }
+
+  .rustregel {
+    margin: 14px 0 0; padding: 13px 16px; border-radius: var(--radius-klein);
+    background: var(--groen-100); color: var(--groen-600); font-size: .93rem;
+  }
+  .rustregel strong { color: var(--groen-600); }
+
+  .nieuwepost { padding: 18px 20px; border: 1px dashed var(--rand-sterk); border-radius: var(--radius); }
+  .nieuwepost strong { display: block; font-size: .99rem; margin-bottom: 4px; }
+  .nieuwepost p { margin: 0; font-size: .89rem; color: var(--tekst-zacht); }
+
   .uitlogrij { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .hulp { margin-top: 30px; font-size: .88rem; color: var(--tekst-zacht); }
   .hulp a { font-weight: 600; }

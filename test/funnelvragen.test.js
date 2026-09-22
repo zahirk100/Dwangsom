@@ -37,7 +37,18 @@ test('staat er geen nummer in de brief, dan wordt het gewoon gevraagd', () => {
   const zaak = { bestuursorgaan: 'uwv', herkenning: { naam: 'K. Bakker' } };
   const velden = ids(zaak);
   assert.ok(velden.includes('bsn'));
-  assert.match(teVragenVelden(zaak).find((v) => v.id === 'bsn').hulp, /je zaak te kunnen vinden/);
+  // De uitleg noemt de instantie: "nodig om je bij UWV te identificeren" is
+  // een reden, "vraagt de instantie" is een frase.
+  assert.match(teVragenVelden(zaak).find((v) => v.id === 'bsn').hulp, /bij UWV/);
+});
+
+test('bij de gevoelige velden staat wat wij met het nummer doen', () => {
+  const velden = teVragenVelden({ bestuursorgaan: 'uwv', herkenning: { naam: 'K. Bakker' } });
+  const bsn = velden.find((v) => v.id === 'bsn');
+  const iban = velden.find((v) => v.id === 'iban');
+  assert.match(bsn.slot, /nooit in een e-mail/, 'hier haakt iemand anders af');
+  assert.match(iban.slot, /ontvangen jouw vergoeding niet/);
+  assert.match(iban.hulp, /door UWV rechtstreeks aan jou/);
 });
 
 test('instanties die geen burgerservicenummer vragen, krijgen dat veld niet', () => {

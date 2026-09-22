@@ -149,6 +149,12 @@ a { color: var(--blauw-600); }
   display: block; font-weight: 640; font-size: .95rem; margin-bottom: 6px;
 }
 .veld__hulp { font-size: .86rem; color: var(--tekst-zacht); margin: 0 0 8px; }
+/* Onder een gevoelig veld: wat gebeurt er met dit nummer. */
+.veld__slot {
+  display: flex; gap: 7px; align-items: baseline;
+  font-size: .84rem; color: var(--groen-600); margin: 7px 0 0;
+}
+.veld__slot-teken { flex: none; font-size: .8rem; }
 .veld__fout { font-size: .86rem; color: var(--rood-600); margin-top: 6px; font-weight: 560; }
 
 input[type="text"], input[type="email"], input[type="tel"], input[type="date"],

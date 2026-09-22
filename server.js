@@ -30,7 +30,7 @@ import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organ
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom } from './public/shared/dwangsom.js';
 import { parseDatum } from './public/shared/datum.js';
-import { bepaalDossiereisen, dossierStatus, stukkenVanKlant } from './public/shared/dossier.js';
+import { bepaalDossiereisen, dossierStatus, stukkenVanKlant, magUploaden, NIEUWE_POST } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
@@ -417,7 +417,7 @@ async function klantApi(req, res, url) {
 
     const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
     // Alleen stukken die in deze zaak ook echt gevraagd worden.
-    const gevraagd = new Set(stukkenVanKlant(dossier).map((stuk) => stuk.id));
+    const gevraagd = new Set(magUploaden(dossier));
     if (!gevraagd.has(String(body.stukId))) {
       return stuurFout(res, 400, 'Dit stuk wordt in deze zaak niet gevraagd.');
     }
@@ -438,6 +438,22 @@ async function klantApi(req, res, url) {
   }
 
   return false;
+}
+
+/**
+ * Hetzelfde dossier, maar zonder de base64 van de bijlagen.
+ *
+ * Die staan voorlopig in het dossier zelf; ze meesturen zou betekenen dat
+ * elke keer dat een behandelaar een dossier opent, er megabytes over de lijn
+ * gaan die hij niet gebruikt. De metagegevens blijven, de inhoud komt via de
+ * downloadroute.
+ */
+function zonderBestandsinhoud(aanvraag) {
+  if (!aanvraag || !Array.isArray(aanvraag.bestanden)) return aanvraag;
+  return {
+    ...aanvraag,
+    bestanden: aanvraag.bestanden.map(({ data, ...rest }) => ({ ...rest, bytes: Math.round((data || '').length * 0.75) })),
+  };
 }
 
 /** Een opgeslagen bestand teruggeven als download. */
@@ -526,6 +542,10 @@ function voorKlant(a) {
         .filter((b) => b.stukId === stuk.id)
         .map((b) => ({ id: b.id, bestandsnaam: b.bestandsnaam, aangemaaktOp: b.aangemaaktOp })),
     })),
+    // Post die de aanvrager zelf van de instantie kreeg en bij ons neerlegde.
+    nieuwePost: (a.bestanden || [])
+      .filter((b) => b.stukId === NIEUWE_POST)
+      .map((b) => ({ id: b.id, bestandsnaam: b.bestandsnaam, aangemaaktOp: b.aangemaaktOp })),
     machtigingGetekend: Boolean(a.machtiging && a.machtiging.ondertekendOp),
   };
 }
@@ -753,7 +773,7 @@ async function beheerApi(req, res, url) {
 
     if (!subpad && req.method === 'GET') {
       return stuurJson(res, 200, {
-        aanvraag,
+        aanvraag: zonderBestandsinhoud(aanvraag),
         statussen: STATUSSEN,
         soorten: SOORTEN,
         eisen: bepaalDossiereisen(aanvraag),
@@ -769,7 +789,7 @@ async function beheerApi(req, res, url) {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       if (!isGeldigeStatus(body.status)) return stuurFout(res, 400, 'Onbekende status.');
-      return stuurJson(res, 200, { aanvraag: await store.wijzigStatus(aanvraag.id, body.status, ik.naam || ik.email) });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(await store.wijzigStatus(aanvraag.id, body.status, ik.naam || ik.email)) });
     }
 
     if (subpad === '/notities' && req.method === 'POST') {
@@ -777,7 +797,17 @@ async function beheerApi(req, res, url) {
       const body = await leesJsonBody(req);
       const tekst = String(body.tekst || '').trim().slice(0, 2000);
       if (!tekst) return stuurFout(res, 400, 'Notitie is leeg.');
-      return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, ik.naam || ik.email) });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(await store.voegNotitieToe(aanvraag.id, tekst, ik.naam || ik.email)) });
+    }
+
+    // Wat de aanvrager zelf aanleverde, hier terug te lezen. Zonder deze route
+    // komt zijn upload in een la die niemand opent, en dat is erger dan geen
+    // uploadknop.
+    const bestandPad = /^\/bestanden\/([A-Za-z0-9-]+)$/.exec(subpad || '');
+    if (bestandPad && req.method === 'GET') {
+      const bestand = (aanvraag.bestanden || []).find((b) => b.id === bestandPad[1]);
+      if (!bestand) return stuurFout(res, 404, 'Onbekend bestand.');
+      return stuurBestandInhoud(res, bestand);
     }
 
     if (subpad === '/machtiging' && req.method === 'GET') {
@@ -789,7 +819,7 @@ async function beheerApi(req, res, url) {
       const body = await leesJsonBody(req);
       const bijgewerkt = await store.werkMachtigingBij(aanvraag.id, body.actie, ik.naam || ik.email);
       if (!bijgewerkt) return stuurFout(res, 400, 'Onbekende actie voor de machtiging.');
-      return stuurJson(res, 200, { aanvraag: bijgewerkt });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
     }
 
     if (subpad === '/stukken' && req.method === 'POST') {
@@ -800,7 +830,7 @@ async function beheerApi(req, res, url) {
       const stukken = Object.fromEntries(
         Object.entries(ingestuurd).filter(([id]) => toegestaan.has(id)).map(([id, aan]) => [id, Boolean(aan)]),
       );
-      return stuurJson(res, 200, { aanvraag: await store.werkStukkenBij(aanvraag.id, stukken, ik.naam || ik.email) });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(await store.werkStukkenBij(aanvraag.id, stukken, ik.naam || ik.email)) });
     }
 
     if (subpad === '/bijwerken' && req.method === 'POST') {
@@ -819,7 +849,7 @@ async function beheerApi(req, res, url) {
         toelichting: typeof body.toelichting === 'string' ? body.toelichting.slice(0, 300) : '',
         gewijzigd,
       });
-      return stuurJson(res, 200, { aanvraag: bijgewerkt, eisen: bepaalDossiereisen(bijgewerkt) });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt), eisen: bepaalDossiereisen(bijgewerkt) });
     }
 
     if (subpad === '/afhandeling' && req.method === 'POST') {
@@ -834,7 +864,7 @@ async function beheerApi(req, res, url) {
         status: isGeldigeStatus(body.status) ? body.status : null,
       };
       return stuurJson(res, 200, {
-        aanvraag: await store.legAfhandelingVast(aanvraag.id, afhandeling, ik.naam || ik.email),
+        aanvraag: zonderBestandsinhoud(await store.legAfhandelingVast(aanvraag.id, afhandeling, ik.naam || ik.email)),
       });
     }
 
@@ -848,7 +878,7 @@ async function beheerApi(req, res, url) {
         door: ik.naam || ik.email,
         toelichting: body.toelichting || 'Berekening opnieuw uitgevoerd.',
       });
-      return stuurJson(res, 200, { aanvraag: bijgewerkt });
+      return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
     }
 
     const bestandId = /^\/bestanden\/([A-Za-z0-9-]+)$/.exec(subpad || '');

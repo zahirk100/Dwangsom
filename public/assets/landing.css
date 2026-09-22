@@ -515,3 +515,22 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
   .dossierdemo__klok strong { font-size: 1.3rem; }
   .hero__trigger { font-size: .95rem; }
 }
+
+/* ----------------------------------------------- nog niet te laat (8b) --- */
+/* Wie nu nog niets kan, is een klant van over drie weken. Daarom een eigen
+   blok en geen voetnoot: dat is de hele belofte, iemand die eraan denkt. */
+.nogniet {
+  display: grid; gap: 26px; align-items: center;
+  padding: 30px; border-radius: var(--radius);
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+}
+.nogniet h2 { font-size: clamp(1.25rem, 1.05rem + .9vw, 1.6rem); margin-bottom: 10px; }
+.nogniet p { color: var(--blauw-800); margin-bottom: 18px; }
+.nogniet__punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 11px; }
+.nogniet__punten li {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: .95rem; color: var(--blauw-800); font-weight: 560;
+}
+.nogniet__punten svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
+@media (min-width: 860px) { .nogniet { grid-template-columns: 1.5fr 1fr; gap: 40px; } }
+@media (max-width: 520px) { .nogniet { padding: 24px 20px; } }

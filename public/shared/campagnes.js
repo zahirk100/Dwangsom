@@ -255,6 +255,27 @@ export const CAMPAGNES = [
     omschrijving: 'Wacht je te lang op een beslissing over huurtoeslag, zorgtoeslag of '
       + 'kinderopvangtoeslag? Upload je brief en nubeslist.nl controleert de beslistermijn.',
   },
+
+  // --------------------------------------------- termijn nog niet voorbij --
+  // Een eigen ingang voor wie zoekt op "hoe lang mag UWV erover doen". Die
+  // bezoeker kan vandaag nog niets vorderen en is op elke andere pagina een
+  // afhaker. Hier is hij precies op tijd: wij noteren zijn datum.
+  {
+    slug: 'nog-niet-te-laat', instantie: '', zaak: '',
+    kort: 'een termijn die nog loopt',
+    kop: 'Duurt je beslissing lang, maar is de termijn nog niet voorbij?',
+    onder: 'Wij noteren de datum waarop er beslist moet zijn en komen in actie zodra die voorbij is.',
+    lead: 'Upload de brief waarin staat wanneer je een beslissing kunt verwachten. Wij zeggen je '
+      + 'meteen of de termijn al voorbij is, en houden hem anders voor je bij.',
+    knop: 'Houd mijn termijn bij',
+    uploadkop: 'Laten we kijken hoeveel tijd de instantie nog heeft',
+    uploadtekst: 'Upload de brief waarin staat wanneer je een beslissing kunt verwachten. '
+      + 'Wij zoeken de relevante datum voor je op.',
+    titel: 'Beslissing duurt lang? Zo weet je wanneer de termijn voorbij is',
+    omschrijving: 'Wacht je op een beslissing van UWV, DUO, de SVB of je gemeente en duurt het '
+      + 'lang? Upload je brief; nubeslist.nl zegt wanneer de beslistermijn afloopt en komt in '
+      + 'actie zodra die voorbij is.',
+  },
 ];
 
 /** Alle ingangen, de homepage voorop. */
