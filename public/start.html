@@ -121,6 +121,23 @@
     .kostenlijst strong { display: block; margin-top: 3px; text-align: left; white-space: normal; }
   }
   .kostenblok__zin { margin: 12px 0 0; font-size: .9rem; color: var(--tekst-zacht); }
+  /* De som met het bedrag van deze zaak erin. */
+  .kostensom {
+    margin: 14px 0 0; padding: 14px 16px; border-radius: var(--radius-klein);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .kostensom__uitleg { margin: 0 0 10px; font-size: .88rem; color: var(--blauw-700); }
+  .kostensom__rij {
+    display: flex; justify-content: space-between; gap: 14px; align-items: baseline;
+    padding: 6px 0; font-size: .93rem; color: var(--blauw-800);
+  }
+  .kostensom__rij strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .kostensom__rij--af { color: var(--tekst-zacht); }
+  .kostensom__rij--uit {
+    margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--blauw-100);
+    font-weight: 700;
+  }
+  .kostensom__rij--uit strong { font-size: 1.15rem; color: var(--blauw-800); }
   .kostenblok__voorbeeld {
     margin: 10px 0 0; padding: 10px 12px; border-radius: var(--radius-klein);
     background: var(--blauw-50); border: 1px solid var(--blauw-100);

@@ -7,12 +7,12 @@
  * het af.
  */
 
-import { berekenDwangsom, euro, UITKOMST } from '/shared/dwangsom.js';
+import { berekenDwangsom, euro, UITKOMST, TARIEF as WET_TARIEF } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
 import { BESTUURSORGANEN, labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '/shared/catalogus.js';
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/identiteit.js';
 import { teVragenVelden } from '/shared/funnelvragen.js';
-import { tarief, tariefZin, tariefVoorbeeld, tariefKort } from '/shared/tarief.js';
+import { tarief, tariefZin, tariefVoorbeeld, tariefKort, tariefSplitsing, euroTekst } from '/shared/tarief.js';
 
 /**
  * De fasen die de bezoeker ziet. Niet "stap 7 van 12", maar waar hij is in
@@ -749,6 +749,9 @@ function rendereJouwZaak() {
  * dat las als "jij krijgt nul". Elke regel gaat nu onmiskenbaar over onze
  * rekening, en erboven staat dat het dwangsombedrag zelf altijd naar de klant
  * gaat.
+ *
+ * En het rekent door met het bedrag van déze zaak. Een percentage zegt mensen
+ * weinig; "van € 1.442 houd jij € 1.081 over" zegt alles.
  */
 function rendereKosten() {
   const vak = document.getElementById('kostenblok');
@@ -773,13 +776,53 @@ function rendereKosten() {
       ' betaalt. De dwangsom zelf wordt altijd rechtstreeks aan jou uitbetaald; '
       + 'wij krijgen dat geld niet in handen.'),
     lijst);
-  // Staat het tarief in de regel hierboven, dan zegt die zin het nog een keer.
-  // Alleen als er géén tarief is ingesteld voegt hij iets toe: dan is het de
-  // enige plek waar staat dat je het vooraf hoort.
+
   if (!t.bekend) blok.append(el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
-  const voorbeeld = tariefVoorbeeld(t);
-  if (voorbeeld) blok.append(el('p', { class: 'kostenblok__voorbeeld', tekst: voorbeeld }));
+
+  const som = kostenSom(t);
+  if (som) blok.append(som);
+  else {
+    const voorbeeld = tariefVoorbeeld(t);
+    if (voorbeeld) blok.append(el('p', { class: 'kostenblok__voorbeeld', tekst: voorbeeld }));
+  }
   vak.append(blok);
+}
+
+/**
+ * De som met het bedrag van deze zaak erin.
+ *
+ * Welk bedrag dat is, hangt ervan af waar de zaak staat. Loopt er al een
+ * dwangsom, dan is dat het opgebouwde bedrag. Moet de melding nog de deur uit,
+ * dan is er nog geen bedrag en rekenen wij met het wettelijk maximum - met
+ * zoveel woorden erbij dat dat het maximum is, want anders belooft dit iets.
+ */
+function kostenSom(t) {
+  const r = zaak.rapport || {};
+  const berekening = r.berekening || {};
+  const lopend = Number(berekening.totaal) > 0 ? Number(berekening.totaal) : 0;
+  const bedrag = lopend || WET_TARIEF.maxBedrag;
+  const split = tariefSplitsing(t, bedrag);
+  if (!split) return null;
+
+  const uitleg = lopend
+    ? (berekening.doorlopend
+      ? `Er staat nu ${euroTekst(bedrag)} open, en dat loopt nog op. Bij dit bedrag:`
+      : `Er staat ${euroTekst(bedrag)} open. Daarvan:`)
+    : `Er is nog geen bedrag: dat ontstaat pas als ${instantieInEenZin(zaak.invoer.bestuursorgaan)} `
+      + `ook na onze melding niet beslist. Loopt het op tot het wettelijk maximum van `
+      + `${euroTekst(bedrag)}, dan:`;
+
+  return el('div', { class: 'kostensom' },
+    el('p', { class: 'kostensom__uitleg', tekst: uitleg }),
+    el('div', { class: 'kostensom__rij' },
+      el('span', { tekst: 'Toegekende dwangsom' }),
+      el('strong', { tekst: euroTekst(split.bedrag) })),
+    el('div', { class: 'kostensom__rij kostensom__rij--af' },
+      el('span', { tekst: t.soort === 'percentage' ? `Onze vergoeding (${t.percentage}%)` : 'Onze vergoeding' }),
+      el('strong', { tekst: `\u2212 ${euroTekst(split.vergoeding)}` })),
+    el('div', { class: 'kostensom__rij kostensom__rij--uit' },
+      el('span', { tekst: 'Jij houdt over' }),
+      el('strong', { tekst: euroTekst(split.overhoudt) })));
 }
 
 function rendereMachtiging() {

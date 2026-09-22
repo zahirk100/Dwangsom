@@ -56,3 +56,9 @@ test('de samenvatting zegt nooit dat de klant zelf iets moet stellen', () => {
     assert.doesNotMatch(`${samen.kop} ${samen.tekst}`, /in gebreke/i);
   }
 });
+
+test('een toegekend bedrag leest als Nederlands geld', () => {
+  // Stond als "€ 1442,00" terwijl er twee regels lager "€ 1.442,00" staat.
+  const samen = klantSamenvatting({ status: 'toegekend', afhandeling: { bedragToegekend: 1442 } });
+  assert.match(samen.tekst, /€ 1\.442,00/);
+});

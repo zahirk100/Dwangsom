@@ -1,22 +1,63 @@
 /**
  * Het tarief.
  *
- * Eén regel staat hier voorop: zonder ingesteld tarief noemt de site géén
- * getal. Een verzonnen percentage op het scherm waar iemand tekent, is erger
- * dan geen percentage.
+ * Het gekozen tarief is 25%, en dat is de standaard. De omgeving gaat daar
+ * vóór, zodat het te wijzigen is zonder de code aan te raken.
+ *
+ * Eén regel blijft overeind: wordt het tarief uitdrukkelijk leeggezet, dan
+ * noemt de site géén getal. Een verzonnen percentage op het scherm waar iemand
+ * tekent, is erger dan geen percentage.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tarief, tariefZin, tariefVoorbeeld, tariefKort, ontbrekendTarief } from '../public/shared/tarief.js';
+import {
+  tarief, tariefZin, tariefVoorbeeld, tariefKort, ontbrekendTarief,
+  tariefSplitsing, STANDAARD_PERCENTAGE,
+} from '../public/shared/tarief.js';
 
-test('zonder instelling noemt de site geen bedrag en geen percentage', () => {
+test('zonder omgevingsvariabele geldt het gekozen tarief van 25%', () => {
   const t = tarief({});
-  assert.equal(t.bekend, false);
-  const zin = tariefZin(t);
-  assert.ok(!/\d/.test(zin), `er staat een getal in: ${zin}`);
-  assert.match(zin, /vooraf/);
-  assert.equal(tariefVoorbeeld(t), '', 'zonder tarief ook geen rekenvoorbeeld');
-  assert.match(ontbrekendTarief({}), /TARIEF_PERCENTAGE/);
+  assert.equal(t.bekend, true);
+  assert.equal(t.soort, 'percentage');
+  assert.equal(t.percentage, STANDAARD_PERCENTAGE);
+  assert.match(tariefZin(t), /25%/);
+  assert.equal(ontbrekendTarief({}), '');
+});
+
+test('de omgeving gaat vóór de standaard', () => {
+  assert.equal(tarief({ TARIEF_PERCENTAGE: '20' }).percentage, 20);
+  assert.equal(tarief({ TARIEF_VAST: '129' }).soort, 'vast');
+});
+
+test('uitdrukkelijk leeggezet betekent: noem geen getal', () => {
+  // Dit is de ontsnapping voor als het tarief nog niet vaststaat. Een 0 of
+  // iets onleesbaars is een keuze, geen vergissing, dus dan niet stilletjes
+  // terugvallen op 25%.
+  for (const env of [{ TARIEF_PERCENTAGE: '0' }, { TARIEF_PERCENTAGE: 'nader te bepalen' }]) {
+    const t = tarief(env);
+    assert.equal(t.bekend, false, `${JSON.stringify(env)} hoort geen tarief op te leveren`);
+    const zin = tariefZin(t);
+    assert.ok(!/\d/.test(zin), `er staat een getal in: ${zin}`);
+    assert.match(zin, /vooraf/);
+    assert.equal(tariefVoorbeeld(t), '', 'zonder tarief ook geen rekenvoorbeeld');
+    assert.match(ontbrekendTarief(env), /TARIEF_PERCENTAGE/);
+  }
+});
+
+test('de splitsing laat zien wat de aanvrager overhoudt', () => {
+  // Een percentage zegt mensen weinig; dit is het getal waar het om gaat.
+  const split = tariefSplitsing(tarief({}), 1442);
+  assert.equal(split.vergoeding, 360.5);
+  assert.equal(split.overhoudt, 1081.5);
+
+  const vast = tariefSplitsing(tarief({ TARIEF_VAST: '129' }), 1442);
+  assert.equal(vast.vergoeding, 129);
+  assert.equal(vast.overhoudt, 1313);
+
+  // Nooit meer rekenen dan er binnenkomt.
+  assert.equal(tariefSplitsing(tarief({ TARIEF_VAST: '129' }), 69).vergoeding, 69);
+  assert.equal(tariefSplitsing(tarief({}), 0), null);
+  assert.equal(tariefSplitsing(tarief({ TARIEF_PERCENTAGE: '0' }), 500), null);
 });
 
 test('een percentage komt overal in dezelfde vorm terug', () => {

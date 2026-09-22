@@ -150,16 +150,22 @@ test('het bedrag staat al in het eerste scherm, niet pas verderop', () => {
   assert.match(hero, /1\.442/, 'de belangrijkste trigger hoort boven de vouw');
 });
 
-test('zonder ingesteld tarief noemt de kostensectie geen getal', () => {
-  const html = landingHtml(ALGEMEEN, {});
-  const kosten = html.slice(html.indexOf('id="kosten"'), html.indexOf('id="vertrouwen"'));
+test('zonder omgevingsvariabele staat het gekozen tarief van 25% op de pagina', () => {
+  const kosten = kostensectie(landingHtml(ALGEMEEN, {}));
+  assert.match(kosten, /25%/);
+});
+
+test('een uitdrukkelijk leeggezet tarief levert geen verzonnen getal op', () => {
+  const kosten = kostensectie(landingHtml(ALGEMEEN, { TARIEF_PERCENTAGE: '0' }));
   assert.match(kosten, /vooraf precies wat onze vergoeding is/);
   assert.ok(!/\d+%/.test(kosten), 'er hoort geen verzonnen percentage te staan');
 });
 
+const kostensectie = (html) => html.slice(html.indexOf('id="kosten"'), html.indexOf('id="vertrouwen"'));
+
 test('met een ingesteld tarief staat het bedrag er wél, met rekenvoorbeeld', () => {
   const html = landingHtml(ALGEMEEN, { TARIEF_PERCENTAGE: '25' });
-  const kosten = html.slice(html.indexOf('id="kosten"'), html.indexOf('id="vertrouwen"'));
+  const kosten = kostensectie(html);
   assert.match(kosten, /25%/);
   assert.match(kosten, /Rekenvoorbeeld/);
 });

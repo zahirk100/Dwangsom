@@ -10,7 +10,7 @@
  * het scherm nodig heeft om het bolletje te kleuren.
  */
 
-import { UITKOMST } from './dwangsom.js';
+import { UITKOMST, euro } from './dwangsom.js';
 import { labelBestuursorgaan } from './catalogus.js';
 import { parseDatum, formatDatum, toonDatum, plusDagen, verschilDagen, vandaag } from './datum.js';
 
@@ -115,9 +115,9 @@ export function klantSamenvatting(dossier) {
     const bedrag = afhandeling && afhandeling.bedragToegekend;
     return {
       kop: 'Je zaak is toegekend',
-      tekst: bedrag
-        ? `Er is een dwangsom van € ${Number(bedrag).toFixed(2).replace('.', ',')} toegekend.`
-        : 'Er is een dwangsom toegekend.',
+      // Via euro(), anders staat er "€ 1442,00" terwijl er twee regels lager
+      // "€ 1.442,00" staat.
+      tekst: bedrag ? `Er is een dwangsom van ${euro(bedrag)} toegekend.` : 'Er is een dwangsom toegekend.',
       kleur: 'goed',
     };
   }

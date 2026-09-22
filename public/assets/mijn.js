@@ -13,6 +13,7 @@
 
 import { klantTijdlijn, klantSamenvatting, klantAftelling } from '/shared/tijdlijn.js';
 import { euro } from '/shared/dwangsom.js';
+import { tarief, tariefSplitsing, euroTekst } from '/shared/tarief.js';
 import { parseDatum, toonDatum } from '/shared/datum.js';
 import { labelBestuursorgaan, zoekZaaktype } from '/shared/catalogus.js';
 
@@ -93,6 +94,17 @@ function rendereDossier(dossier) {
       el('span', { tekst: dossier.afhandeling.uitbetaaldOp
         ? `uitbetaald op ${datum(dossier.afhandeling.uitbetaaldOp)}`
         : 'toegekend, de uitbetaling volgt' })));
+
+    // Er komt een factuur van ons aan. Die hoort niet als verrassing in de bus
+    // te vallen naast het bedrag dat hij net heeft gekregen.
+    const split = tariefSplitsing(tarief(INSTELLINGEN), toegekend);
+    if (split) {
+      kop.append(el('div', { class: 'zaakkop__som' },
+        el('div', {}, el('span', { tekst: 'Onze vergoeding' }),
+          el('strong', { tekst: `\u2212 ${euroTekst(split.vergoeding)}` })),
+        el('div', { class: 'zaakkop__som--uit' }, el('span', { tekst: 'Jij houdt over' }),
+          el('strong', { tekst: euroTekst(split.overhoudt) }))));
+    }
   } else if (berekening.totaal > 0) {
     kop.append(el('div', { class: 'zaakkop__bedrag' },
       el('strong', { tekst: euro(berekening.totaal) }),
@@ -480,7 +492,22 @@ function rendereGeenDossier(gebruiker) {
 
 // -------------------------------------------------------------------- start
 
+/**
+ * Het tarief, voor de som onder een toegekend bedrag.
+ *
+ * Anders dan in de funnel wordt hier meteen gerenderd, dus dit moet binnen
+ * zijn vóór het scherm staat; vandaar await in plaats van laten lopen.
+ */
+const INSTELLINGEN = {};
+async function haalInstellingen() {
+  if (Object.keys(INSTELLINGEN).length > 0) return;
+  try {
+    Object.assign(INSTELLINGEN, await (await fetch('/api/instellingen')).json());
+  } catch { /* dan valt tarief() terug op de standaard */ }
+}
+
 async function laad() {
+  await haalInstellingen();
   const data = await api('/api/mijn/dossiers');
   inloggen.classList.add('verborgen');
   portaal.classList.remove('verborgen');

@@ -121,16 +121,30 @@ schermen om het te kopiëren: de homepage, de funnel vlak voor de handtekening,
 de voorwaarden. Daarom komt het uit `public/shared/tarief.js`, en die leest de
 omgeving.
 
-Is er niets ingesteld, dan zegt de site eerlijk dat je het vooraf te horen
-krijgt en noemt hij géén getal. Dat is met opzet: een verzonnen percentage op
-de pagina waar iemand zijn handtekening zet, is erger dan geen percentage.
-`ontbrekendTarief()` zet het in de beheeromgeving op de lijst met dingen die
-vóór livegang geregeld moeten zijn.
+Het gekozen tarief is **25% van de toegekende dwangsom**; dat staat als
+standaard in de module. De omgevingsvariabele gaat daarvóór, zodat het te
+wijzigen is zonder de code aan te raken. Het is een consumentenprijs en dus
+inclusief btw. Waarom een percentage en geen vast bedrag staat in
+[docs/livegang.md](docs/livegang.md): de dwangsom loopt van € 23 tot € 1.442,
+dus een vast bedrag is bij een kleine zaak hoger dan de hele vergoeding.
 
 ```
 TARIEF_PERCENTAGE=25    een deel van de toegekende dwangsom
 TARIEF_VAST=129         een vast bedrag per toegekende zaak
+TARIEF_PERCENTAGE=0     noem geen bedrag (zie hieronder)
 ```
+
+Zet je het uitdrukkelijk op `0`, dan noemt de site géén getal en zegt hij dat
+je het vooraf hoort. Die stand blijft bestaan omdat een verzonnen percentage op
+de pagina waar iemand tekent erger is dan geen percentage; hij is er voor als
+het tarief nog niet vaststaat.
+
+**Het rekent door met het bedrag van de zaak zelf.** Een percentage zegt mensen
+weinig. Vlak voor de handtekening staat daarom de som: loopt er al een
+dwangsom, dan met dat bedrag; moet de melding nog de deur uit, dan met het
+wettelijk maximum en met zoveel woorden erbij dat dat het maximum is. In het
+klantportaal staat dezelfde som zodra er echt een bedrag is toegekend, zodat
+onze factuur geen verrassing is.
 
 ## Structuur
 
