@@ -370,7 +370,15 @@ async function klantApi(req, res, url) {
   // verschijnen terwijl er niets aan de hand is.
   if (url.pathname === '/api/mijn/sessie' && req.method === 'GET') {
     const klant = await huidigeKlant(req);
-    return stuurJson(res, 200, { ingelogd: Boolean(klant) });
+    // `ingelogd: false` zei niet wáárom, en dat is precies het verschil tussen
+    // twee heel andere storingen: een browser die het cookie niet bewaart of
+    // niet meestuurt, en een server die het cookie wel krijgt maar niet
+    // herkent. Zonder dat onderscheid is zoeken gissen.
+    const cookie = parseCookies(req.headers.cookie)[COOKIE_KLANT];
+    return stuurJson(res, 200, {
+      ingelogd: Boolean(klant),
+      reden: klant ? 'goed' : (cookie ? 'niet-herkend' : 'geen-cookie'),
+    });
   }
 
   if (!url.pathname.startsWith('/api/mijn/')) return false;

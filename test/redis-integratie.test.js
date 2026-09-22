@@ -16,6 +16,9 @@ import { Store } from '../src/store.js';
 function maakNepRedis() {
   const sleutels = new Map();
   const lijsten = new Map();
+  // Sessies, gebruikers en inloglinks staan niet in een lijst maar in een set
+  // met losse rijen; zonder deze commando's testte dat pad helemaal niet mee.
+  const verzamelingen = new Map();
 
   const voerUit = ([naam, ...args]) => {
     switch (String(naam).toUpperCase()) {
@@ -39,6 +42,24 @@ function maakNepRedis() {
         sleutels.set(args[0], String(nieuw));
         return nieuw;
       }
+      case 'DEL': {
+        const had = sleutels.delete(args[0]);
+        return had ? 1 : 0;
+      }
+      case 'SADD': {
+        const set = verzamelingen.get(args[0]) || new Set();
+        for (const lid of args.slice(1)) set.add(String(lid));
+        verzamelingen.set(args[0], set);
+        return set.size;
+      }
+      case 'SREM': {
+        const set = verzamelingen.get(args[0]);
+        if (!set) return 0;
+        let weg = 0;
+        for (const lid of args.slice(1)) if (set.delete(String(lid))) weg++;
+        return weg;
+      }
+      case 'SMEMBERS': return [...(verzamelingen.get(args[0]) || [])];
       default: return { error: `onbekend commando ${naam}` };
     }
   };
@@ -118,4 +139,36 @@ test('wijzigingen zijn zichtbaar voor een volgende, koude instantie', async () =
 test('een verkeerde sleutel geeft een duidelijke fout', async () => {
   const store = new Store({ opslag: new RedisOpslag({ ...instellingen, token: 'fout' }) });
   await assert.rejects(() => store.init(), /401/);
+});
+
+test('inloggen met een e-maillink werkt op een REST-database', async () => {
+  // Dit pad draaide alleen ooit tegen bestandsopslag. Op Vercel staat er
+  // Redis achter, en sessies, gebruikers en koppelingen gaan daar via een
+  // heel andere route naar binnen (losse rijen met een set als index) dan de
+  // dossiers. Precies hier kwam de klant niet binnen met zijn link.
+  const { Gebruikers, ROL_KLANT } = await import('../src/gebruikers.js');
+  const opslag = await new RedisOpslag(instellingen).init();
+  const sleutel = Buffer.alloc(32, 7);
+
+  const gebruikers = new Gebruikers({ opslag, sleutel });
+  const klant = await gebruikers.maakOfVindKlant
+    ? await gebruikers.maakOfVindKlant({ email: 'klant@voorbeeld.nl', naam: 'K' })
+    : await gebruikers.maakEersteBeheerder({
+      email: 'klant@voorbeeld.nl', naam: 'K', wachtwoord: 'een-lang-wachtwoord',
+    });
+
+  const token = await gebruikers.maakKoppeling(klant.id, 'magic');
+  assert.ok(token, 'er hoort een token uit te komen');
+
+  // Een volgende, koude instantie wisselt hem in - zoals op serverloze hosting.
+  const verseInstantie = new Gebruikers({ opslag: await new RedisOpslag(instellingen).init(), sleutel });
+  const uitToken = await verseInstantie.verzilverKoppeling(token, 'magic');
+  assert.ok(uitToken, 'de inloglink hoort herkend te worden');
+  assert.equal(uitToken.email, 'klant@voorbeeld.nl');
+
+  const cookie = await verseInstantie.maakSessie(uitToken);
+  const nogEenInstantie = new Gebruikers({ opslag: await new RedisOpslag(instellingen).init(), sleutel });
+  const sessie = await nogEenInstantie.uitCookie(cookie);
+  assert.ok(sessie, 'en de sessie hoort door een volgende instantie herkend te worden');
+  assert.equal(sessie.gebruiker.email, 'klant@voorbeeld.nl');
 });

@@ -569,12 +569,42 @@ document.getElementById('linkformulier').addEventListener('submit', async (e) =>
   }
 });
 
+/**
+ * Waarom kwam iemand niet binnen?
+ *
+ * "Je link werkt niet" is voor een klant hetzelfde verhaal, maar voor ons zijn
+ * het twee heel verschillende storingen. Werd de link geweigerd, dan is hij op
+ * of verlopen. Werd hij geaccepteerd maar bleef de sessie niet staan, dan zit
+ * het aan onze kant en heeft opnieuw een link vragen geen zin.
+ */
+function uitlegBijMislukking(reden) {
+  if (reden === 'geen-cookie') {
+    return ['Je link werkte, maar je browser bewaarde de sessie niet',
+      'Dat gebeurt als cookies geblokkeerd zijn. Sta cookies toe voor deze site, of '
+      + 'probeer het in een gewoon venster in plaats van een privévenster.'];
+  }
+  return ['Je link werkte, maar je sessie werd niet herkend',
+    'Dit ligt aan ons, niet aan jou. Probeer het zo nog eens; blijft het gebeuren, '
+    + 'laat het ons dan weten.'];
+}
+
 (async function start() {
-  await wisselKoppelingIn();
+  const ingewisseld = await wisselKoppelingIn();
   // Eerst vragen of we ingelogd zijn; dat scheelt een 401 in de console bij
   // iedereen die het portaal gewoon opent zonder link.
   const sessie = await api('/api/mijn/sessie').catch(() => ({ ingelogd: false }));
-  if (!sessie.ingelogd) return toonInloggen();
+  if (!sessie.ingelogd) {
+    // Wisselde de link nog wel in maar staat er daarna geen sessie, dan is de
+    // link niet het probleem en hoort er niet "vraag een nieuwe aan".
+    if (ingewisseld) {
+      const [kop, tekst] = uitlegBijMislukking(sessie.reden);
+      inloggen.classList.remove('verborgen');
+      portaal.classList.add('verborgen');
+      melding(document.getElementById('inlogmelding'), 'let-op', kop, tekst);
+      return;
+    }
+    return toonInloggen();
+  }
   try {
     await laad();
   } catch {
