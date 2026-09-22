@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mijn zaak bij nubeslist.nl</title>
+<meta name="description" content="Volg je zaak bij nubeslist.nl: waar staat hij, wat doen wij nu en wat is de volgende stap.">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .portaal { max-width: 720px; margin: 0 auto; padding-block: 30px 80px; }
+
+  /* ------------------------------------------------------------ inloggen -- */
+  .inlogvak { max-width: 430px; margin: 8vh auto; padding: 30px; }
+  .inlogvak h1 { font-size: 1.35rem; margin-bottom: 8px; }
+  .inlogvak p.onder { color: var(--tekst-zacht); margin-bottom: 22px; }
+
+  /* --------------------------------------------------------------- zaak -- */
+  .zaakkop {
+    padding: 24px 26px; border-radius: var(--radius); margin-bottom: 20px;
+    background: linear-gradient(160deg, var(--blauw-50), #e7f0fd);
+    border: 1px solid var(--blauw-100);
+  }
+  .zaakkop__ref {
+    font-size: .74rem; font-weight: 740; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--blauw-600);
+  }
+  .zaakkop h1 { font-size: clamp(1.3rem, 1.1rem + 1vw, 1.7rem); margin: 6px 0 8px; color: var(--blauw-900); }
+  .zaakkop p { margin: 0; color: var(--blauw-700); font-size: .96rem; }
+  .zaakkop__bedrag {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--blauw-100);
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  .zaakkop__bedrag strong {
+    font-size: 1.6rem; font-weight: 800; color: var(--blauw-800);
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .zaakkop__bedrag span { font-size: .88rem; color: var(--blauw-700); }
+
+  .kolomkop {
+    font-size: .74rem; text-transform: uppercase; letter-spacing: .07em;
+    font-weight: 720; color: var(--tekst-zacht); margin: 26px 0 12px;
+  }
+
+  /* ------------------------------------------------------------ tijdlijn -- */
+  .tijdlijn { list-style: none; padding: 0; margin: 0; }
+  .tijdlijn li { position: relative; padding: 0 0 22px 36px; }
+  .tijdlijn li::before {
+    content: ""; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--vlak); border: 2px solid var(--rand-sterk);
+  }
+  .tijdlijn li::after {
+    content: ""; position: absolute; left: 9px; top: 19px; bottom: 0; width: 2px; background: var(--rand);
+  }
+  .tijdlijn li:last-child { padding-bottom: 0; }
+  .tijdlijn li:last-child::after { display: none; }
+  .tijdlijn li.klaar::before { background: var(--groen-600); border-color: var(--groen-600); }
+  .tijdlijn li.bezig::before { background: var(--blauw-600); border-color: var(--blauw-600); box-shadow: 0 0 0 4px var(--blauw-100); }
+  .tijdlijn__titel { font-weight: 660; font-size: .99rem; display: block; }
+  .tijdlijn__onder { font-size: .9rem; color: var(--tekst-zacht); display: block; margin-top: 2px; }
+  .tijdlijn__datum { font-size: .78rem; color: var(--blauw-600); font-weight: 620; display: block; margin-top: 4px; }
+  .tijdlijn li.bezig .tijdlijn__titel { color: var(--blauw-700); }
+
+  /* ---------------------------------------------------------- gegevens --- */
+  .gegevens { margin: 0; }
+  .gegevens > div {
+    display: flex; justify-content: space-between; gap: 16px;
+    padding: 11px 0; border-top: 1px solid var(--rand);
+  }
+  .gegevens > div:first-child { border-top: 0; }
+  .gegevens dt { color: var(--tekst-zacht); font-size: .9rem; margin: 0; }
+  .gegevens dd { margin: 0; font-weight: 620; font-size: .93rem; text-align: right; }
+
+  .ontbreekt { margin-bottom: 18px; }
+  .veldrij { display: grid; gap: 12px; margin-bottom: 16px; }
+  @media (min-width: 560px) { .veldrij { grid-template-columns: 1fr 1fr; } }
+
+  .uitlogrij { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .hulp { margin-top: 30px; font-size: .88rem; color: var(--tekst-zacht); }
+  .hulp a { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
+      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
+    </a>
+    <nav id="balk-nav">
+      <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ----------------------------------------------------------- inloggen -->
+  <section id="inloggen" class="verborgen">
+    <div class="kaart inlogvak">
+      <h1>Bekijk je zaak</h1>
+      <p class="onder">Vul je e-mailadres in. Wij sturen je een link waarmee je meteen
+         binnen bent, zonder wachtwoord.</p>
+      <form id="linkformulier" novalidate>
+        <div class="veld">
+          <label for="email">E-mailadres</label>
+          <input type="email" id="email" autocomplete="email" required>
+        </div>
+        <button class="knop knop--primair" type="submit" style="width:100%">Stuur mij een link</button>
+      </form>
+      <div id="inlogmelding" style="margin-top:16px"></div>
+      <p class="hulp">Nog geen zaak bij ons? <a href="/aanvraag">Controleer eerst je brief</a>.</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ portaal -->
+  <section id="portaal" class="omhulsel portaal verborgen">
+    <div id="inhoud"></div>
+  </section>
+</main>
+
+<footer class="voet">
+  <div class="omhulsel">
+    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. De uitkomst
+       op dit scherm is een inschatting en geen juridisch advies.</p>
+  </div>
+</footer>
+
+<script type="module" src="/assets/mijn.js"></script>
+</body>
+</html>

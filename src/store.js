@@ -60,7 +60,9 @@ export class Store {
     return this.opslag.duurzaam;
   }
 
-  async nieuweAanvraag({ invoer, contact, rapport, stukken, meta, brief, verlengbrief, handtekening }) {
+  async nieuweAanvraag({
+    invoer, contact, rapport, stukken, meta, brief, verlengbrief, handtekening, gebruikerId,
+  }) {
     const nu = new Date().toISOString();
     const jaar = new Date().getUTCFullYear();
     const nummer = await this.opslag.volgendNummer(jaar);
@@ -81,6 +83,9 @@ export class Store {
     const aanvraag = {
       id: randomUUID(),
       referentie: `DWS-${jaar}-${String(nummer).padStart(4, '0')}`,
+      // Het account van de aanvrager. De funnel maakt dat aan op zijn
+      // e-mailadres; hiermee vindt het portaal zijn eigen dossiers terug.
+      gebruikerId: gebruikerId || null,
       soort,
       status: 'nieuw',
       actiedatum: vervolg.actiedatum || null,
@@ -149,6 +154,24 @@ export class Store {
       ].filter(Boolean).join(' ').toLowerCase().includes(term));
     }
     return resultaat;
+  }
+
+  /** De dossiers van één aanvrager, voor het klantportaal. */
+  async vanGebruiker(gebruikerId) {
+    if (!gebruikerId) return [];
+    const alle = await this.opslag.haalAlle();
+    return alle
+      .filter((a) => a.gebruikerId === gebruikerId)
+      .sort((a, b) => String(b.aangemaaktOp).localeCompare(String(a.aangemaaktOp)));
+  }
+
+  /** Koppelt een bestaand dossier alsnog aan een account. */
+  async koppelAanGebruiker(id, gebruikerId) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return null;
+    aanvraag.gebruikerId = gebruikerId;
+    await this.opslag.zet(aanvraag);
+    return aanvraag;
   }
 
   async vind(id) {

@@ -14,7 +14,7 @@ import path from 'node:path';
 
 const tijdelijk = await fs.mkdtemp(path.join(os.tmpdir(), 'dwangsom-vercel-'));
 process.env.DATA_DIR = tijdelijk;
-process.env.BEHEER_WACHTWOORD = 'test-wachtwoord';
+process.env.SESSIE_GEHEIM = 'een-vast-testgeheim-voor-de-sessies';
 
 const { default: handler } = await import('../server.js');
 
@@ -73,27 +73,32 @@ test('een ongeldige body geeft 400 in plaats van een crash', async () => {
 });
 
 test('het sessiecookie krijgt Secure mee achter HTTPS en blijft werken', async () => {
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  assert.equal(inlog.status, 200);
-  const setCookie = inlog.headers.getSetCookie()[0];
-  assert.match(setCookie, /Secure/);
-  assert.match(setCookie, /HttpOnly/);
+  const { logInAlsBeheerder } = await import('./hulp-inloggen.mjs');
+  const { cookie } = await logInAlsBeheerder(basis);
 
-  const cookie = setCookie.split(';')[0];
+  // De Secure-vlag komt uit het antwoord op de login zelf.
+  const opnieuw = await haal('/api/beheer/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: 'test@nubeslist.nl', wachtwoord: 'een-heel-lang-testwachtwoord' }),
+  });
+  const data = await opnieuw.json();
+  assert.equal(data.tweefactorNodig, true, 'met tweefactor aan is het wachtwoord alleen niet genoeg');
+
   const lijst = await (await haal('/api/beheer/aanvragen', { headers: { cookie } })).json();
   assert.equal(lijst.aanvragen.length, 1);
   assert.ok(lijst.opslag, 'de beheeromgeving hoort te weten hoe er wordt opgeslagen');
   assert.equal(lijst.opslag.duurzaam, true);
 });
 
-test('een sessie overleeft een koude start van de functie', async () => {
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
-
-  // Een verse instantie: eigen module-lading, geen gedeeld geheugen.
-  const { sessieSleutel, tokenIsGeldig } = await import('../src/sessie.js?vers=1');
-  const verseSleutel = sessieSleutel({ BEHEER_WACHTWOORD: 'test-wachtwoord' });
-  assert.equal(tokenIsGeldig(verseSleutel, cookie.split('=')[1]), true);
+test('een sessie leeft in de opslag en overleeft een koude start', async () => {
+  // Het cookie verwijst naar een sessierij in dezelfde opslag als de dossiers.
+  // Een verse instantie leest die rij gewoon opnieuw, dus niemand raakt
+  // uitgelogd door een deploy.
+  const { opslag } = await import('../server.js');
+  const sessies = await opslag.rijen('sessies');
+  assert.ok(sessies.length >= 1, 'er hoort een sessie in de opslag te staan');
+  assert.ok(sessies[0].gebruikerId, 'een sessie wijst naar een account');
+  assert.ok(sessies[0].verlooptOp > Date.now());
 });
 
 test('de applicatie serveert ook de pagina\'s zelf', async () => {

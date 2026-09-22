@@ -13,6 +13,8 @@ const ladeHouder = document.getElementById('lade-houder');
 
 let statussen = [];
 let soorten = [];
+let rollen = [];
+let ik = null;
 let huidigSoort = 'alle';
 let actieveAanvraag = null;
 let actieveEisen = null;
@@ -58,14 +60,17 @@ async function api(pad, opties = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...opties,
   });
-  if (antwoord.status === 401) {
+  const data = await antwoord.json().catch(() => ({}));
+  // 401 op de inlogroute zelf is een afgekeurd wachtwoord, geen verlopen
+  // sessie; die moet de foutmelding gewoon in beeld krijgen.
+  if (antwoord.status === 401 && !pad.startsWith('/api/beheer/login')) {
     toonInloggen();
     throw new Error('Niet ingelogd.');
   }
-  const data = await antwoord.json().catch(() => ({}));
   if (!antwoord.ok) {
     const fout = new Error(data.fout || 'Er ging iets mis.');
     fout.velden = data.velden || {};
+    fout.tweefactorNodig = Boolean(data.tweefactorNodig);
     throw fout;
   }
   return data;
@@ -73,43 +78,223 @@ async function api(pad, opties = {}) {
 
 // ------------------------------------------------------------- inloggen ---
 
-function toonInloggen({ instelbaar = false } = {}) {
-  inloggenVak.classList.remove('verborgen');
-  dashboardVak.classList.add('verborgen');
+/**
+ * Welk scherm hoort hier? Er zijn er vier, en de sessie bepaalt welke:
+ * de allereerste beheerder aanmaken, een uitnodiging inwisselen, gewoon
+ * inloggen, of tweefactor afmaken omdat die nog niet staat.
+ */
+function toonInloggen(sessie = {}) {
   sluitLade();
-  // Is er nog geen beheerwachtwoord ingesteld, dan heeft een inlogveld geen
-  // zin; dan hoort de beheerder te lezen wat hij moet doen.
-  document.getElementById('instellen-nodig').classList.toggle('verborgen', !instelbaar);
-  document.getElementById('inlogformulier').classList.toggle('verborgen', instelbaar);
-  if (!instelbaar) document.getElementById('wachtwoord').focus();
+  const uitnodiging = new URLSearchParams(location.search).get('uitnodiging');
+  if (uitnodiging) {
+    toonScherm('uitnodigingformulier');
+    document.getElementById('uitnodiging-wachtwoord').focus();
+    return;
+  }
+  if (sessie.tweefactorNodig) return void startTweefactor();
+  if (sessie.eersteStart) {
+    toonScherm('eersteformulier');
+    document.getElementById('eerste-naam').focus();
+    return;
+  }
+  toonScherm('inlogformulier');
+  document.getElementById('email').focus();
 }
 
-function toonDashboard() {
+function toonDashboard(gebruiker) {
   inloggenVak.classList.add('verborgen');
   dashboardVak.classList.remove('verborgen');
+  ik = gebruiker || ik;
+  rendereWieBenIk();
   laadLijst();
 }
 
+/** Eén van de inlogschermen tonen, de rest verbergen. */
+function toonScherm(id) {
+  inloggenVak.classList.remove('verborgen');
+  dashboardVak.classList.add('verborgen');
+  for (const naam of ['eersteformulier', 'uitnodigingformulier', 'inlogformulier', 'tweefactorvak']) {
+    const knoop = document.getElementById(naam);
+    if (knoop) knoop.classList.toggle('verborgen', naam !== id);
+  }
+}
+
+function meldFout(vakId, bericht) {
+  const vak = document.getElementById(vakId);
+  vak.textContent = '';
+  vak.append(el('div', { class: 'melding melding--fout', tekst: bericht }));
+}
+
+// ------------------------------------------------------------- inloggen ----
+
+document.getElementById('eersteformulier').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const data = await api('/api/beheer/eerste-beheerder', {
+      method: 'POST',
+      body: JSON.stringify({
+        naam: document.getElementById('eerste-naam').value,
+        email: document.getElementById('eerste-email').value,
+        wachtwoord: document.getElementById('eerste-wachtwoord').value,
+      }),
+    });
+    ik = data.gebruiker;
+    await startTweefactor();
+  } catch (err) {
+    meldFout('eerste-fout', err.message);
+  }
+});
+
+document.getElementById('uitnodigingformulier').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const token = new URLSearchParams(location.search).get('uitnodiging');
+  try {
+    const data = await api('/api/beheer/uitnodiging', {
+      method: 'POST',
+      body: JSON.stringify({ token, wachtwoord: document.getElementById('uitnodiging-wachtwoord').value }),
+    });
+    ik = data.gebruiker;
+    history.replaceState(null, '', '/beheer');
+    await startTweefactor();
+  } catch (err) {
+    meldFout('uitnodiging-fout', err.message);
+  }
+});
+
 document.getElementById('inlogformulier').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const foutVak = document.getElementById('inlog-fout');
-  foutVak.textContent = '';
+  document.getElementById('inlog-fout').textContent = '';
   try {
-    await api('/api/beheer/login', {
+    const data = await api('/api/beheer/login', {
       method: 'POST',
-      body: JSON.stringify({ wachtwoord: document.getElementById('wachtwoord').value }),
+      body: JSON.stringify({
+        email: document.getElementById('email').value,
+        wachtwoord: document.getElementById('wachtwoord').value,
+        code: document.getElementById('code').value,
+      }),
     });
+    // Tweede factor gevraagd: het codeveld erbij, wachtwoord blijft staan.
+    if (data.tweefactorNodig) {
+      document.getElementById('codeveld').classList.remove('verborgen');
+      document.getElementById('code').focus();
+      return;
+    }
     document.getElementById('wachtwoord').value = '';
-    toonDashboard();
+    document.getElementById('code').value = '';
+    ik = data.gebruiker;
+    if (data.tweefactorInstellen) return startTweefactor();
+    toonDashboard(data.gebruiker);
   } catch (err) {
-    foutVak.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+    // Klopte de code niet, dan blijft het codeveld staan.
+    if (err.tweefactorNodig) document.getElementById('codeveld').classList.remove('verborgen');
+    meldFout('inlog-fout', err.message);
   }
 });
 
 document.getElementById('knop-uitloggen').addEventListener('click', async () => {
   await fetch('/api/beheer/logout', { method: 'POST' });
-  toonInloggen();
+  ik = null;
+  location.href = '/beheer';
 });
+
+// ------------------------------------------------------------ tweefactor ---
+
+async function startTweefactor() {
+  toonScherm('tweefactorvak');
+  const vak = document.getElementById('tweefactor-inhoud');
+  vak.textContent = 'Bezig…';
+  let gegevens;
+  try {
+    gegevens = await api('/api/beheer/tweefactor/start', { method: 'POST', body: '{}' });
+  } catch (err) {
+    vak.textContent = '';
+    vak.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+    return;
+  }
+
+  vak.textContent = '';
+  vak.append(
+    el('a', { class: 'knop knop--primair', href: gegevens.otpauth, style: 'width:100%' },
+      'Openen in mijn authenticator-app'),
+    el('p', { class: 'qr-onder', style: 'margin-top:14px' }, 'Of voer deze sleutel met de hand in:'),
+    el('code', { class: 'qr-geheim', tekst: gegevens.geheim }),
+  );
+
+  const codeveld = el('input', {
+    type: 'text', id: 'tf-code', inputmode: 'numeric', maxlength: '6', placeholder: '123456',
+    autocomplete: 'one-time-code',
+  });
+  const fout = el('div', {});
+  const bevestig = el('button', { class: 'knop knop--primair', type: 'button', style: 'width:100%' },
+    'Bevestigen');
+
+  bevestig.addEventListener('click', async () => {
+    fout.textContent = '';
+    bevestig.disabled = true;
+    try {
+      const data = await api('/api/beheer/tweefactor/bevestig', {
+        method: 'POST', body: JSON.stringify({ code: codeveld.value }),
+      });
+      toonHerstelcodes(data.herstelcodes);
+    } catch (err) {
+      bevestig.disabled = false;
+      fout.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+    }
+  });
+
+  vak.append(
+    el('div', { class: 'veld', style: 'margin-top:20px' },
+      el('label', { for: 'tf-code' }, 'Vul de code van zes cijfers in'), codeveld),
+    fout, bevestig,
+  );
+  codeveld.focus();
+}
+
+/** De herstelcodes komen één keer in beeld en daarna nooit meer. */
+function toonHerstelcodes(codes) {
+  const vak = document.getElementById('tweefactor-inhoud');
+  vak.textContent = '';
+  const lijst = el('ul', { class: 'herstelcodes' });
+  for (const code of codes) lijst.append(el('li', { tekst: code }));
+
+  const verder = el('button', { class: 'knop knop--primair', type: 'button', style: 'width:100%; margin-top:18px' },
+    'Ik heb ze bewaard, ga verder');
+  verder.addEventListener('click', () => toonDashboard(ik));
+
+  vak.append(
+    el('div', { class: 'melding melding--goed' },
+      el('strong', {}, 'Tweestapsverificatie staat aan'),
+      el('p', {}, 'Bewaar onderstaande herstelcodes ergens veilig. Hiermee kom je binnen als je '
+        + 'je telefoon kwijt bent. Elke code werkt één keer, en je ziet ze hierna niet meer.')),
+    lijst,
+    el('button', {
+      class: 'knop knop--zacht knop--klein', type: 'button', style: 'margin-top:10px',
+    }, 'Kopieer de codes'),
+    verder,
+  );
+  vak.querySelector('.knop--zacht').addEventListener('click', (e) => {
+    navigator.clipboard.writeText(codes.join('\n')).then(() => { e.target.textContent = 'Gekopieerd'; });
+  });
+}
+
+// ---------------------------------------------------------- wie ben ik ----
+
+function rendereWieBenIk() {
+  const nav = document.getElementById('balk-nav');
+  const bestaand = document.getElementById('wie-ben-ik');
+  if (bestaand) bestaand.remove();
+  if (!ik) return;
+  const rol = (rollen.find((r) => r.id === ik.rol) || {}).label || ik.rol;
+  nav.prepend(el('span', {
+    class: 'subtiel', id: 'wie-ben-ik',
+    style: 'font-size:.84rem; margin-right:10px; white-space:nowrap',
+    tekst: `${ik.naam || ik.email} (${rol})`,
+  }));
+
+  // Alleen een beheerder krijgt de knop naar het accountbeheer te zien.
+  const knop = document.getElementById('knop-accounts');
+  if (knop) knop.classList.toggle('verborgen', ik.rol !== 'beheerder');
+}
 
 // --------------------------------------------------------------- lijst ----
 
@@ -306,12 +491,32 @@ function rendereTabel(aanvragen) {
 document.getElementById('filter-status').addEventListener('change', laadLijst);
 document.getElementById('filter-orgaan').addEventListener('change', laadLijst);
 document.getElementById('knop-vernieuw').addEventListener('click', laadLijst);
+document.getElementById('knop-accounts').addEventListener('click', openAccounts);
 
 // ---------------------------------------------------------------- lade ----
 
 function sluitLade() {
   ladeHouder.textContent = '';
   actieveAanvraag = null;
+}
+
+/** Een lade met een eigen titel en inhoud, voor alles wat geen dossier is. */
+function toonLade(titel, inhoud) {
+  const lade = el('div', { class: 'lade' },
+    el('div', { class: 'lade__kop' },
+      el('h2', { style: 'margin:0; font-size:1.2rem', tekst: titel }),
+      el('button', {
+        class: 'knop knop--stil knop--klein', type: 'button', id: 'sluit-lade',
+        style: 'margin-left:auto',
+      }, '\u2715')),
+    inhoud);
+
+  ladeHouder.textContent = '';
+  const overlay = el('div', { class: 'overlay' });
+  overlay.addEventListener('click', sluitLade);
+  ladeHouder.append(overlay, lade);
+  lade.querySelector('#sluit-lade').addEventListener('click', sluitLade);
+  lade.scrollTop = 0;
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') sluitLade(); });
@@ -861,8 +1066,142 @@ function ontbrekendeGegevens(a) {
   return gegevens.filter((g) => g.verplicht && !String((a.contact || {})[g.id] || '').trim());
 }
 
+// ---------------------------------------------------------- accounts ------
+
+/**
+ * Accountbeheer, alleen voor een beheerder.
+ *
+ * Bewust in dezelfde lade als een dossier: één plek waar iets opengaat, en
+ * geen aparte pagina die weer een eigen inlogcontrole nodig heeft.
+ */
+async function openAccounts() {
+  let data;
+  try {
+    data = await api('/api/beheer/medewerkers');
+  } catch (err) {
+    return alert(err.message);
+  }
+  rollen = data.rollen || rollen;
+
+  const lijf = el('div', {});
+  const fout = el('div', {});
+
+  const tabel = el('table', { class: 'medewerkers' },
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'Naam'), el('th', {}, 'Rol'), el('th', {}, 'Tweefactor'), el('th', {}, 'Status'))));
+  const lijf2 = el('tbody', {});
+
+  for (const m of data.medewerkers) {
+    const zelf = m.id === data.ik.id;
+
+    const rolKeuze = el('select', {}, ...rollen.map((r) => el('option', { value: r.id }, r.label)));
+    rolKeuze.value = m.rol;
+    rolKeuze.disabled = zelf;
+    rolKeuze.addEventListener('change', async () => {
+      fout.textContent = '';
+      try {
+        await api(`/api/beheer/medewerkers/${m.id}`, {
+          method: 'PATCH', body: JSON.stringify({ rol: rolKeuze.value }),
+        });
+        openAccounts();
+      } catch (err) {
+        rolKeuze.value = m.rol;
+        fout.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+      }
+    });
+
+    const blokkeer = maakKnop(m.actief ? 'Blokkeren' : 'Weer toelaten', async () => {
+      fout.textContent = '';
+      try {
+        await api(`/api/beheer/medewerkers/${m.id}`, {
+          method: 'PATCH', body: JSON.stringify({ actief: !m.actief }),
+        });
+        openAccounts();
+      } catch (err) {
+        fout.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+      }
+    }, m.actief ? 'knop--stil' : 'knop--zacht');
+    blokkeer.disabled = zelf;
+
+    lijf2.append(el('tr', {},
+      el('td', {},
+        el('strong', { tekst: m.naam || '(naam onbekend)' }),
+        el('div', { class: 'subtiel', style: 'font-size:.84rem', tekst: m.email }),
+        zelf ? chip('dat ben jij', 'blauw') : null),
+      el('td', {}, rolKeuze),
+      el('td', {}, m.tweefactorAan
+        ? chip('ingesteld', 'groen')
+        : chip('nog niet ingesteld', 'oranje')),
+      el('td', {},
+        m.actief ? chip('actief', 'groen') : chip('geblokkeerd', 'rood'),
+        el('div', { style: 'margin-top:6px' }, blokkeer))));
+  }
+  tabel.append(lijf2);
+
+  // ------------------------------------------------------- uitnodigen ----
+  const naam = el('input', { type: 'text', id: 'nieuw-naam', placeholder: 'Naam' });
+  const email = el('input', { type: 'email', id: 'nieuw-email', placeholder: 'E-mailadres' });
+  const rol = el('select', { id: 'nieuw-rol' }, ...rollen.map((r) => el('option', { value: r.id }, r.label)));
+  rol.value = 'behandelaar';
+  const uitslag = el('div', {});
+
+  const nodigUit = maakKnop('Uitnodiging versturen', async () => {
+    uitslag.textContent = '';
+    try {
+      const data2 = await api('/api/beheer/medewerkers', {
+        method: 'POST',
+        body: JSON.stringify({ naam: naam.value, email: email.value, rol: rol.value }),
+      });
+      naam.value = '';
+      email.value = '';
+      // Gaat er geen mail de deur uit, dan moet de link hier te kopiëren zijn.
+      // Bewust niet meteen verversen: dan zou de melding met de link er direct
+      // weer af zijn, en juist die link moet de beheerder kunnen kopiëren.
+      if (data2.uitnodigingslink) {
+        const veld = el('code', { class: 'qr-geheim', tekst: data2.uitnodigingslink });
+        const kopieer = maakKnop('Link kopiëren', () => {
+          navigator.clipboard.writeText(data2.uitnodigingslink)
+            .then(() => { kopieer.textContent = 'Gekopieerd'; });
+        });
+        uitslag.append(el('div', { class: 'melding melding--let-op' },
+          el('strong', {}, `${data2.medewerker.email} is toegevoegd, maar er ging geen mail uit`),
+          el('p', {}, 'Er is nog geen mailkoppeling ingesteld. Geef deze link zelf door; '
+            + 'hij is zeven dagen geldig en werkt één keer.'),
+          veld,
+          el('div', { class: 'knoprij' }, kopieer)));
+      } else {
+        uitslag.append(el('div', { class: 'melding melding--goed' },
+          el('strong', {}, 'Uitnodiging verstuurd'),
+          el('p', {}, `${data2.medewerker.email} kan nu een wachtwoord kiezen.`)));
+      }
+    } catch (err) {
+      uitslag.append(el('div', { class: 'melding melding--fout', tekst: err.message }));
+    }
+  }, 'knop--primair');
+
+  lijf.append(
+    el('div', { class: 'kolomkop', tekst: 'Medewerkers' }),
+    el('div', { class: 'tabel-omhulsel' }, tabel),
+    fout,
+    el('div', { class: 'kolomkop', tekst: 'Iemand uitnodigen' }),
+    el('p', { class: 'veld__hulp' }, 'De uitgenodigde kiest zelf een wachtwoord en moet '
+      + 'tweestapsverificatie instellen voordat hij bij de dossiers kan.'),
+    el('div', { class: 'veld' }, naam),
+    el('div', { class: 'veld' }, email),
+    el('div', { class: 'veld' }, rol),
+    el('div', { class: 'knoprij' }, nodigUit),
+    uitslag,
+  );
+
+  toonLade('Accounts', lijf);
+}
+
 // ------------------------------------------------------------- opstart ----
 
 api('/api/beheer/sessie')
-  .then((data) => (data.ingelogd ? toonDashboard() : toonInloggen(data)))
+  .then((data) => {
+    rollen = data.rollen || [];
+    if (data.ingelogd) return toonDashboard(data.gebruiker);
+    return toonInloggen(data);
+  })
   .catch(() => toonInloggen());

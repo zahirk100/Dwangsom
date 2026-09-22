@@ -31,7 +31,8 @@ test('de omgeving meldt dat ze open staat', async () => {
   const data = await (await haal('/api/beheer/sessie')).json();
   assert.equal(data.ingelogd, true);
   assert.equal(data.open, true);
-  assert.equal(data.instelbaar, false, 'geen instructie om een wachtwoord te zetten');
+  assert.ok(data.gebruiker, 'in testmodus doet de omgeving alsof er een beheerder is');
+  assert.equal(data.gebruiker.rol, 'beheerder');
 });
 
 test('het overzicht is zonder cookie bereikbaar en zegt dat het open staat', async () => {

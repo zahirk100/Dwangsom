@@ -13,6 +13,37 @@
   .inlogvak { max-width: 400px; margin: 10vh auto; padding: 30px; }
   /* padding-block, anders verdwijnt de zijmarge van .omhulsel. */
   .beheer { padding-block: 26px 80px; }
+
+  /* Het geheim staat als tekst op het scherm en er is een otpauth-koppeling.
+     Een QR-code zou een bibliotheek of een externe dienst vergen; het geheim
+     naar een vreemde server sturen om er een plaatje van te maken is precies
+     wat je bij tweefactor niet moet doen. */
+  .qr-geheim {
+    display: block; margin: 8px auto 0; padding: 8px 12px; border-radius: var(--radius-klein);
+    background: var(--grijs-100); font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .84rem; letter-spacing: .08em; word-break: break-all; text-align: center;
+  }
+  .herstelcodes {
+    list-style: none; padding: 14px; margin: 12px 0 0; display: grid; gap: 6px;
+    grid-template-columns: 1fr 1fr; border-radius: var(--radius-klein);
+    background: var(--grijs-100); font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: .88rem; letter-spacing: .04em;
+  }
+
+  /* Accounts beheren. */
+  .medewerkers { width: 100%; border-collapse: collapse; }
+  .medewerkers th {
+    text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tekst-zacht); padding: 10px 12px; border-bottom: 1px solid var(--rand);
+  }
+  .medewerkers td { padding: 12px; border-bottom: 1px solid var(--rand); font-size: .92rem; }
+  .medewerkers select { max-width: 160px; }
+  @media (max-width: 720px) {
+    .medewerkers, .medewerkers tbody, .medewerkers tr, .medewerkers td { display: block; width: 100%; }
+    .medewerkers thead { display: none; }
+    .medewerkers tr { border-bottom: 1px solid var(--rand); padding: 10px 0; }
+    .medewerkers td { border: 0; padding: 4px 0; }
+  }
   .kop-rij { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
   .kop-rij h1 { margin: 0; font-size: 1.6rem; }
   .kop-rij .rechts { margin-left: auto; display: flex; gap: 10px; align-items: center; }
@@ -104,30 +135,73 @@
 <main>
   <!-- ---------------------------------------------------------- inloggen -->
   <section id="inloggen" class="verborgen">
-    <div class="kaart inlogvak verborgen" id="instellen-nodig">
-      <h1 style="font-size:1.25rem">Nog één instelling nodig</h1>
-      <p class="veld__hulp">Deze omgeving heeft geen vast beheerwachtwoord. Serverloos betekent dat
-         elke instantie anders zou zijn, dus inloggen lukt pas als u er één instelt.</p>
-      <ol class="veld__hulp" style="padding-left:18px; line-height:1.7">
-        <li>Open uw project op vercel.com</li>
-        <li>Ga naar <strong>Settings → Environment Variables</strong></li>
-        <li>Voeg <code>BEHEER_WACHTWOORD</code> toe met een sterk wachtwoord</li>
-        <li>Klik bij <strong>Deployments</strong> op <strong>Redeploy</strong></li>
-      </ol>
-      <p class="veld__hulp">Het aanvraagdeel van de site werkt ondertussen gewoon.</p>
-      <a class="knop knop--zacht" href="/" style="width:100%">Terug naar de site</a>
-    </div>
 
-    <form class="kaart inlogvak" id="inlogformulier">
+    <!-- De allereerste start: er is nog geen enkel account. -->
+    <form class="kaart inlogvak verborgen" id="eersteformulier">
+      <h1 style="font-size:1.3rem">Maak de eerste beheerder</h1>
+      <p class="veld__hulp">Er is nog geen account in deze omgeving. Maak er nu één aan; daarna
+         kan dit niet meer en gaat het via een uitnodiging.</p>
+      <div class="veld">
+        <label for="eerste-naam">Je naam</label>
+        <input type="text" id="eerste-naam" autocomplete="name" required>
+      </div>
+      <div class="veld">
+        <label for="eerste-email">E-mailadres</label>
+        <input type="email" id="eerste-email" autocomplete="username" required>
+      </div>
+      <div class="veld">
+        <label for="eerste-wachtwoord">Wachtwoord</label>
+        <input type="password" id="eerste-wachtwoord" autocomplete="new-password" required>
+        <p class="veld__hulp">Minstens 12 tekens. Je stelt hierna tweestapsverificatie in.</p>
+      </div>
+      <div id="eerste-fout"></div>
+      <button class="knop knop--primair" type="submit" style="width:100%">Account aanmaken</button>
+    </form>
+
+    <!-- Uitnodiging inwisselen: wachtwoord kiezen. -->
+    <form class="kaart inlogvak verborgen" id="uitnodigingformulier">
+      <h1 style="font-size:1.3rem">Stel je account in</h1>
+      <p class="veld__hulp">Kies een wachtwoord. Daarna stel je tweestapsverificatie in; dat is
+         verplicht, want hier staan persoonsgegevens van aanvragers.</p>
+      <div class="veld">
+        <label for="uitnodiging-wachtwoord">Wachtwoord</label>
+        <input type="password" id="uitnodiging-wachtwoord" autocomplete="new-password" required>
+        <p class="veld__hulp">Minstens 12 tekens.</p>
+      </div>
+      <div id="uitnodiging-fout"></div>
+      <button class="knop knop--primair" type="submit" style="width:100%">Doorgaan</button>
+    </form>
+
+    <!-- Gewoon inloggen. -->
+    <form class="kaart inlogvak verborgen" id="inlogformulier">
       <h1 style="font-size:1.3rem">Inloggen</h1>
       <p class="veld__hulp">Deze omgeving bevat persoonsgegevens van aanvragers.</p>
       <div class="veld">
+        <label for="email">E-mailadres</label>
+        <input type="email" id="email" autocomplete="username" required>
+      </div>
+      <div class="veld">
         <label for="wachtwoord">Wachtwoord</label>
-        <input type="password" id="wachtwoord" name="wachtwoord" autocomplete="current-password" required>
+        <input type="password" id="wachtwoord" autocomplete="current-password" required>
+      </div>
+      <div class="veld verborgen" id="codeveld">
+        <label for="code">Code uit je app</label>
+        <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code"
+               maxlength="9" placeholder="123456">
+        <p class="veld__hulp">Of een van je herstelcodes, als je je telefoon niet bij je hebt.</p>
       </div>
       <div id="inlog-fout"></div>
       <button class="knop knop--primair" type="submit" style="width:100%">Inloggen</button>
     </form>
+
+    <!-- Tweefactor instellen: verplicht voordat de dossiers opengaan. -->
+    <div class="kaart inlogvak verborgen" id="tweefactorvak">
+      <h1 style="font-size:1.3rem">Stel tweestapsverificatie in</h1>
+      <p class="veld__hulp">Dit is verplicht. Voeg het account toe in Google Authenticator, Microsoft
+         Authenticator, 1Password of een vergelijkbare app. Op je telefoon opent de knop de app
+         rechtstreeks; op een computer voer je de sleutel met de hand in.</p>
+      <div id="tweefactor-inhoud"></div>
+    </div>
   </section>
 
   <!-- --------------------------------------------------------- dashboard -->
@@ -135,6 +209,7 @@
     <div class="kop-rij">
       <h1>Binnengekomen aanvragen</h1>
       <div class="rechts">
+        <button class="knop knop--zacht knop--klein verborgen" id="knop-accounts" type="button">Accounts</button>
         <a class="knop knop--zacht knop--klein" id="knop-export" href="/api/beheer/export.csv">⬇ Exporteren (CSV)</a>
         <button class="knop knop--stil knop--klein" id="knop-uitloggen">Uitloggen</button>
       </div>

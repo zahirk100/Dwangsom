@@ -23,12 +23,8 @@ test.after(async () => {
   await fs.rm(tijdelijk, { recursive: true, force: true });
 });
 
-const inlog = await fetch(`${basisUrl}/api/beheer/login`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }),
-});
-const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+const { logInAlsBeheerder } = await import('./hulp-inloggen.mjs');
+const { cookie } = await logInAlsBeheerder(basisUrl);
 
 function haal(pad, opties = {}) {
   return fetch(basisUrl + pad, {

@@ -11,11 +11,16 @@
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { Store, STATUSSEN, SOORTEN, isGeldigeStatus, labelVoorStatus, labelVoorSoort } from './src/store.js';
 import { kiesOpslag } from './src/opslag.js';
-import { maakToken, tokenIsGeldig, sessieCookie, sessieSleutel, COOKIE_NAAM } from './src/sessie.js';
+import { sessieSleutel } from './src/sessie.js';
+import {
+  Gebruikers, ROLLEN, ROL_KLANT, COOKIE_MEDEWERKER, COOKIE_KLANT, cookieRegel,
+  naarBuiten, isMedewerker, magWijzigen, magBeheren,
+  SESSIEDUUR_MS, KLANTSESSIEDUUR_MS,
+} from './src/gebruikers.js';
+import { verstuur } from './src/mail.js';
 import {
   MAX_UPLOAD_BYTES, Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
   serveerBestand, stuurFout, stuurHtml, stuurJson, stuurTekst,
@@ -54,23 +59,32 @@ const BEHEER_OPEN = process.env.BEHEER_OPEN === '1';
  */
 const FUNNEL = process.env.FUNNEL === 'klassiek' ? 'klassiek' : 'nieuw';
 
-let beheerWachtwoord = process.env.BEHEER_WACHTWOORD || '';
-export const wachtwoordGegenereerd = !beheerWachtwoord;
-if (!beheerWachtwoord) beheerWachtwoord = randomBytes(9).toString('base64url');
-
 /**
- * Zonder BEHEER_WACHTWOORD verzint elke instantie een eigen wachtwoord. Lokaal
- * is dat prima: er is één proces en het wachtwoord komt in beeld bij het
- * starten. Serverloos is het onbruikbaar - elke instantie zou een ander
- * wachtwoord en een andere sessiesleutel hebben. Dan is inloggen niet stuk,
- * maar onmogelijk, en dat moet de beheerpagina eerlijk kunnen zeggen.
+ * De sleutel waarmee de sessiecookies worden ondertekend.
+ *
+ * Staat SESSIE_GEHEIM niet ingesteld, dan verzint elke instantie er zelf een.
+ * Lokaal is dat prima. Serverloos betekent het dat iedereen bij elke deploy
+ * en soms tussendoor wordt uitgelogd, want de volgende instantie heeft een
+ * andere sleutel. Daarom hoort SESSIE_GEHEIM erin vóór livegang; de
+ * beheerpagina zegt dat ook.
  */
-const beheerOnbruikbaar = wachtwoordGegenereerd && OP_VERCEL && !BEHEER_OPEN;
-
-const SLEUTEL = sessieSleutel({ ...process.env, BEHEER_WACHTWOORD: beheerWachtwoord });
+export const sessiegeheimOntbreekt = !process.env.SESSIE_GEHEIM;
+const SLEUTEL = sessieSleutel(process.env);
 
 const opslag = kiesOpslag({ dataDir: DATA_DIR });
 const store = new Store({ opslag });
+const gebruikers = new Gebruikers({ opslag, sleutel: SLEUTEL });
+
+/**
+ * Het adres waarop de applicatie naar buiten bereikbaar is. Nodig voor de
+ * links in e-mail: daar kan geen relatief pad in.
+ */
+function siteUrl(req) {
+  if (process.env.SITE_URL) return String(process.env.SITE_URL).replace(/\/+$/, '');
+  const host = (req && req.headers && req.headers.host) || `localhost:${POORT}`;
+  const schema = req && overHttps(req) ? 'https' : 'http';
+  return `${schema}://${host}`;
+}
 
 /** Init gebeurt één keer, ook als er tien requests tegelijk binnenkomen. */
 let initBelofte = null;
@@ -93,20 +107,31 @@ function veiligeCookie(req) {
   return process.env.SECURE_COOKIES === '1' || overHttps(req);
 }
 
-function ingelogd(req) {
-  if (BEHEER_OPEN) return true;
-  return tokenIsGeldig(SLEUTEL, parseCookies(req.headers.cookie)[COOKIE_NAAM]);
+/**
+ * Wie is dit? Geeft de medewerker terug die bij het cookie hoort, of null.
+ *
+ * Met BEHEER_OPEN=1 staat de deur open en doen we alsof er een beheerder is.
+ * Dat is puur om te kunnen proefdraaien; de omgeving waarschuwt erover en het
+ * mag nooit aan staan als er echte dossiers in zitten.
+ */
+async function huidigeMedewerker(req) {
+  if (BEHEER_OPEN) {
+    return { id: 'open', email: 'testmodus', naam: 'Testmodus', rol: 'beheerder', actief: true };
+  }
+  const cookie = parseCookies(req.headers.cookie)[COOKIE_MEDEWERKER];
+  const sessie = await gebruikers.uitCookie(cookie);
+  if (!sessie || !isMedewerker(sessie.gebruiker)) return null;
+  // Zonder ingestelde tweede factor kom je niet verder dan het instelscherm.
+  if (!sessie.gebruiker.totpBevestigdOp) return null;
+  return sessie.gebruiker;
 }
 
-function wachtwoordKlopt(ingevoerd) {
-  const gekregen = Buffer.from(String(ingevoerd || ''));
-  const verwacht = Buffer.from(beheerWachtwoord);
-  if (gekregen.length !== verwacht.length) {
-    // Toch vergelijken, zodat de duur niet verraadt of de lengte klopt.
-    timingSafeEqual(verwacht, verwacht);
-    return false;
-  }
-  return timingSafeEqual(gekregen, verwacht);
+/** De aanvrager achter het klantcookie. */
+async function huidigeKlant(req) {
+  const cookie = parseCookies(req.headers.cookie)[COOKIE_KLANT];
+  const sessie = await gebruikers.uitCookie(cookie);
+  if (!sessie || sessie.gebruiker.rol !== ROL_KLANT) return null;
+  return sessie.gebruiker;
 }
 
 // ----------------------------------------------------------------- routes --
@@ -181,6 +206,18 @@ async function publiekeApi(req, res, url) {
       return stuurJson(res, 422, { fout: 'De aanvraag is niet compleet.', velden: gevalideerd.fouten });
     }
     const { invoer, contact, stukken, rapport, brief, verlengbrief, handtekening, herkomst } = gevalideerd;
+
+    // De funnel blijft anoniem: er wordt hier een account op het opgegeven
+    // e-mailadres gemaakt, maar de aanvrager hoeft niets in te stellen. Hij
+    // komt binnen via de link in zijn bevestigingsmail.
+    let klant = null;
+    try {
+      klant = await gebruikers.vindOfMaakKlant({ email: contact.email, naam: contact.naam });
+    } catch (err) {
+      // Een account is mooi meegenomen, maar de aanvraag gaat voor.
+      console.error('[funnel] account aanmaken mislukt:', err.message);
+    }
+
     const aanvraag = await store.nieuweAanvraag({
       invoer,
       contact,
@@ -189,15 +226,46 @@ async function publiekeApi(req, res, url) {
       brief,
       verlengbrief,
       handtekening,
+      gebruikerId: klant ? klant.id : null,
       meta: {
         ingediendVia: herkomst,
         userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
       },
     });
+
+    if (klant) {
+      const token = await gebruikers.maakKoppeling(klant.id, 'magic');
+      await verstuur({
+        aan: klant.email,
+        sjabloon: 'welkom',
+        gegevens: {
+          naam: contact.naam,
+          referentie: aanvraag.referentie,
+          uitkomst: rapport && rapport.kop,
+          url: `${siteUrl(req)}/mijn?t=${encodeURIComponent(token)}`,
+        },
+      });
+    }
+    // Naar kantoor, zodat niemand in de beheeromgeving hoeft te gaan kijken
+    // om te weten dat er werk binnen is.
+    if (process.env.KANTOOR_EMAIL) {
+      await verstuur({
+        aan: process.env.KANTOOR_EMAIL,
+        sjabloon: 'nieuwDossier',
+        gegevens: {
+          referentie: aanvraag.referentie,
+          instantie: invoer.organisatienaam || invoer.bestuursorgaan,
+          uitkomst: (rapport && rapport.kop) || 'onbekend',
+          url: `${siteUrl(req)}/beheer`,
+        },
+      });
+    }
+
     return stuurJson(res, 201, {
       referentie: aanvraag.referentie,
       status: aanvraag.status,
       soort: aanvraag.soort,
+      portaal: Boolean(klant),
       rapport,
     });
   }
@@ -205,7 +273,218 @@ async function publiekeApi(req, res, url) {
   return false;
 }
 
+/**
+ * Het klantportaal.
+ *
+ * Alles hier gaat over precies één persoon: degene achter het klantcookie.
+ * Elke route zoekt zijn dossiers op via `vanGebruiker`, nooit op een id uit
+ * de url. Daarmee kan er geen dossier van een ander tevoorschijn komen, ook
+ * niet als iemand met de adresbalk speelt.
+ */
+async function klantApi(req, res, url) {
+  // Inloggen met een eenmalige koppeling uit de e-mail.
+  if (url.pathname === '/api/mijn/koppeling' && req.method === 'POST') {
+    const body = await leesJsonBody(req);
+    const gebruiker = await gebruikers.verzilverKoppeling(body.token, 'magic');
+    if (!gebruiker) {
+      return stuurFout(res, 400, 'Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.');
+    }
+    await gebruikers.noteerAanmelding(gebruiker.id);
+    const cookie = await gebruikers.maakSessie(gebruiker, {
+      ip: clientIp(req), userAgent: req.headers['user-agent'],
+    });
+    return stuurJson(res, 200, { ingelogd: true }, {
+      'Set-Cookie': cookieRegel(COOKIE_KLANT, cookie, {
+        veilig: veiligeCookie(req), duurMs: KLANTSESSIEDUUR_MS,
+      }),
+    });
+  }
+
+  // Een nieuwe link aanvragen.
+  if (url.pathname === '/api/mijn/link' && req.method === 'POST') {
+    const ip = clientIp(req);
+    const limiet = loginBegrenzer.controleer(ip);
+    if (!limiet.toegestaan) {
+      return stuurFout(res, 429, `Te veel aanvragen. Probeer het over ${limiet.wachtSeconden} seconden opnieuw.`);
+    }
+    const body = await leesJsonBody(req);
+    const gebruiker = await gebruikers.vindOpEmail(body.email);
+    // Altijd hetzelfde antwoord, ook als dit adres niet bestaat: anders is
+    // hiermee uit te vragen wie er klant is.
+    if (gebruiker && gebruiker.rol === ROL_KLANT && gebruiker.actief !== false) {
+      const token = await gebruikers.maakKoppeling(gebruiker.id, 'magic');
+      await verstuur({
+        aan: gebruiker.email,
+        sjabloon: 'inloglink',
+        gegevens: { url: `${siteUrl(req)}/mijn?t=${encodeURIComponent(token)}` },
+      });
+    }
+    return stuurJson(res, 200, { verstuurd: true });
+  }
+
+  if (url.pathname === '/api/mijn/uitloggen' && req.method === 'POST') {
+    await gebruikers.beeindigSessie(parseCookies(req.headers.cookie)[COOKIE_KLANT]);
+    return stuurJson(res, 200, { ingelogd: false }, {
+      'Set-Cookie': cookieRegel(COOKIE_KLANT, '', { verwijder: true, veilig: veiligeCookie(req) }),
+    });
+  }
+
+  // Ben ik ingelogd? Bewust 200 met een vlag, geen 401: dit is een vraag,
+  // geen mislukte poging, en een 401 zou in elke browserconsole als fout
+  // verschijnen terwijl er niets aan de hand is.
+  if (url.pathname === '/api/mijn/sessie' && req.method === 'GET') {
+    const klant = await huidigeKlant(req);
+    return stuurJson(res, 200, { ingelogd: Boolean(klant) });
+  }
+
+  if (!url.pathname.startsWith('/api/mijn/')) return false;
+
+  const klant = await huidigeKlant(req);
+  if (!klant) return stuurFout(res, 401, 'Niet ingelogd.');
+
+  if (url.pathname === '/api/mijn/dossiers' && req.method === 'GET') {
+    const dossiers = await store.vanGebruiker(klant.id);
+    return stuurJson(res, 200, {
+      gebruiker: { naam: klant.naam, email: klant.email },
+      dossiers: dossiers.map(voorKlant),
+    });
+  }
+
+  // De aanvrager vult zelf aan wat er nog ontbreekt. Bewust een korte lijst:
+  // zijn adres en telefoonnummer mag hij wijzigen, zijn BSN en IBAN niet.
+  // Die corrigeert een behandelaar, na contact.
+  const aanvullen = /^\/api\/mijn\/dossiers\/([A-Za-z0-9-]+)\/gegevens$/.exec(url.pathname);
+  if (aanvullen && req.method === 'POST') {
+    const dossiers = await store.vanGebruiker(klant.id);
+    const dossier = dossiers.find((d) => d.id === aanvullen[1]);
+    if (!dossier) return stuurFout(res, 404, 'Onbekend dossier.');
+
+    const body = await leesJsonBody(req);
+    const toegestaan = ['naam', 'telefoon', 'adres', 'postcode', 'woonplaats', 'geboortedatum'];
+    const contact = {};
+    for (const veld of toegestaan) {
+      if (veld in body) contact[veld] = String(body[veld] ?? '').trim().slice(0, 160);
+    }
+    const { contact: schoon, fouten, gewijzigd } = valideerBijwerking(dossier, { contact });
+    if (Object.keys(fouten).length > 0) {
+      return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: fouten });
+    }
+    const bijgewerkt = await store.werkDossierBij(dossier.id, {
+      contact: schoon,
+      door: 'de aanvrager',
+      toelichting: gewijzigd.length ? `Aanvrager vulde aan: ${gewijzigd.join(', ')}.` : '',
+      gewijzigd,
+    });
+    return stuurJson(res, 200, { dossier: voorKlant(bijgewerkt) });
+  }
+
+  return false;
+}
+
+/**
+ * Wat een dossier naar de klant mag meenemen.
+ *
+ * Hier zit de belangrijkste beveiliging van het portaal: een lijst met wat er
+ * wél uit mag, in plaats van een lijst met wat eruit moet. Interne notities,
+ * de historie, het burgerservicenummer en de behandelaarsvelden komen er zo
+ * nooit in terecht, ook niet als er later een veld bijkomt.
+ */
+function voorKlant(a) {
+  const contact = a.contact || {};
+  const eisen = bepaalDossiereisen(a);
+  return {
+    id: a.id,
+    referentie: a.referentie,
+    status: a.status,
+    statusLabel: labelVoorStatus(a.status),
+    aangemaaktOp: a.aangemaaktOp,
+    invoer: {
+      bestuursorgaan: a.invoer.bestuursorgaan,
+      organisatienaam: a.invoer.organisatienaam,
+      zaaktype: a.invoer.zaaktype,
+      basisdatum: a.invoer.basisdatum,
+      ingebrekeGesteld: Boolean(a.invoer.ingebrekeGesteld),
+      ingebrekestellingDatum: a.invoer.ingebrekestellingDatum || '',
+      besluitGenomen: Boolean(a.invoer.besluitGenomen),
+      besluitDatum: a.invoer.besluitDatum || '',
+    },
+    rapport: a.rapport
+      ? {
+        uitkomst: a.rapport.uitkomst,
+        kop: a.rapport.kop,
+        samenvatting: a.rapport.samenvatting,
+        beslistermijn: a.rapport.beslistermijn,
+        berekening: a.rapport.berekening,
+        vervolg: a.rapport.vervolg,
+      }
+      : null,
+    afhandeling: a.afhandeling
+      ? {
+        bedragToegekend: a.afhandeling.bedragToegekend,
+        beschikkingOp: a.afhandeling.beschikkingOp,
+        uitbetaaldOp: a.afhandeling.uitbetaaldOp,
+      }
+      : null,
+    contact: {
+      naam: contact.naam || '',
+      email: contact.email || '',
+      telefoon: contact.telefoon || '',
+      adres: contact.adres || '',
+      postcode: contact.postcode || '',
+      woonplaats: contact.woonplaats || '',
+      geboortedatum: contact.geboortedatum || '',
+      // Bewust gemaskeerd: het portaal hoeft het nooit voluit te tonen.
+      bsnBekend: Boolean(contact.bsn),
+      ibanBekend: Boolean(contact.iban),
+    },
+    ontbreekt: eisen.gegevens
+      .filter((g) => g.verplicht && !String(contact[g.id] || '').trim())
+      .map((g) => ({ id: g.id, label: g.label, reden: g.reden })),
+    machtigingGetekend: Boolean(a.machtiging && a.machtiging.ondertekendOp),
+  };
+}
+
 async function beheerApi(req, res, url) {
+  // ------------------------------------------------------------ inloggen --
+
+  if (url.pathname === '/api/beheer/sessie' && req.method === 'GET') {
+    const medewerker = await huidigeMedewerker(req);
+    // Wie wel een geldig cookie heeft maar nog geen tweede factor, moet dat
+    // eerst instellen. Dat is een aparte staat, geen fout.
+    const halve = medewerker ? null : await gebruikers.uitCookie(
+      parseCookies(req.headers.cookie)[COOKIE_MEDEWERKER],
+    );
+    return stuurJson(res, 200, {
+      ingelogd: Boolean(medewerker),
+      open: BEHEER_OPEN,
+      gebruiker: naarBuiten(medewerker),
+      tweefactorNodig: Boolean(halve && isMedewerker(halve.gebruiker) && !halve.gebruiker.totpBevestigdOp),
+      eersteStart: await gebruikers.isLeeg(),
+      rollen: ROLLEN,
+      serverloos: OP_VERCEL,
+      opslagDuurzaam: opslag.duurzaam,
+    });
+  }
+
+  /** De allereerste beheerder, zolang er nog geen enkele medewerker is. */
+  if (url.pathname === '/api/beheer/eerste-beheerder' && req.method === 'POST') {
+    if (!(await gebruikers.isLeeg())) return stuurFout(res, 409, 'Er is al een beheerder ingesteld.');
+    const body = await leesJsonBody(req);
+    try {
+      const gebruiker = await gebruikers.maakEersteBeheerder({
+        email: body.email, naam: body.naam, wachtwoord: body.wachtwoord,
+      });
+      const cookie = await gebruikers.maakSessie(gebruiker, {
+        ip: clientIp(req), userAgent: req.headers['user-agent'],
+      });
+      return stuurJson(res, 201, { gebruiker: naarBuiten(gebruiker) }, {
+        'Set-Cookie': cookieRegel(COOKIE_MEDEWERKER, cookie, { veilig: veiligeCookie(req) }),
+      });
+    } catch (err) {
+      return stuurFout(res, 400, err.message);
+    }
+  }
+
   if (url.pathname === '/api/beheer/login' && req.method === 'POST') {
     if (BEHEER_OPEN) return stuurJson(res, 200, { ingelogd: true, open: true });
     const ip = clientIp(req);
@@ -213,33 +492,146 @@ async function beheerApi(req, res, url) {
     if (!limiet.toegestaan) {
       return stuurFout(res, 429, `Te veel inlogpogingen. Probeer het over ${limiet.wachtSeconden} seconden opnieuw.`);
     }
-    if (beheerOnbruikbaar) {
-      return stuurFout(res, 503, 'Er is nog geen beheerwachtwoord ingesteld voor deze omgeving.');
-    }
     const body = await leesJsonBody(req);
-    if (!wachtwoordKlopt(body.wachtwoord)) return stuurFout(res, 401, 'Onjuist wachtwoord.');
-    loginBegrenzer.herstel(ip);
-    const cookie = sessieCookie(maakToken(SLEUTEL), { veilig: veiligeCookie(req) });
-    return stuurJson(res, 200, { ingelogd: true }, { 'Set-Cookie': cookie });
-  }
+    const uitslag = await gebruikers.controleerWachtwoord(body.email, body.wachtwoord);
+    if (uitslag.fout) return stuurFout(res, 401, uitslag.fout);
 
-  if (url.pathname === '/api/beheer/sessie' && req.method === 'GET') {
-    return stuurJson(res, 200, {
-      ingelogd: ingelogd(req),
-      open: BEHEER_OPEN,
-      wachtwoordIngesteld: !wachtwoordGegenereerd,
-      serverloos: OP_VERCEL,
-      instelbaar: beheerOnbruikbaar && !BEHEER_OPEN,
+    const gebruiker = uitslag.gebruiker;
+    // Heeft hij tweefactor aan staan, dan moet de code er nu bij.
+    if (gebruiker.totpBevestigdOp) {
+      if (!body.code) return stuurJson(res, 200, { tweefactorNodig: true });
+      if (!(await gebruikers.controleerTweedeFactor(gebruiker, body.code))) {
+        return stuurJson(res, 401, { fout: 'Die code klopt niet.', tweefactorNodig: true });
+      }
+    }
+    loginBegrenzer.herstel(ip);
+    await gebruikers.noteerAanmelding(gebruiker.id);
+    const cookie = await gebruikers.maakSessie(gebruiker, {
+      ip, userAgent: req.headers['user-agent'],
     });
+    return stuurJson(res, 200, {
+      ingelogd: true,
+      gebruiker: naarBuiten(gebruiker),
+      // Nog geen tweede factor? Dan komt hij binnen op het instelscherm.
+      tweefactorInstellen: !gebruiker.totpBevestigdOp,
+    }, { 'Set-Cookie': cookieRegel(COOKIE_MEDEWERKER, cookie, { veilig: veiligeCookie(req) }) });
   }
 
   if (url.pathname === '/api/beheer/logout' && req.method === 'POST') {
-    const cookie = sessieCookie('', { verwijder: true, veilig: veiligeCookie(req) });
-    return stuurJson(res, 200, { ingelogd: false }, { 'Set-Cookie': cookie });
+    await gebruikers.beeindigSessie(parseCookies(req.headers.cookie)[COOKIE_MEDEWERKER]);
+    return stuurJson(res, 200, { ingelogd: false }, {
+      'Set-Cookie': cookieRegel(COOKIE_MEDEWERKER, '', { verwijder: true, veilig: veiligeCookie(req) }),
+    });
+  }
+
+  /** Een uitnodiging inwisselen: wachtwoord kiezen en meteen ingelogd zijn. */
+  if (url.pathname === '/api/beheer/uitnodiging' && req.method === 'POST') {
+    const body = await leesJsonBody(req);
+    const gebruiker = await gebruikers.verzilverKoppeling(body.token, 'uitnodiging');
+    if (!gebruiker) return stuurFout(res, 400, 'Deze uitnodiging is verlopen of al gebruikt.');
+    try {
+      await gebruikers.zetWachtwoord(gebruiker.id, body.wachtwoord);
+    } catch (err) {
+      return stuurFout(res, 400, err.message);
+    }
+    const cookie = await gebruikers.maakSessie(gebruiker, {
+      ip: clientIp(req), userAgent: req.headers['user-agent'],
+    });
+    return stuurJson(res, 200, { gebruiker: naarBuiten(gebruiker), tweefactorInstellen: true }, {
+      'Set-Cookie': cookieRegel(COOKIE_MEDEWERKER, cookie, { veilig: veiligeCookie(req) }),
+    });
+  }
+
+  // ------------------------------------------------- tweefactor instellen --
+  // Hiervoor is een halve sessie genoeg: je bent wel wie je zegt, maar je
+  // komt pas bij de dossiers zodra de tweede factor staat.
+
+  if (url.pathname.startsWith('/api/beheer/tweefactor')) {
+    if (BEHEER_OPEN) return stuurFout(res, 400, 'In testmodus is tweefactor niet van toepassing.');
+    const sessie = await gebruikers.uitCookie(parseCookies(req.headers.cookie)[COOKIE_MEDEWERKER]);
+    if (!sessie || !isMedewerker(sessie.gebruiker)) return stuurFout(res, 401, 'Niet ingelogd.');
+
+    if (url.pathname === '/api/beheer/tweefactor/start' && req.method === 'POST') {
+      const { geheim, url: otpauth } = await gebruikers.begingTweefactor(sessie.gebruiker.id);
+      return stuurJson(res, 200, { geheim, otpauth });
+    }
+    if (url.pathname === '/api/beheer/tweefactor/bevestig' && req.method === 'POST') {
+      const body = await leesJsonBody(req);
+      try {
+        const herstelcodes = await gebruikers.bevestigTweefactor(sessie.gebruiker.id, body.code);
+        return stuurJson(res, 200, { herstelcodes });
+      } catch (err) {
+        return stuurFout(res, 400, err.message);
+      }
+    }
+    return false;
   }
 
   if (!url.pathname.startsWith('/api/beheer/')) return false;
-  if (!ingelogd(req)) return stuurFout(res, 401, 'Niet ingelogd.');
+
+  // --------------------------------------------------------- vanaf hier ---
+  // Alles hieronder vereist een volwaardige sessie: medewerker, actief, met
+  // tweede factor.
+  const ik = await huidigeMedewerker(req);
+  if (!ik) return stuurFout(res, 401, 'Niet ingelogd.');
+
+  /** Voor alles wat iets verandert. Een meekijker mag alleen lezen. */
+  const magNietWijzigen = () => (magWijzigen(ik)
+    ? null
+    : stuurFout(res, 403, 'Je account mag alleen meekijken, niet wijzigen.'));
+
+  // ----------------------------------------------------- medewerkers ------
+
+  if (url.pathname === '/api/beheer/medewerkers' && req.method === 'GET') {
+    if (!magBeheren(ik)) return stuurFout(res, 403, 'Alleen een beheerder kan accounts bekijken.');
+    return stuurJson(res, 200, {
+      medewerkers: (await gebruikers.medewerkers()).map(naarBuiten),
+      rollen: ROLLEN,
+      ik: naarBuiten(ik),
+    });
+  }
+
+  if (url.pathname === '/api/beheer/medewerkers' && req.method === 'POST') {
+    if (!magBeheren(ik)) return stuurFout(res, 403, 'Alleen een beheerder kan accounts aanmaken.');
+    const body = await leesJsonBody(req);
+    try {
+      const { gebruiker, uitnodiging } = await gebruikers.nodigMedewerkerUit({
+        email: body.email, naam: body.naam, rol: body.rol, door: ik.id,
+      });
+      const link = `${siteUrl(req)}/beheer?uitnodiging=${encodeURIComponent(uitnodiging)}`;
+      const mail = await verstuur({
+        aan: gebruiker.email,
+        sjabloon: 'uitnodiging',
+        gegevens: { naam: gebruiker.naam, rol: gebruiker.rol, url: link, door: ik.naam || ik.email },
+      });
+      return stuurJson(res, 201, {
+        medewerker: naarBuiten(gebruiker),
+        // Gaat er geen mail de deur uit, dan moet de beheerder de link zelf
+        // kunnen doorgeven. Anders staat er een account dat niemand kan openen.
+        uitnodigingslink: mail.soort === 'logboek' || !mail.gelukt ? link : null,
+        mail,
+      });
+    } catch (err) {
+      return stuurFout(res, 400, err.message);
+    }
+  }
+
+  const medewerkerPad = /^\/api\/beheer\/medewerkers\/([A-Za-z0-9-]+)$/.exec(url.pathname);
+  if (medewerkerPad && req.method === 'PATCH') {
+    if (!magBeheren(ik)) return stuurFout(res, 403, 'Alleen een beheerder kan accounts wijzigen.');
+    const body = await leesJsonBody(req);
+    try {
+      let gebruiker;
+      if (typeof body.rol === 'string') gebruiker = await gebruikers.wijzigRol(medewerkerPad[1], body.rol, ik.id);
+      if (typeof body.actief === 'boolean') {
+        gebruiker = await gebruikers.zetActief(medewerkerPad[1], body.actief, ik.id);
+      }
+      if (!gebruiker) return stuurFout(res, 400, 'Niets om te wijzigen.');
+      return stuurJson(res, 200, { medewerker: naarBuiten(gebruiker) });
+    } catch (err) {
+      return stuurFout(res, 400, err.message);
+    }
+  }
 
   if (url.pathname === '/api/beheer/aanvragen' && req.method === 'GET') {
     const aanvragen = await store.lijst({
@@ -287,16 +679,18 @@ async function beheerApi(req, res, url) {
     }
 
     if (!subpad && req.method === 'PATCH') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       if (!isGeldigeStatus(body.status)) return stuurFout(res, 400, 'Onbekende status.');
-      return stuurJson(res, 200, { aanvraag: await store.wijzigStatus(aanvraag.id, body.status, 'beheerder') });
+      return stuurJson(res, 200, { aanvraag: await store.wijzigStatus(aanvraag.id, body.status, ik.naam || ik.email) });
     }
 
     if (subpad === '/notities' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const tekst = String(body.tekst || '').trim().slice(0, 2000);
       if (!tekst) return stuurFout(res, 400, 'Notitie is leeg.');
-      return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, 'beheerder') });
+      return stuurJson(res, 200, { aanvraag: await store.voegNotitieToe(aanvraag.id, tekst, ik.naam || ik.email) });
     }
 
     if (subpad === '/machtiging' && req.method === 'GET') {
@@ -304,23 +698,26 @@ async function beheerApi(req, res, url) {
     }
 
     if (subpad === '/machtiging' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
-      const bijgewerkt = await store.werkMachtigingBij(aanvraag.id, body.actie, 'beheerder');
+      const bijgewerkt = await store.werkMachtigingBij(aanvraag.id, body.actie, ik.naam || ik.email);
       if (!bijgewerkt) return stuurFout(res, 400, 'Onbekende actie voor de machtiging.');
       return stuurJson(res, 200, { aanvraag: bijgewerkt });
     }
 
     if (subpad === '/stukken' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const ingestuurd = (body && typeof body.stukken === 'object' && body.stukken) || {};
       const toegestaan = new Set(bepaalDossiereisen(aanvraag).stukken.map((stuk) => stuk.id));
       const stukken = Object.fromEntries(
         Object.entries(ingestuurd).filter(([id]) => toegestaan.has(id)).map(([id, aan]) => [id, Boolean(aan)]),
       );
-      return stuurJson(res, 200, { aanvraag: await store.werkStukkenBij(aanvraag.id, stukken, 'beheerder') });
+      return stuurJson(res, 200, { aanvraag: await store.werkStukkenBij(aanvraag.id, stukken, ik.naam || ik.email) });
     }
 
     if (subpad === '/bijwerken' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const { contact, invoer, fouten, gewijzigd } = valideerBijwerking(aanvraag, body);
       if (Object.keys(fouten).length > 0) {
@@ -331,7 +728,7 @@ async function beheerApi(req, res, url) {
         contact,
         invoer: nieuweInvoer,
         rapport: berekenDwangsom(nieuweInvoer),
-        door: 'beheerder',
+        door: ik.naam || ik.email,
         toelichting: typeof body.toelichting === 'string' ? body.toelichting.slice(0, 300) : '',
         gewijzigd,
       });
@@ -339,6 +736,7 @@ async function beheerApi(req, res, url) {
     }
 
     if (subpad === '/afhandeling' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const bedrag = Number(body.bedragToegekend);
       const afhandeling = {
@@ -349,18 +747,19 @@ async function beheerApi(req, res, url) {
         status: isGeldigeStatus(body.status) ? body.status : null,
       };
       return stuurJson(res, 200, {
-        aanvraag: await store.legAfhandelingVast(aanvraag.id, afhandeling, 'beheerder'),
+        aanvraag: await store.legAfhandelingVast(aanvraag.id, afhandeling, ik.naam || ik.email),
       });
     }
 
     if (subpad === '/herbereken' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const invoer = { ...aanvraag.invoer, ...(body.invoer || {}) };
       const bijgewerkt = await store.werkRapportBij(aanvraag.id, {
         invoer,
         rapport: berekenDwangsom(invoer),
-        door: 'beheerder',
-        toelichting: body.toelichting || 'Berekening opnieuw uitgevoerd door de beheerder.',
+        door: ik.naam || ik.email,
+        toelichting: body.toelichting || 'Berekening opnieuw uitgevoerd.',
       });
       return stuurJson(res, 200, { aanvraag: bijgewerkt });
     }
@@ -474,6 +873,7 @@ export async function apiHandler(req, res) {
   standaardHeaders(res);
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if ((await beheerApi(req, res, url)) !== false) return;
+  if ((await klantApi(req, res, url)) !== false) return;
   if ((await publiekeApi(req, res, url)) !== false) return;
   stuurFout(res, 404, 'Onbekend API-pad.');
 }
@@ -493,6 +893,7 @@ const PAGINAS = {
   '/aanvraag-nieuw': 'start.html',
   '/aanvraag-klassiek': 'aanvraag-klassiek.html',
   '/beheer': 'beheer.html',
+  '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
   // Elke advertentie-ingang is een echt bestand, gemaakt door
   // scripts/maak-paginas.mjs. Hier alleen het pad zonder .html erbij, zodat
@@ -544,14 +945,16 @@ export async function start(poort = POORT) {
     console.log('  LET OP: aanvragen worden niet duurzaam bewaard. Stel KV_REST_API_URL en');
     console.log('          KV_REST_API_TOKEN in, of draai op een server met een eigen schijf.');
   }
+  console.log(`  Klantportaal:          http://localhost:${port}/mijn`);
   if (BEHEER_OPEN) {
-    console.log('  LET OP: BEHEER_OPEN=1, de beheeromgeving is zonder wachtwoord bereikbaar.\n');
-  } else if (wachtwoordGegenereerd) {
-    console.log(`  Beheerwachtwoord (gegenereerd): ${beheerWachtwoord}`);
-    console.log('  Zet BEHEER_WACHTWOORD in de omgeving om een vast wachtwoord te gebruiken.\n');
-  } else {
-    console.log('  Beheerwachtwoord: uit BEHEER_WACHTWOORD.\n');
+    console.log('  LET OP: BEHEER_OPEN=1, de beheeromgeving is zonder inloggen bereikbaar.');
+  } else if (await gebruikers.isLeeg()) {
+    console.log('  Nog geen medewerkers: open /beheer om de eerste beheerder aan te maken.');
   }
+  if (sessiegeheimOntbreekt) {
+    console.log('  LET OP: geen SESSIE_GEHEIM ingesteld; iedereen wordt bij een herstart uitgelogd.');
+  }
+  console.log('');
   return server;
 }
 

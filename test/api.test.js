@@ -13,6 +13,9 @@ const { start, server } = await import('../server.js');
 await start(0);
 const basisUrl = `http://127.0.0.1:${server.address().port}`;
 
+const { logInAlsBeheerder, TEST_WACHTWOORD } = await import('./hulp-inloggen.mjs');
+const beheer = await logInAlsBeheerder(basisUrl);
+
 test.after(async () => {
   server.close();
   await fs.rm(tijdelijk, { recursive: true, force: true });
@@ -95,14 +98,14 @@ test('het beheerdeel is afgeschermd', async () => {
 });
 
 test('inloggen met een onjuist wachtwoord mislukt', async () => {
-  const antwoord = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'fout' }) });
+  const antwoord = await haal('/api/beheer/login', {
+    method: 'POST', body: JSON.stringify({ email: 'test@nubeslist.nl', wachtwoord: 'fout-wachtwoord' }),
+  });
   assert.equal(antwoord.status, 401);
 });
 
 test('de beheerder ziet de aanvraag, wijzigt de status en voegt een notitie toe', async () => {
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  assert.equal(inlog.status, 200);
-  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const { cookie } = beheer;
   const metCookie = { headers: { cookie } };
 
   const lijst = await (await haal('/api/beheer/aanvragen', metCookie)).json();
@@ -209,8 +212,7 @@ test('een vooraanmelding vraagt geen adresgegevens, een aanvraag wel', async () 
 });
 
 test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const { cookie } = beheer;
   const metCookie = { headers: { cookie } };
 
   const alles = await (await haal('/api/beheer/aanvragen', metCookie)).json();
@@ -243,8 +245,7 @@ test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
 });
 
 test('de beheerder maakt met een klik een machtiging en houdt de status bij', async () => {
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const { cookie } = beheer;
   const metCookie = { headers: { cookie } };
 
   const aanvragen = await (await haal('/api/beheer/aanvragen?soort=aanvraag', metCookie)).json();
@@ -285,7 +286,7 @@ test('de beheerder maakt met een klik een machtiging en houdt de status bij', as
 
 test('de machtiging is niet zonder inloggen op te halen', async () => {
   const lijst = await (await haal('/api/beheer/aanvragen', {
-    headers: { cookie: (await (await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) })).headers.getSetCookie()[0].split(';')[0]) },
+    headers: { cookie: beheer.cookie },
   })).json();
   const antwoord = await haal(`/api/beheer/aanvragen/${lijst.aanvragen[0].id}/machtiging`);
   assert.equal(antwoord.status, 401);
@@ -349,8 +350,7 @@ test('een aanmelding uit de funnel bewaart de brief en de handtekening', async (
   });
   assert.equal(antwoord.status, 201);
 
-  const inlog = await haal('/api/beheer/login', { method: 'POST', body: JSON.stringify({ wachtwoord: 'test-wachtwoord' }) });
-  const cookie = inlog.headers.getSetCookie()[0].split(';')[0];
+  const { cookie } = beheer;
   const lijst = await (await haal('/api/beheer/aanvragen?zoek=funnel', { headers: { cookie } })).json();
   const detail = await (await haal(`/api/beheer/aanvragen/${lijst.aanvragen[0].id}`, { headers: { cookie } })).json();
 

@@ -17,7 +17,7 @@ instelling), later de **database en het eigen domein** voor echt gebruik.
 
    | Name | Value |
    | --- | --- |
-   | `BEHEER_WACHTWOORD` | een wachtwoord dat je zelf kiest |
+   | `SESSIE_GEHEIM` | een willekeurige reeks van 32 tekens |
 
    Wil je tijdens het testen helemaal niet inloggen, zet dan in plaats daarvan
    `BEHEER_OPEN` op `1`. De beheeromgeving is dan met één klik bereikbaar en
@@ -68,7 +68,7 @@ De CLI stelt een paar vragen (project aanmaken, naam bevestigen) en geeft daarna
 de URL. Omgevingsvariabelen zet je erbij met:
 
 ```bash
-npx vercel env add BEHEER_WACHTWOORD production
+npx vercel env add SESSIE_GEHEIM production
 ```
 
 Deze route heeft geen GitHub-koppeling nodig, maar deployt ook niet
@@ -128,7 +128,7 @@ geeft "UWV lijkt te laat", `uwv-verlenging-...pdf` schuift de datum op en
 - `/` — de landingspagina
 - `/aanvraag` — de wizard; vul bijvoorbeeld een WIA-aanvraag van acht maanden
   geleden in met een ingebrekestelling, en je ziet € 1.442 uitgerekend worden
-- `/beheer` — inloggen met je `BEHEER_WACHTWOORD`
+- `/beheer` — de eerste keer maak je hier je beheerdersaccount aan
 
 ### Wat in deze testfase nog niet werkt
 
@@ -152,12 +152,11 @@ aan te pas.
 
 ## Later: klaar voor echte klanten
 
-> **Let op:** onderstaande stappen brengen de testopstelling verder, maar zijn
-> niet het ontwerp voor de echte livegang. Dat staat in
-> [docs/livegang.md](docs/livegang.md): Postgres in plaats van Redis, accounts
-> met tweefactor in plaats van één gedeeld wachtwoord, een klantportaal, e-mail
-> en de AVG-punten. Ga je echte klanten binnenhalen, lees dan dat document
-> eerst.
+> **Let op:** onderstaande stappen brengen de testopstelling verder. Het
+> volledige draaiboek voor de livegang staat in
+> [docs/livegang.md](docs/livegang.md): domein en DNS, alle
+> omgevingsvariabelen, hoe je de eerste beheerder aanmaakt, en de AVG-punten die
+> af moeten. Ga je echte klanten binnenhalen, lees dan dat document eerst.
 
 ### 4. Database koppelen
 
@@ -230,7 +229,7 @@ Of gewoon als server, dan gebruikt de applicatie een JSON-bestand op schijf en
 is er geen database nodig:
 
 ```bash
-BEHEER_WACHTWOORD=geheim node server.js
+SESSIE_GEHEIM=een-lang-geheim node server.js
 ```
 
 ## Zonder Vercel hosten

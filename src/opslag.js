@@ -11,6 +11,11 @@
  *
  * Valt er niets te kiezen, dan is er GeheugenOpslag. Die werkt, maar is
  * vluchtig; de applicatie zegt dat er dan ook duidelijk bij.
+ *
+ * Naast de dossiers is er een tweede, algemene laag: genummerde rijen in een
+ * verzameling, met `rijen`, `rij`, `zetRij` en `wisRij`. Daar wonen de
+ * gebruikers, de sessies en de eenmalige koppelingen in. Dat scheelt een
+ * derde driver, en het is precies de vorm die straks een tabel wordt.
  */
 
 import { randomBytes } from 'node:crypto';
@@ -20,6 +25,8 @@ import path from 'node:path';
 const SLEUTEL_INDEX = 'dws:index';
 const SLEUTEL_AANVRAAG = 'dws:aanvraag:';
 const SLEUTEL_TELLER = 'dws:teller:';
+const SLEUTEL_RIJ = 'dws:rij:';
+const SLEUTEL_RIJ_INDEX = 'dws:rijen:';
 
 /** Leest de omgeving uit; Vercel KV en Upstash gebruiken andere namen. */
 export function redisInstellingen(env = process.env) {
@@ -45,7 +52,9 @@ export class BestandsOpslag {
   constructor(dataDir) {
     this.dataDir = dataDir;
     this.bestand = path.join(dataDir, 'aanvragen.json');
+    this.verzamelingenBestand = path.join(dataDir, 'verzamelingen.json');
     this.aanvragen = [];
+    this.verzamelingen = {};
     this.schrijfKetting = Promise.resolve();
   }
 
@@ -61,6 +70,15 @@ export class BestandsOpslag {
     } catch (err) {
       if (err.code !== 'ENOENT') throw new Error(`Kan ${this.bestand} niet lezen: ${err.message}`);
       this.aanvragen = [];
+    }
+    try {
+      const data = JSON.parse(await fs.readFile(this.verzamelingenBestand, 'utf8'));
+      this.verzamelingen = (data && typeof data.verzamelingen === 'object') ? data.verzamelingen : {};
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        throw new Error(`Kan ${this.verzamelingenBestand} niet lezen: ${err.message}`);
+      }
+      this.verzamelingen = {};
     }
     return this;
   }
@@ -107,6 +125,40 @@ export class BestandsOpslag {
       .filter(Number.isFinite)
       .reduce((max, n) => Math.max(max, n), 0);
     return hoogste + 1;
+  }
+
+  // ------------------------------------------------------- verzamelingen ---
+
+  #bewaarVerzamelingen() {
+    this.schrijfKetting = this.schrijfKetting.then(async () => {
+      const tijdelijk = path.join(this.dataDir, `.verzamelingen-${randomBytes(6).toString('hex')}.tmp`);
+      await fs.writeFile(tijdelijk,
+        JSON.stringify({ versie: 1, verzamelingen: this.verzamelingen }, null, 2), 'utf8');
+      await fs.rename(tijdelijk, this.verzamelingenBestand);
+    }).catch((err) => {
+      console.error('[opslag] schrijven mislukt:', err.message);
+    });
+    return this.schrijfKetting;
+  }
+
+  async rijen(verzameling) {
+    return Object.values(this.verzamelingen[verzameling] || {});
+  }
+
+  async rij(verzameling, id) {
+    return (this.verzamelingen[verzameling] || {})[id] || null;
+  }
+
+  async zetRij(verzameling, id, waarde) {
+    if (!this.verzamelingen[verzameling]) this.verzamelingen[verzameling] = {};
+    this.verzamelingen[verzameling][id] = waarde;
+    await this.#bewaarVerzamelingen();
+    return waarde;
+  }
+
+  async wisRij(verzameling, id) {
+    if (this.verzamelingen[verzameling]) delete this.verzamelingen[verzameling][id];
+    await this.#bewaarVerzamelingen();
   }
 }
 
@@ -182,6 +234,42 @@ export class RedisOpslag {
     const [nummer] = await this.#roep([['INCR', SLEUTEL_TELLER + jaar]]);
     return Number(nummer) || 1;
   }
+
+  // ------------------------------------------------------- verzamelingen ---
+  // Eén sleutel per rij, plus een set met de id's erin. Een set en geen lijst,
+  // zodat twee keer opslaan geen dubbele verwijzing oplevert.
+
+  async rijen(verzameling) {
+    const [ids] = await this.#roep([['SMEMBERS', `${SLEUTEL_RIJ_INDEX}${verzameling}`]]);
+    if (!ids || ids.length === 0) return [];
+    const [waarden] = await this.#roep([
+      ['MGET', ...ids.map((id) => `${SLEUTEL_RIJ}${verzameling}:${id}`)],
+    ]);
+    return (waarden || [])
+      .map((w) => { try { return w ? JSON.parse(w) : null; } catch { return null; } })
+      .filter(Boolean);
+  }
+
+  async rij(verzameling, id) {
+    const [waarde] = await this.#roep([['GET', `${SLEUTEL_RIJ}${verzameling}:${id}`]]);
+    if (!waarde) return null;
+    try { return JSON.parse(waarde); } catch { return null; }
+  }
+
+  async zetRij(verzameling, id, waarde) {
+    await this.#roep([
+      ['SET', `${SLEUTEL_RIJ}${verzameling}:${id}`, JSON.stringify(waarde)],
+      ['SADD', `${SLEUTEL_RIJ_INDEX}${verzameling}`, String(id)],
+    ]);
+    return waarde;
+  }
+
+  async wisRij(verzameling, id) {
+    await this.#roep([
+      ['DEL', `${SLEUTEL_RIJ}${verzameling}:${id}`],
+      ['SREM', `${SLEUTEL_RIJ_INDEX}${verzameling}`, String(id)],
+    ]);
+  }
 }
 
 // -------------------------------------------------------------- geheugen ---
@@ -193,6 +281,7 @@ export class GeheugenOpslag {
   constructor() {
     this.aanvragen = [];
     this.teller = new Map();
+    this.verzamelingen = new Map();
   }
 
   get omschrijving() {
@@ -216,4 +305,17 @@ export class GeheugenOpslag {
     this.teller.set(jaar, volgend);
     return volgend;
   }
+
+  #verzameling(naam) {
+    if (!this.verzamelingen.has(naam)) this.verzamelingen.set(naam, new Map());
+    return this.verzamelingen.get(naam);
+  }
+
+  async rijen(verzameling) { return [...this.#verzameling(verzameling).values()]; }
+  async rij(verzameling, id) { return this.#verzameling(verzameling).get(String(id)) || null; }
+  async zetRij(verzameling, id, waarde) {
+    this.#verzameling(verzameling).set(String(id), waarde);
+    return waarde;
+  }
+  async wisRij(verzameling, id) { this.#verzameling(verzameling).delete(String(id)); }
 }

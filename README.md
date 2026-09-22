@@ -88,7 +88,7 @@ lijkt te staan voordat er iets ondertekend wordt.
 
 ```bash
 node server.js                  # http://localhost:3000
-BEHEER_WACHTWOORD=geheim node server.js
+SESSIE_GEHEIM=een-lang-geheim node server.js
 npm test                        # 135 tests, zonder netwerk
 ```
 
@@ -98,7 +98,7 @@ Geen dependencies. Node 20.6 of nieuwer. Live zetten op Vercel: zie
 | Omgevingsvariabele | Standaard | Betekenis |
 | --- | --- | --- |
 | `PORT` | `3000` | Poort van de webserver |
-| `BEHEER_WACHTWOORD` | willekeurig, wordt geprint | Wachtwoord voor `/beheer` |
+| `SESSIE_GEHEIM` | per start willekeurig | Ondertekent de sessiecookies; zonder dit log je uit bij een herstart |
 | `BEHEER_OPEN` | uit | `1` opent `/beheer` zonder wachtwoord, om te proefdraaien. De omgeving waarschuwt er zelf over. Weghalen vóór livegang. |
 | `SESSIE_GEHEIM` | het beheerwachtwoord | Sleutel waarmee sessiecookies worden ondertekend |
 | `DATA_DIR` | `./data` | Map waarin `aanvragen.json` wordt bewaard |
@@ -400,17 +400,53 @@ nu niet in), richt back-ups en een bewaartermijn in, en laat de
 standaardtermijnen in de catalogus juridisch toetsen. Zie DEPLOY.md voor de
 volledige lijst.
 
+## Accounts, rollen en het klantportaal
+
+De beheeromgeving werkt met **accounts per medewerker**, niet met één gedeeld
+wachtwoord. De eerste beheerder maakt zichzelf aan op `/beheer` zolang er nog
+geen enkel account is; daarna gaat het op uitnodiging.
+
+- **Tweestapsverificatie is verplicht.** Zonder bevestigde tweede factor kom je
+  niet voorbij het instelscherm, ook niet met het juiste wachtwoord. Bij het
+  instellen krijg je acht eenmalige herstelcodes, voor als de telefoon kwijt is.
+- **Drie rollen.** Beheerder (alles, plus accounts beheren), behandelaar
+  (dossiers behandelen en afhandelen) en meekijker (alleen inzien en exporteren,
+  bijvoorbeeld voor de boekhouder).
+- **Wachtwoorden** gaan door scrypt uit `node:crypto`, met een eigen zout per
+  account en de kosten in de hash, zodat die later te verhogen zijn.
+- **De codes** volgen RFC 6238 (TOTP), met de officiële testwaarden vastgelegd
+  in `test/toegang.test.js`.
+
+Het **klantportaal** staat op `/mijn` en werkt met een inloglink per e-mail,
+zonder wachtwoord: de aanvrager komt eens per paar weken kijken, en een
+wachtwoord dat hij dan kwijt is, is alleen maar drempel. Hij ziet zijn tijdlijn,
+zijn gegevens, en vult aan wat nog ontbreekt.
+
+Wat het portaal teruggeeft is een **lijst van wat er wél uit mag**, niet van wat
+eruit moet (`voorKlant` in `server.js`). Interne notities, de historie en het
+burgerservicenummer komen er zo nooit in terecht, ook niet als er later een veld
+bijkomt. `test/portaal.test.js` legt dat vast, inclusief de vraag waar het bij
+een portaal om draait: kan iemand het dossier van een ander zien?
+
+```
+src/wachtwoord.js   scrypt-hashes, met de kosten in de hash
+src/totp.js         tweestapsverificatie en herstelcodes
+src/gebruikers.js   accounts, rollen, uitnodigingen, inloglinks, sessies
+src/mail.js         sjablonen en versturen via Resend of Postmark
+public/mijn.html    het klantportaal
+public/shared/tijdlijn.js  de tijdlijn zoals de klant hem ziet
+db/                 het Postgres-schema, klaar voor de stap naar Supabase
+```
+
 ## Van test naar live
 
-Het ontwerp voor de livegang staat in **[docs/livegang.md](docs/livegang.md)**:
-domeinnaam en DNS, de keuze voor Supabase met de afwegingen erbij, het volledige
-databaseschema met rijbeveiliging, de loginopbouw voor zowel het klantportaal
-(magic link) als de beheeromgeving (wachtwoord plus verplichte tweefactor), en
-wat er juridisch geregeld moet zijn voordat er één echte klant in zit.
+Het draaiboek staat in **[docs/livegang.md](docs/livegang.md)**: domein en DNS,
+de omgevingsvariabelen, hoe je de eerste beheerder aanmaakt, wat er daarna nog
+moet en wat er juridisch geregeld moet zijn voordat er één echte klant in zit.
+Of je GitHub wel of niet blijft gebruiken staat daar ook bij.
 
-Wat er nu draait is bewust een testopstelling: dossiers als JSON-documenten, één
-gedeeld beheerwachtwoord, geen e-mail en geen klantomgeving. Het document
-beschrijft per onderdeel wat daarvoor in de plaats komt en in welke volgorde.
+De afwegingen achter de database- en loginkeuzes staan in
+**[docs/ontwerp-database.md](docs/ontwerp-database.md)**.
 
 ## Voorbehoud
 
