@@ -137,6 +137,61 @@ Twee dingen die mensen achteraf verrassen:
 Koop meteen ook `nubeslist.com` of een veelgemaakte typefout als je dat wilt
 afschermen; dat is een paar euro per jaar en later duurder.
 
+### Welke vergoeding: percentage of vast bedrag?
+
+Dit is een bedrijfsbeslissing, geen code. Maar de wet bepaalt hier de vorm van
+het antwoord, dus hier de cijfers waarop je hem kunt nemen.
+
+De dwangsom loopt op in drie tranches: 14 dagen &euro; 23, dan 14 dagen &euro; 35,
+dan 14 dagen &euro; 45, met een maximum van &euro; 1.442 na 42 dagen. Het bedrag
+is dus niet één bedrag maar een reeks die een factor 60 overbrugt:
+
+| Dagen te laat | Dwangsom | 20% | 25% | 30% | Vast &euro; 129 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | &euro; 23 | &euro; 5 | &euro; 6 | &euro; 7 | **&euro; 23** (alles) |
+| 3 | &euro; 69 | &euro; 14 | &euro; 17 | &euro; 21 | **&euro; 69** (alles) |
+| 7 | &euro; 161 | &euro; 32 | &euro; 40 | &euro; 48 | &euro; 129 (80%) |
+| 14 | &euro; 322 | &euro; 64 | &euro; 81 | &euro; 97 | &euro; 129 (40%) |
+| 28 | &euro; 812 | &euro; 162 | &euro; 203 | &euro; 244 | &euro; 129 (16%) |
+| 42 | &euro; 1.442 | &euro; 288 | &euro; 361 | &euro; 433 | &euro; 129 (9%) |
+
+**Een vast bedrag valt af.** Bij een zaak van een paar dagen is het meer dan de
+hele dwangsom: je zou iemand een rekening sturen die hoger is dan wat hij heeft
+gekregen. Dat is niet uit te leggen en het is het soort verhaal waarmee je in
+de krant komt. En aan de bovenkant laat je het grootste deel liggen: bij een
+volle zaak vang je &euro; 129 waar 25% &euro; 361 zou zijn. Een vast bedrag
+werkt alleen als de opbrengst per zaak ongeveer gelijk is, en dat is hier juist
+niet zo.
+
+**Een percentage past bij de zaak.** Het schaalt mee, het kan per definitie
+nooit hoger zijn dan wat de klant ontvangt, en het is in één zin uit te leggen:
+"jij houdt 75%". Bij kleine zaken verdien je er niet aan — die kosten ongeveer
+evenveel werk als grote — maar dat is een reden om een ondergrens te hanteren
+in wélke zaken je aanneemt, niet om de prijs anders te bouwen.
+
+Drie dingen om vóór het kiezen uit te zoeken:
+
+- **Btw.** Voor consumenten moet de prijs die je toont de prijs zijn die zij
+  betalen, dus inclusief btw. Zet je `TARIEF_PERCENTAGE=25`, dan is dat 25%
+  inclusief, niet 25% plus 21%. Bespreek met je boekhouder of deze dienst
+  btw-plichtig is (waarschijnlijk 21%) en reken terug.
+- **Hoe je aan je geld komt.** Het bestuursorgaan betaalt de dwangsom
+  rechtstreeks aan de klant, niet aan ons — UWV zegt dat met zoveel woorden.
+  Jij stuurt dus achteraf een factuur aan iemand die het geld al binnen heeft.
+  Dat is een incassorisico dat groeit met het bedrag, en het is het sterkste
+  argument om niet te hoog te gaan zitten: 25% van &euro; 1.442 is
+  &euro; 361, en dat is een bedrag waar mensen over gaan nadenken. Regel dit in
+  de voorwaarden en overweeg een incassomachtiging bij het tekenen.
+- **Mag no-cure-no-pay hier?** Voor advocaten gelden beperkingen. Wij treden op
+  als gemachtigde in een bestuursrechtelijke procedure, wat een ander regime
+  is, maar laat dit bevestigen voordat je het groot op de homepage zet.
+
+**Advies: een percentage, ergens tussen 20% en 25%.** Lager dan 20% en de
+kleine zaken kosten je geld; hoger dan 25% en je maakt het jezelf moeilijk bij
+het innen én bij de eerste journalist die belt. Zet het daarna met
+`TARIEF_PERCENTAGE` in de omgeving; de site zet het vanzelf op de homepage, in
+de funnel vlak voor de handtekening, en in de voorwaarden.
+
 ### Vercel moet naar Pro
 
 Dit hoort bij het domein omdat het op hetzelfde moment speelt. Het gratis
