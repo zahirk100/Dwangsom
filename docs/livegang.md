@@ -435,9 +435,18 @@ kunt controleren; is dat er niet, dan is het blok niet af.
 
 ### Blok 2 — De techniek erachter (een dag)
 
-6. Koppel de opslag (`KV_REST_API_URL` en `KV_REST_API_TOKEN`). **Dit is de
-   belangrijkste stap van allemaal**: zonder opslag is elk dossier weg bij de
-   volgende deploy.
+6. Koppel de opslag. **Dit is de belangrijkste stap van allemaal**: zonder
+   opslag is elk dossier weg bij de volgende deploy.
+
+   In Vercel: *Storage → Create Database → Upstash for Redis* (Vercel KV
+   bestaat niet meer als eigen product; het loopt sinds eind 2024 via Upstash
+   in de Marketplace). Koppel hem aan het project. De integratie zet
+   `KV_REST_API_URL` en `KV_REST_API_TOKEN` vanzelf in de omgeving, en dat is
+   precies wat deze applicatie leest — je hoeft niets over te typen.
+
+   Het gratis niveau is ruim voldoende om te beginnen. Zet wel meteen de
+   back-up aan die Upstash biedt: dit is vanaf dat moment je enige kopie van
+   alle dossiers.
 7. Zet `SESSIE_GEHEIM` op een lange willekeurige reeks.
 8. Kies je tarief en zet `TARIEF_PERCENTAGE` of `TARIEF_VAST`. Zolang dit leeg
    is, noemt de site nergens een bedrag.
