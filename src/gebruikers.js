@@ -33,6 +33,14 @@ export const SESSIEDUUR_MS = 8 * 60 * 60 * 1000;
 /** Een klant blijft langer ingelogd: hij komt af en toe terug, niet dagelijks. */
 export const KLANTSESSIEDUUR_MS = 30 * 24 * 60 * 60 * 1000;
 export const KOPPELING_GELDIG_MS = 60 * 60 * 1000;
+
+/**
+ * Hoe lang een inloglink na het eerste gebruik nog werkt.
+ *
+ * Bedoeld voor mailapps en scanners die de link vóór de klant ophalen, en
+ * voor wie twee keer tikt. Kort genoeg om geen echt tweede leven te geven.
+ */
+export const KOPPELING_COULANCE_MS = 10 * 60 * 1000;
 export const UITNODIGING_GELDIG_MS = 7 * 24 * 60 * 60 * 1000;
 
 const V_GEBRUIKERS = 'gebruikers';
@@ -316,19 +324,48 @@ export class Gebruikers {
     return token;
   }
 
-  /** Wisselt een token in voor de gebruiker erachter. Daarna is hij op. */
+  /**
+   * Wisselt een token in voor de gebruiker erachter.
+   *
+   * Eén keer bruikbaar, maar met een korte coulanceperiode, en daar is een
+   * reden voor. Een link in een e-mail wordt zelden precies één keer opgehaald:
+   * mailapps en beveiligingsscanners halen hem vooraf op, iemand tikt er twee
+   * keer op, of de pagina wordt herladen. Werd de link bij de eerste aanraking
+   * vernietigd, dan kreeg de klant die hem zelf opende een inlogscherm te zien
+   * met de mededeling dat zijn link al gebruikt was. Precies dat gebeurde.
+   *
+   * Binnen `KOPPELING_COULANCE_MS` na het eerste gebruik werkt hij daarom nog;
+   * daarna is hij dood. Dat venster is klein, de link zelf is geheim en al
+   * kort geldig, en wie hem heeft heeft de mailbox — dus dit weegt niet op
+   * tegen een klant die niet in zijn eigen dossier komt.
+   */
   async verzilverKoppeling(token, soort) {
     if (!token) return null;
     const rij = await this.opslag.rij(V_KOPPELINGEN, hashToken(token));
-    if (!rij || rij.gebruiktOp) return null;
+    if (!rij) return null;
     if (rij.soort !== soort) return null;
     if (rij.verlooptOp < Date.now()) {
       await this.opslag.wisRij(V_KOPPELINGEN, rij.id);
       return null;
     }
+    if (rij.gebruiktOp && Date.now() - rij.gebruiktOp > KOPPELING_COULANCE_MS) {
+      await this.opslag.wisRij(V_KOPPELINGEN, rij.id);
+      return null;
+    }
+
     const gebruiker = await this.vind(rij.gebruikerId);
     if (!gebruiker || gebruiker.actief === false) return null;
-    await this.opslag.wisRij(V_KOPPELINGEN, rij.id);
+
+    // Uitnodigingen en wachtwoordherstel zijn wél hard eenmalig: die geven
+    // meer weg dan toegang tot je eigen dossier.
+    if (soort !== 'magic') {
+      await this.opslag.wisRij(V_KOPPELINGEN, rij.id);
+      return gebruiker;
+    }
+
+    if (!rij.gebruiktOp) {
+      await this.opslag.zetRij(V_KOPPELINGEN, rij.id, { ...rij, gebruiktOp: Date.now() });
+    }
     return gebruiker;
   }
 

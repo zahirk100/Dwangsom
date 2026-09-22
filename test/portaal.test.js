@@ -97,19 +97,48 @@ test('met een koppeling uit de mail zie je je eigen zaak', async () => {
   assert.equal(data.dossiers[0].invoer.bestuursorgaan, 'uwv');
 });
 
-test('een koppeling werkt maar één keer', async () => {
-  const { Gebruikers } = await import('../src/gebruikers.js');
+test('een inloglink overleeft een tweede keer openen, maar niet lang', async () => {
+  // Een link in een e-mail wordt zelden precies één keer opgehaald: mailapps
+  // en scanners halen hem vooraf op, en mensen tikken twee keer. Werd hij bij
+  // de eerste aanraking vernietigd, dan kreeg de klant die hem zelf opende
+  // een inlogscherm met "deze link is al gebruikt". Precies dat gebeurde.
+  const { Gebruikers, KOPPELING_COULANCE_MS } = await import('../src/gebruikers.js');
   const { sessieSleutel } = await import('../src/sessie.js');
   const hulp = new Gebruikers({ opslag, sleutel: sessieSleutel(process.env) });
   const klant = (await opslag.rijen('gebruikers')).find((g) => g.email === 'een@voorbeeld.nl');
   const token = await hulp.maakKoppeling(klant.id, 'magic');
 
-  assert.equal((await haal('/api/mijn/koppeling', {
+  const inwisselen = () => haal('/api/mijn/koppeling', {
     method: 'POST', body: JSON.stringify({ token }),
-  })).status, 200);
-  assert.equal((await haal('/api/mijn/koppeling', {
-    method: 'POST', body: JSON.stringify({ token }),
-  })).status, 400);
+  });
+
+  assert.equal((await inwisselen()).status, 200);
+  assert.equal((await inwisselen()).status, 200, 'binnen de coulanceperiode werkt hij nog');
+
+  // Nu het eerste gebruik terugzetten tot voorbij de coulanceperiode.
+  // De meest recent gebruikte koppeling van deze klant is de onze; eerdere
+  // tests hebben er ook een paar aangemaakt.
+  const rijen = await opslag.rijen('koppelingen');
+  const deze = rijen
+    .filter((r) => r.gebruikerId === klant.id && r.gebruiktOp)
+    .sort((a, b) => b.gebruiktOp - a.gebruiktOp)[0];
+  assert.ok(deze, 'de gebruikte koppeling hoort te bestaan');
+  await opslag.zetRij('koppelingen', deze.id, {
+    ...deze, gebruiktOp: Date.now() - KOPPELING_COULANCE_MS - 1000,
+  });
+  assert.equal((await inwisselen()).status, 400, 'daarna is hij op');
+});
+
+test('een uitnodiging blijft hard eenmalig', async () => {
+  // Die geeft meer weg dan toegang tot je eigen dossier.
+  const { Gebruikers } = await import('../src/gebruikers.js');
+  const { sessieSleutel } = await import('../src/sessie.js');
+  const hulp = new Gebruikers({ opslag, sleutel: sessieSleutel(process.env) });
+  const klant = (await opslag.rijen('gebruikers')).find((g) => g.email === 'een@voorbeeld.nl');
+  const token = await hulp.maakKoppeling(klant.id, 'uitnodiging');
+
+  assert.ok(await hulp.verzilverKoppeling(token, 'uitnodiging'));
+  assert.equal(await hulp.verzilverKoppeling(token, 'uitnodiging'), null);
 });
 
 test('een onbekend e-mailadres krijgt hetzelfde antwoord als een bekend', async () => {

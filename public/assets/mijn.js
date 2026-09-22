@@ -68,7 +68,15 @@ const datum = (iso) => {
 function toonInloggen(boodschap) {
   inloggen.classList.remove('verborgen');
   portaal.classList.add('verborgen');
-  if (boodschap) melding(document.getElementById('inlogmelding'), 'let-op', boodschap);
+  if (!boodschap) return;
+  // Een lege inlogpagina na een kapotte link is een doodlopende weg: de klant
+  // weet vaak niet eens meer met welk adres hij zich heeft aangemeld. Zeg dus
+  // wat er is, en laat de volgende stap één tik zijn.
+  const vak = document.getElementById('inlogmelding');
+  melding(vak, 'let-op', boodschap,
+    'Vul hieronder je e-mailadres in, dan sturen wij meteen een nieuwe link.');
+  const veld = document.getElementById('email');
+  if (veld) veld.focus();
 }
 
 /**
