@@ -29,8 +29,8 @@ const STAP_HINTS = {
   2: 'Termijnen',
   3: 'Ingebrekestelling',
   4: 'Controle',
-  5: 'Uw uitkomst',
-  6: 'Uw gegevens',
+  5: 'Je uitkomst',
+  6: 'Je gegevens',
   7: 'Benodigde stukken',
   8: 'Bevestiging',
 };
@@ -183,11 +183,11 @@ function werkVeldenBij() {
   const label = document.getElementById('basisdatum-label');
   const hulp = document.getElementById('basisdatum-hulp');
   if (zaaktype && zaaktype.termijnVanaf === 'bezwaartermijn') {
-    label.textContent = 'Datum van het besluit waartegen u bezwaar maakte';
-    hulp.textContent = 'De beslistermijn voor uw bezwaar begint pas na afloop van de bezwaartermijn van zes weken.';
+    label.textContent = 'Datum van het besluit waartegen je bezwaar maakte';
+    hulp.textContent = 'De beslistermijn voor je bezwaar begint pas na afloop van de bezwaartermijn van zes weken.';
   } else {
-    label.textContent = 'Datum van uw aanvraag';
-    hulp.textContent = 'De datum waarop de organisatie uw aanvraag heeft ontvangen.';
+    label.textContent = 'Datum van je aanvraag';
+    hulp.textContent = 'De datum waarop de organisatie je aanvraag heeft ontvangen.';
   }
 
   const naamVeld = document.getElementById('organisatienaam');
@@ -202,7 +202,7 @@ function valideerStap(nummer) {
   let ok = true;
 
   if (nummer === 1) {
-    if (!invoer.bestuursorgaan) { zetFout('bestuursorgaan', 'Kies bij welke organisatie u de aanvraag heeft ingediend.'); ok = false; }
+    if (!invoer.bestuursorgaan) { zetFout('bestuursorgaan', 'Kies bij welke organisatie je de aanvraag heeft ingediend.'); ok = false; }
     if (!invoer.zaaktype) { zetFout('zaaktype', 'Kies het soort aanvraag.'); ok = false; }
   }
 
@@ -253,11 +253,11 @@ function valideerStap(nummer) {
 // ------------------------------------------------------- uitkomst-stap ----
 
 const ICONEN = {
-  [UITKOMST.RECHT]: '\u{1F389}',
-  [UITKOMST.HERSTELTERMIJN_LOOPT]: '\u{23F3}',
-  [UITKOMST.INGEBREKESTELLING_NODIG]: '\u{2709}\u{FE0F}',
-  [UITKOMST.TERMIJN_LOOPT]: '\u{1F550}',
-  [UITKOMST.GEEN_RECHT]: '\u{2139}\u{FE0F}',
+  [UITKOMST.RECHT]: '\je{1F389}',
+  [UITKOMST.HERSTELTERMIJN_LOOPT]: '\je{23F3}',
+  [UITKOMST.INGEBREKESTELLING_NODIG]: '\je{2709}\je{FE0F}',
+  [UITKOMST.TERMIJN_LOOPT]: '\je{1F550}',
+  [UITKOMST.GEEN_RECHT]: '\je{2139}\je{FE0F}',
 };
 
 /**
@@ -267,28 +267,28 @@ const ICONEN = {
  */
 const WAT_WIJ_DOEN = {
   [UITKOMST.RECHT]: [
-    'Wij controleren uw gegevens en de opgebouwde dagen.',
+    'Wij controleren je gegevens en de opgebouwde dagen.',
     'Wij vorderen de dwangsom bij de organisatie en bewaken de betaaltermijn.',
-    'Blijft het besluit uit, dan zetten wij de volgende stap voor u.',
+    'Blijft het besluit uit, dan zetten wij de volgende stap voor je.',
   ],
   [UITKOMST.HERSTELTERMIJN_LOOPT]: [
-    'Wij noteren uw zaak en houden de lopende termijn in de gaten.',
+    'Wij noteren je zaak en houden de lopende termijn in de gaten.',
     'Komt er geen besluit, dan komen wij op de eerste dag zelf in actie.',
-    'U hoeft in de tussentijd niets te doen.',
+    'Je hoeft in de tussentijd niets te doen.',
   ],
   [UITKOMST.INGEBREKESTELLING_NODIG]: [
-    'Wij stellen de vereiste brief op en versturen die namens u, met bewijs.',
+    'Wij stellen de vereiste brief op en versturen die namens je, met bewijs.',
     'Daarna bewaken wij de termijn die de organisatie krijgt.',
-    'Wordt er niet beslist, dan vorderen wij de dwangsom voor u.',
+    'Wordt er niet beslist, dan vorderen wij de dwangsom voor je.',
   ],
   [UITKOMST.TERMIJN_LOOPT]: [
-    'Wij leggen uw zaak vast en bewaken de datum waarop de termijn afloopt.',
-    'Zodra dat mag, komen wij namens u in actie.',
-    'U krijgt bericht zodra er iets verandert.',
+    'Wij leggen je zaak vast en bewaken de datum waarop de termijn afloopt.',
+    'Zodra dat mag, komen wij namens je in actie.',
+    'Je krijgt bericht zodra er iets verandert.',
   ],
   [UITKOMST.GEEN_RECHT]: [
-    'Een van onze behandelaars kijkt naar uw situatie.',
-    'Is er een andere route, dan laten wij u weten welke.',
+    'Een van onze behandelaars kijkt naar je situatie.',
+    'Is er een andere route, dan laten wij je weten welke.',
   ],
 };
 
@@ -298,7 +298,7 @@ function rendereUitkomst() {
 
   uitkomstVak.append(
     el('div', { class: 'uitkomstkop' },
-      el('span', { class: 'uitkomstkop__icoon', tekst: ICONEN[rapport.uitkomst] || '\u{2139}\u{FE0F}' }),
+      el('span', { class: 'uitkomstkop__icoon', tekst: ICONEN[rapport.uitkomst] || '\je{2139}\je{FE0F}' }),
       el('div', {}, el('h2', { style: 'margin-bottom:4px', tekst: rapport.kop })),
     ),
     el('p', { class: 'subtiel', tekst: rapport.samenvatting }),
@@ -321,7 +321,7 @@ function rendereUitkomst() {
     uitkomstVak.append(
       el('div', { class: 'melding melding--info', style: 'margin-top:18px' },
         el('strong', {}, 'Nog niet te vorderen, wel vast te leggen'),
-        el('p', {}, `Uw zaak kan oplopen tot ${euro(1442)}. Meld u nu aan, dan bewaken wij de `
+        el('p', {}, `Je zaak kan oplopen tot ${euro(1442)}. Meld je nu aan, dan bewaken wij de `
           + 'termijnen en komen wij in actie zodra dat kan.')),
     );
   }
@@ -342,7 +342,7 @@ function rendereUitkomst() {
   // Alleen de data uit de eigen zaak, zonder de rekenregels erachter.
   const tijdlijn = (rapport.tijdlijn || []).filter((punt) => punt.sleutel !== 'bezwaartermijn');
   if (tijdlijn.length) {
-    uitkomstVak.append(el('div', { class: 'blok-titel', tekst: 'Uw zaak in data' }));
+    uitkomstVak.append(el('div', { class: 'blok-titel', tekst: 'Je zaak in data' }));
     uitkomstVak.append(el('ul', { class: 'tijdlijn' },
       tijdlijn.map((punt) => el('li', { 'data-status': punt.status },
         el('div', { class: 'tijdlijn__datum', tekst: toonDatum(parseDatum(punt.datum)) }),
@@ -353,10 +353,10 @@ function rendereUitkomst() {
 
   const watWijDoen = WAT_WIJ_DOEN[rapport.uitkomst] || [];
   if (watWijDoen.length) {
-    uitkomstVak.append(el('div', { class: 'blok-titel', tekst: 'Wat wij voor u doen' }));
+    uitkomstVak.append(el('div', { class: 'blok-titel', tekst: 'Wat wij voor je doen' }));
     uitkomstVak.append(el('ul', { class: 'stappenlijst', style: 'list-style:none; padding-left:0' },
       watWijDoen.map((regel) => el('li', { style: 'display:flex; gap:9px' },
-        el('span', { class: 'vink', tekst: '\u2713', style: 'color:var(--groen-600); font-weight:800' }),
+        el('span', { class: 'vink', tekst: '\je2713', style: 'color:var(--groen-600); font-weight:800' }),
         el('span', { tekst: regel }),
       ))));
   }
@@ -367,9 +367,9 @@ function rendereUitkomst() {
 /** De knop heet naar wat er werkelijk gebeurt bij indienen. */
 function knoptekst() {
   const soort = rapport && rapport.vervolg ? rapport.vervolg.soort : null;
-  if (soort === DOSSIERSOORT.VOORAANMELDING) return 'Vooraanmelding doen \u2192';
-  if (soort === DOSSIERSOORT.BEOORDELING) return 'Toch laten beoordelen \u2192';
-  return 'Aanvraag indienen \u2192';
+  if (soort === DOSSIERSOORT.VOORAANMELDING) return 'Vooraanmelding doen \je2192';
+  if (soort === DOSSIERSOORT.BEOORDELING) return 'Toch laten beoordelen \je2192';
+  return 'Aanvraag indienen \je2192';
 }
 
 /**
@@ -381,8 +381,8 @@ function rendereGegevensvragen() {
   const soort = rapport && rapport.vervolg ? rapport.vervolg.soort : null;
 
   document.getElementById('gegevens-intro').textContent = soort === DOSSIERSOORT.VOORAANMELDING
-    ? 'Voor een vooraanmelding hebben wij weinig nodig. Zodra wij namens u gaan optreden, vragen wij de rest op.'
-    : 'Wij vragen alleen wat wij voor deze zaak nodig hebben om namens u op te treden.';
+    ? 'Voor een vooraanmelding hebben wij weinig nodig. Zodra wij namens je gaan optreden, vragen wij de rest op.'
+    : 'Wij vragen alleen wat wij voor deze zaak nodig hebben om namens je op te treden.';
 
   for (const gegeven of eisen.gegevens) {
     const vak = form.querySelector(`[data-veld="${gegeven.id}"]`);
@@ -414,7 +414,7 @@ function rendereStukken() {
       el('input', { type: 'checkbox', name: `stuk-${stuk.id}`, 'data-stuk': stuk.id }),
       el('span', { class: 'keuze__tekst' },
         stuk.label,
-        stuk.verplicht ? '' : ' (indien u dit heeft)',
+        stuk.verplicht ? '' : ' (indien je dit heeft)',
         el('span', { class: 'keuze__uitleg', tekst: stuk.uitleg }),
       ),
     )),
@@ -424,14 +424,14 @@ function rendereStukken() {
     houder.append(el('div', { class: 'blok-titel', tekst: 'Dat regelen wij' }));
     houder.append(el('ul', { class: 'stappenlijst', style: 'list-style:none; padding-left:0' },
       vanOns.map((stuk) => el('li', { style: 'display:flex; gap:9px; margin-bottom:8px' },
-        el('span', { tekst: '\u2713', style: 'color:var(--groen-600); font-weight:800' }),
+        el('span', { tekst: '\je2713', style: 'color:var(--groen-600); font-weight:800' }),
         el('span', {}, el('strong', { tekst: stuk.label }),
           el('span', { class: 'keuze__uitleg', tekst: stuk.uitleg })),
       ))));
   }
 
   houder.append(el('p', { class: 'subtiel', style: 'margin-top:16px',
-    tekst: 'Niets aangevinkt? Ook goed. Wij vragen de ontbrekende stukken bij u op, '
+    tekst: 'Niets aangevinkt? Ook goed. Wij vragen de ontbrekende stukken bij je op, '
       + 'of halen ze zo nodig zelf bij de organisatie op.' }));
 }
 
@@ -474,8 +474,8 @@ async function verzend() {
     foutVak.append(el('div', { class: 'melding melding--fout' },
       el('strong', {}, netwerk ? 'Geen verbinding' : 'Er ging iets mis'),
       el('p', { tekst: netwerk
-        ? 'Wij konden uw aanvraag niet versturen. Controleer uw internetverbinding en probeer het opnieuw.'
-        : `Uw aanvraag is mogelijk wel ontvangen. Neem contact op als u geen bevestiging krijgt. (${err && err.message ? err.message : err})` })));
+        ? 'Wij konden je aanvraag niet versturen. Controleer je internetverbinding en probeer het opnieuw.'
+        : `Je aanvraag is mogelijk wel ontvangen. Neem contact op als je geen bevestiging krijgt. (${err && err.message ? err.message : err})` })));
   } finally {
     knopVerder.disabled = false;
     knopVerder.textContent = 'Versturen →';
@@ -494,21 +494,21 @@ function rendereBevestiging(soort) {
   extra.textContent = '';
 
   if (soort === DOSSIERSOORT.VOORAANMELDING) {
-    titel.textContent = 'Uw vooraanmelding staat genoteerd';
-    tekst.textContent = 'Wij bewaken vanaf nu de termijn in uw zaak en nemen contact op zodra er iets moet gebeuren.';
+    titel.textContent = 'Je vooraanmelding staat genoteerd';
+    tekst.textContent = 'Wij bewaken vanaf nu de termijn in je zaak en nemen contact op zodra er iets moet gebeuren.';
     const actiedatum = rapport && rapport.vervolg ? rapport.vervolg.actiedatum : null;
     if (actiedatum) {
       extra.append(el('div', { class: 'melding melding--info', style: 'margin-top:18px; text-align:left' },
         el('strong', {}, 'Wij letten op deze datum'),
-        el('p', { tekst: `${toonDatum(parseDatum(actiedatum))} \u2014 vanaf dan kunnen wij in uw zaak optreden. `
-          + 'U hoeft die datum niet zelf in de gaten te houden.' })));
+        el('p', { tekst: `${toonDatum(parseDatum(actiedatum))} \je2014 vanaf dan kunnen wij in je zaak optreden. `
+          + 'Je hoeft die datum niet zelf in de gaten te houden.' })));
     }
   } else if (soort === DOSSIERSOORT.BEOORDELING) {
-    titel.textContent = 'Uw zaak is aangemeld voor beoordeling';
-    tekst.textContent = 'Een behandelaar kijkt naar uw situatie en laat u weten of er een route is.';
+    titel.textContent = 'Je zaak is aangemeld voor beoordeling';
+    tekst.textContent = 'Een behandelaar kijkt naar je situatie en laat je weten of er een route is.';
   } else {
-    titel.textContent = 'Uw aanvraag is ontvangen';
-    tekst.textContent = 'Wij nemen binnen twee werkdagen contact met u op via het opgegeven e-mailadres.';
+    titel.textContent = 'Je aanvraag is ontvangen';
+    tekst.textContent = 'Wij nemen binnen twee werkdagen contact met je op via het opgegeven e-mailadres.';
   }
 }
 

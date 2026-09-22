@@ -14,7 +14,7 @@ import path from 'node:path';
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, '..', 'public');
 
-const BLAUW_LICHT = [47, 107, 196];
+const BLAUW_LICHT = [59, 122, 212];
 const BLAUW_DONKER = [28, 58, 110];
 const WIT = [255, 255, 255];
 
@@ -40,22 +40,41 @@ function afstandLijn(x, y, x1, y1, x2, y2) {
 }
 
 /**
+ * Afstand tot een stuk cirkel. De hoeken lopen met de klok mee vanaf drie uur,
+ * net als op het scherm, en buiten dat stuk gelden ronde uiteinden.
+ */
+function afstandBoog(x, y, cx, cy, r, van, tot) {
+  let hoek = (Math.atan2(y - cy, x - cx) * 180) / Math.PI;
+  if (hoek < 0) hoek += 360;
+  if (hoek >= van && hoek <= tot) return Math.abs(Math.hypot(x - cx, y - cy) - r);
+  const eind = (graden) => [
+    cx + r * Math.cos((graden * Math.PI) / 180),
+    cy + r * Math.sin((graden * Math.PI) / 180),
+  ];
+  const [ax, ay] = eind(van);
+  const [bx, by] = eind(tot);
+  return Math.min(Math.hypot(x - ax, y - ay), Math.hypot(x - bx, y - by));
+}
+
+/**
  * De kleur van één punt in het merkteken, in een vierkant van 64 bij 64.
+ * Hetzelfde beeld als public/merk.svg: een klokring die rechtsboven openbreekt,
+ * met daarin het vinkje dat er doorheen naar buiten loopt.
  * @returns {{kleur: number[], dekking: number}}
  */
 function merkteken(x, y, { kader = true } = {}) {
   let kleur = kader ? mengen(BLAUW_LICHT, BLAUW_DONKER, (x + y) / 128) : [0, 0, 0];
   let dekking = kader ? Math.max(0, Math.min(1, 0.5 - afstandKader(x, y, 64, 64, 16))) : 0;
 
-  // De ring: een klok die zegt dat er een termijn loopt.
-  const ring = Math.abs(Math.hypot(x - 32, y - 32) - 18) - 2;
-  const ringDekking = Math.max(0, Math.min(1, 0.5 - ring)) * 0.45;
+  // De ring: er loopt een termijn. Rechtsboven zit de opening.
+  const ring = afstandBoog(x, y, 32, 32, 18, 5, 305) - 2.1;
+  const ringDekking = Math.max(0, Math.min(1, 0.5 - ring)) * 0.48;
 
-  // Het vinkje: de beslissing die er ligt.
+  // Het vinkje: de beslissing, die door de opening naar buiten loopt.
   const vink = Math.min(
-    afstandLijn(x, y, 22.5, 32.8, 29.2, 39.5),
-    afstandLijn(x, y, 29.2, 39.5, 43, 24.8),
-  ) - 2.7;
+    afstandLijn(x, y, 22.5, 33.2, 30.8, 41.5),
+    afstandLijn(x, y, 30.8, 41.5, 51, 18.5),
+  ) - 3.1;
   const vinkDekking = Math.max(0, Math.min(1, 0.5 - vink));
 
   const witDekking = Math.max(ringDekking, vinkDekking);
@@ -156,19 +175,20 @@ function icoon(maat) {
 /**
  * Het plaatje dat in WhatsApp of LinkedIn onder een gedeelde link komt. De
  * naam en de belofte staan in de og-tags; dit beeld hoeft alleen het merk te
- * dragen, dus staat het teken groot op het merkverloop.
+ * dragen. Licht, zoals de site zelf, met een zachtblauwe ondergrond.
  */
 function deelkaart(breedte, hoogte) {
   const maat = 340;
   const links = (breedte - maat) / 2;
   const boven = (hoogte - maat) / 2;
   return teken(breedte, hoogte, (x, y) => {
-    const diep = mengen([16, 32, 60], [9, 18, 34], (x / breedte + y / hoogte) / 2);
+    // Zachtblauwe gloed vanuit linksboven op wit, net als de banner.
+    const afstand = Math.hypot(x / breedte - 0.2, y / hoogte + 0.1);
+    const ondergrond = mengen([225, 237, 252], [255, 255, 255], Math.min(1, afstand * 1.25));
     const binnen = x >= links && x < links + maat && y >= boven && y < boven + maat;
-    if (!binnen) return { kleur: diep, dekking: 1 };
+    if (!binnen) return { kleur: ondergrond, dekking: 1 };
     const punt = merkteken(((x - links) / maat) * 64, ((y - boven) / maat) * 64);
-    // Het merkteken op de donkere ondergrond, randen netjes doorgemengd.
-    return { kleur: mengen(diep, punt.kleur, punt.dekking), dekking: 1 };
+    return { kleur: mengen(ondergrond, punt.kleur, punt.dekking), dekking: 1 };
   });
 }
 

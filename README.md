@@ -15,8 +15,14 @@ gemeenten (bijstand, Wmo, jeugdhulp, vergunningen) en andere bestuursorganen. Al
 
 ## Merk en vindbaarheid
 
-De naam is **nubeslist.nl**. Het merkteken is een klok met een vinkje erin: er loopt een
-termijn, en er hoort een beslissing te komen.
+De naam is **nubeslist.nl**. Het merkteken is een klokring die rechtsboven openbreekt,
+met daarin een vinkje dat er doorheen naar buiten loopt: er liep een termijn, en er
+hoort een beslissing te komen.
+
+De site is **wit met blauw**. Er is bewust geen donkere variant: `color-scheme: light`
+staat vast in `public/assets/stijl.css`, zodat iemand met een donkere telefoon niet
+het omgekeerde ziet van wat is afgesproken. Diepte komt van lichte schaduwen en van
+`var(--papier)`, niet van gekleurde vlakken.
 
 ```
 public/merk.svg        Het merkteken, ook het favicon (vector, dus overal scherp)
@@ -27,14 +33,56 @@ scripts/maak-merk.mjs  Maakt die drie png's opnieuw uit dezelfde vormen
 ```
 
 De png's worden getekend met afstandsfuncties en `node:zlib`, zonder enige afhankelijkheid.
-Verander je het merkteken, draai dan `node scripts/maak-merk.mjs` zodat de bestanden
-gelijk blijven lopen met `public/merk.svg`.
+Verander je het merkteken in `public/merk.svg`, draai dan `node scripts/maak-merk.mjs`
+zodat de bestanden gelijk blijven lopen.
 
-Elke publieke pagina heeft een eigen `<title>`, `description`, `canonical` en og-tags. De
-beheerpagina staat bewust op `noindex, nofollow` en heeft geen deelkaart.
+De hele bezoekerskant spreekt met **je**, niet met u. Dat staat vast in
+`test/merk.test.js`: een enkel "uw" tussen de je-vorm valt meteen op.
 
-De naam in de brieven en op de machtiging komt uit `BEDRIJF_NAAM`; staat die niet ingesteld,
-dan valt hij terug op nubeslist.nl.
+## Eén intakeflow, veel voordeuren
+
+Iemand die op een WIA-advertentie klikt, hoort niet op een algemene homepage te landen
+met "de instantie" en "een aanvraag". Daarom staat in `public/shared/campagnes.js` per
+ingang de tekst van zijn eigen landingspagina, en schrijft
+`node scripts/maak-paginas.mjs` daar echte html-bestanden van:
+
+```
+/                     de algemene ingang, met de vraag "op welke instantie wacht je?"
+/uwv /uwv-wia /uwv-ww /uwv-wajong /uwv-ziektewet /uwv-bezwaar
+/gemeente /bijstand /wmo /jeugdhulp /schuldhulp /gemeente-bezwaar
+/duo /studiefinanciering /svb /aow /toeslagen
+```
+
+Elke pagina heeft zijn eigen `<title>`, `description`, `canonical`, og-tags en `h1` in
+de bron, want dat is wat een advertentie en een zoekmachine nodig hebben. Achter elke
+voordeur zit dezelfde flow: de knop geeft `?instantie=` en `?zaak=` mee, waarna ook de
+funnel "Laten we kijken of UWV te laat is" zegt en "Kies mijn UWV-brief" op de
+uploadknop zet.
+
+Waarom bestanden en geen server die rendert? Twee redenen. Op Vercel gaat het
+bestandssysteem vóór de functie, dus een bestand is de zekerste route. En de titel hoort
+in de bron te staan, niet door javascript te worden ingevuld. `test/campagnes.test.js`
+vergelijkt de uitgeschreven bestanden met het template, zodat er nooit een oude tekst
+online staat terwijl de broncode al bij is.
+
+## De reis van de bezoeker
+
+De landingspagina is geen brochure maar een intake. De opbouw volgt wat iemand in de
+eerste minuut nodig heeft:
+
+1. **Herkenning.** "Wacht je te lang op een beslissing?" en de vraag op welke instantie,
+   nog voor er één wetsartikel valt. De controle is het product.
+2. **De uitslag, als voorbeeld.** Een kaartje met instantie, procedure, datum en volgende
+   stap: dit krijg je terug. Op een bijstandspagina staat daar de gemeente, niet UWV.
+3. **Pas dan de vergoeding.** Wat er kan ontstaan als de instantie te laat blijft, en
+   hoe het bedrag oploopt.
+4. **Wat wij daarna doen**, met de tijdlijn die het dossier straks laat zien.
+
+In de funnel loopt dat door. De voortgang heet niet "stap 3 van 5" maar
+Brief, Situatie, Gegevens, Machtiging, Wij regelen het. Op het machtigingsscherm staat
+eerst **Dit gaan we nu voor je doen** (toegespitst op deze zaak) en daarna **Jouw zaak**
+met instantie, procedure, beslistermijn en volgende stap, zodat het dossier al klaar
+lijkt te staan voordat er iets ondertekend wordt.
 
 ## Starten
 
@@ -67,6 +115,7 @@ src/pdftekst.js        Tekst uit een pdf halen, met alleen node:zlib
 src/brieflezer.js      Upload aannemen: pdf, tekstbestand of geplakte tekst
 src/briefherkenning.js Uit de brieftekst de zaak, de datums en de persoon halen
 vercel.json            cleanUrls en de route van al het verkeer naar server.js
+src/landingpagina.js   De landingspagina als één template voor alle ingangen
 src/machtiging.js      Machtiging als afdrukbare pagina, uit de dossiergegevens
 src/organisatie.js     Onze eigen gegevens uit de omgeving
 src/store.js           Dossierregels: referenties, status, notities, historie
@@ -78,6 +127,8 @@ src/http-util.js       Statische bestanden, bodyparser, snelheidsbegrenzer
 public/                Landingspagina, wizard, beheeromgeving
 public/shared/         Rekenkern, catalogus, dossiereisen, brieven, datumhulpjes
 public/shared/funnelvragen.js  Welke velden de funnel nog vraagt, en waarom
+public/shared/campagnes.js     De ingangen: per advertentie een eigen tekst
+scripts/maak-paginas.mjs       Schrijft die ingangen uit als echte html-bestanden
 test/                  Unit- en integratietests (node:test)
 ```
 

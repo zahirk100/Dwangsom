@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>nubeslist.nl, wacht je te lang op een beslissing?</title>
-<meta name="description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
-<link rel="canonical" href="https://nubeslist.nl/">
+<title>Geen beslissing over je studiefinanciering?</title>
+<meta name="description" content="DUO moet binnen een bepaalde termijn op je aanvraag beslissen. Upload je brief en nubeslist.nl controleert of die termijn voorbij is.">
+<link rel="canonical" href="https://nubeslist.nl/studiefinanciering">
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="nubeslist.nl">
 <meta property="og:locale" content="nl_NL">
-<meta property="og:url" content="https://nubeslist.nl/">
-<meta property="og:title" content="Wacht je te lang op een beslissing?">
-<meta property="og:description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
+<meta property="og:url" content="https://nubeslist.nl/studiefinanciering">
+<meta property="og:title" content="Wacht je te lang op je studiefinanciering?">
+<meta property="og:description" content="DUO moet binnen een bepaalde termijn op je aanvraag beslissen. Upload je brief en nubeslist.nl controleert of die termijn voorbij is.">
 <meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Het merkteken van nubeslist.nl">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Wacht je te lang op een beslissing?">
-<meta name="twitter:description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
+<meta name="twitter:title" content="Wacht je te lang op je studiefinanciering?">
+<meta name="twitter:description" content="DUO moet binnen een bepaalde termijn op je aanvraag beslissen. Upload je brief en nubeslist.nl controleert of die termijn voorbij is.">
 <meta name="twitter:image" content="https://nubeslist.nl/deelkaart.png">
 
 <link rel="icon" href="/merk.svg" type="image/svg+xml">
@@ -51,8 +51,8 @@
       <a class="nav-secundair" href="#kosten">Kosten</a>
       <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
-      <a class="knop knop--primair knop--klein" href="/aanvraag">
-        <span class="nav-lang">Controleer mijn brief</span><span class="nav-kort">Starten</span>
+      <a class="knop knop--primair knop--klein" href="/aanvraag?instantie=duo&amp;zaak=duo-studiefinanciering">
+        <span class="nav-lang">Upload mijn DUO-brief</span><span class="nav-kort">Starten</span>
       </a>
     </nav>
   </div>
@@ -64,33 +64,15 @@
   <section class="hero">
     <div class="omhulsel hero__raster">
       <div class="hero__tekst">
-        <h1>Wacht je te lang op een beslissing?</h1>
-        <p class="hero__onder">Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.</p>
-        <p class="hero__lead">Wacht je op UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie.</p>
+        <h1>Wacht je te lang op je studiefinanciering?</h1>
+        <p class="hero__onder">Wij controleren of DUO over de beslistermijn heen is en regelen wat daarna nodig is.</p>
+        <p class="hero__lead">Upload de brief van DUO over je aanvraag. Wij zoeken de uiterste beslisdatum voor je op.</p>
 
-        <div class="keuzekaarten" role="group" aria-label="Op welke instantie wacht je?">
-          <p class="keuzekaarten__vraag">Op welke instantie wacht je?</p>
-          <div class="keuzekaarten__rij">
-            <a class="keuzekaart" href="/aanvraag?instantie=uwv">
-              <span class="keuzekaart__naam">UWV</span>
-              <span class="keuzekaart__onder">WIA, WW, Wajong, Ziektewet</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=gemeente">
-              <span class="keuzekaart__naam">Mijn gemeente</span>
-              <span class="keuzekaart__onder">Bijstand, Wmo, jeugdhulp</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=duo">
-              <span class="keuzekaart__naam">DUO</span>
-              <span class="keuzekaart__onder">Studiefinanciering</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=anders">
-              <span class="keuzekaart__naam">Andere instantie</span>
-              <span class="keuzekaart__onder">SVB, Belastingdienst, overig</span>
-            </a>
-          </div>
-          <p class="keuzekaarten__over">Weet je het niet zeker?
-            <a href="/aanvraag">Upload je brief, dan zoeken wij het uit</a>.</p>
+        <div class="hero__knoppen">
+          <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=duo&amp;zaak=duo-studiefinanciering">Upload mijn DUO-brief</a>
+          <a class="knop knop--zacht" href="#werkwijze">Eerst lezen hoe het werkt</a>
         </div>
+        <p class="hero__anders">Wacht je op iets anders? <a href="/">Begin dan hier</a>.</p>
 
         <ul class="waarborgen">
           <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
@@ -111,10 +93,10 @@
           </div>
           <div class="proefkaart__lijf">
             <span class="chipje">Jouw uitslag</span>
-            <p class="proefkaart__kop">Het lijkt erop dat UWV te laat is</p>
+            <p class="proefkaart__kop">Het lijkt erop dat DUO te laat is</p>
             <dl class="proefkaart__rijen">
-              <div><dt>Instantie</dt><dd>UWV</dd></div>
-              <div><dt>Procedure</dt><dd>WIA-aanvraag</dd></div>
+              <div><dt>Instantie</dt><dd>DUO</dd></div>
+              <div><dt>Procedure</dt><dd>Studiefinanciering of studieschuld</dd></div>
               <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
               <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
             </dl>
@@ -171,8 +153,8 @@
   <section class="blok" id="werkwijze">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Laten we kijken of de instantie te laat is</h2>
-        <p>Upload de brief waarin staat wanneer je een beslissing kunt verwachten. Wij zoeken de relevante datum voor je op.</p>
+        <h2>Laten we kijken of DUO te laat is</h2>
+        <p>Upload de brief waarin DUO zegt wanneer je een beslissing kon verwachten. Wij zoeken de relevante datum voor je op.</p>
       </div>
 
       <ol class="fasen">
@@ -215,7 +197,7 @@
       </ol>
 
       <div class="middenknop">
-        <a class="knop knop--primair knop--groot" href="/aanvraag">Controleer mijn brief</a>
+        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=duo&amp;zaak=duo-studiefinanciering">Upload mijn DUO-brief</a>
         <p class="fijndruk">Gratis en vrijblijvend. Je zit nergens aan vast.</p>
       </div>
     </div>
@@ -263,7 +245,7 @@
           </li>
           <li class="tijdlijn__punt tijdlijn__punt--bezig">
             <span class="tijdlijn__datum">De twee weken daarna</span>
-            <span class="tijdlijn__tekst">UWV heeft nu een wettelijke vervolgtermijn</span>
+            <span class="tijdlijn__tekst">DUO heeft nu een wettelijke vervolgtermijn</span>
           </li>
           <li class="tijdlijn__punt">
             <span class="tijdlijn__datum">Na die twee weken</span>
@@ -417,9 +399,9 @@
       </details>
 
       <div class="oproep">
-        <h2>Wacht je te lang op een beslissing?</h2>
+        <h2>Wacht je te lang op je studiefinanciering?</h2>
         <p>Upload je brief en je weet binnen een minuut waar je aan toe bent.</p>
-        <a class="knop knop--primair knop--groot" href="/aanvraag">Controleer mijn brief</a>
+        <a class="knop knop--primair knop--groot" href="/aanvraag?instantie=duo&amp;zaak=duo-studiefinanciering">Upload mijn DUO-brief</a>
         <p class="oproep__fijn">Gratis, vrijblijvend en zonder account</p>
       </div>
     </div>
@@ -447,7 +429,7 @@
        geen juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
     <ul class="voet__links">
       <li><a href="/">Startpagina</a></li>
-      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="/aanvraag?instantie=duo&amp;zaak=duo-studiefinanciering">Controle starten</a></li>
       <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
       <li><a href="#kosten">Kosten</a></li>
       <li><a href="#vragen">Veelgestelde vragen</a></li>

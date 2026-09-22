@@ -1,28 +1,160 @@
-<!doctype html>
+/**
+ * De landingspagina, als één template voor alle ingangen.
+ *
+ * De opbouw volgt de reis van de bezoeker, niet die van een brochure:
+ * het probleem herkennen, de brief laten lezen, het eigen resultaat zien,
+ * lezen wat wij dan regelen, en pas daarna machtigen. Wetsartikelen komen
+ * bewust laag op de pagina; de controle is het product.
+ *
+ * scripts/maak-paginas.mjs schrijft hier echte html-bestanden van, één per
+ * ingang, zodat elke advertentie op een pagina landt met zijn eigen titel,
+ * omschrijving en kop in de bron. De flow erachter is voor iedereen dezelfde.
+ */
+
+import { ALGEMEEN, CAMPAGNES } from '../public/shared/campagnes.js';
+import { labelBestuursorgaan, zoekZaaktype } from '../public/shared/catalogus.js';
+
+const SITE = 'https://nubeslist.nl';
+
+/** Tekst veilig in html zetten. */
+function veilig(tekst) {
+  return String(tekst ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Het pad waarnaar de knop gaat, met de instantie al gekozen. */
+function funnelPad(ingang) {
+  const delen = [];
+  if (ingang.instantie) delen.push(`instantie=${encodeURIComponent(ingang.instantie)}`);
+  if (ingang.zaak) delen.push(`zaak=${encodeURIComponent(ingang.zaak)}`);
+  return delen.length ? `/aanvraag?${delen.join('&amp;')}` : '/aanvraag';
+}
+
+const MERKTEKEN = (klasse) => `<svg class="${klasse}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="verloop-${klasse}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
+        </linearGradient></defs>
+        <rect width="64" height="64" rx="16" fill="url(#verloop-${klasse})"/>
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+
+const VINK = (kleur = 'var(--groen-600)') => `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
+        stroke="${kleur}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>`;
+
+/** De vier keuzes waarmee de bezoeker zijn eigen zaak aanwijst. */
+const INSTANTIEKEUZE = [
+  { id: 'uwv', label: 'UWV', onder: 'WIA, WW, Wajong, Ziektewet' },
+  { id: 'gemeente', label: 'Mijn gemeente', onder: 'Bijstand, Wmo, jeugdhulp' },
+  { id: 'duo', label: 'DUO', onder: 'Studiefinanciering' },
+  { id: 'anders', label: 'Andere instantie', onder: 'SVB, Belastingdienst, overig' },
+];
+
+/** De ingangen per instantie, voor het blok "waar wacht je op". */
+function ingangenPer(instantie) {
+  return CAMPAGNES.filter((c) => c.instantie === instantie && c.zaak);
+}
+
+/** Eén regel in het overzicht "waar wacht je op". */
+function ingangLink(campagne) {
+  return `            <li><a href="/${campagne.slug}">${veilig(campagne.kort)}</a></li>`;
+}
+
+/**
+ * De voorbeeldkaart in de hero hoort bij de ingang: op een bijstandspagina
+ * staat er de gemeente, niet UWV. Zonder ingang nemen we het geval dat het
+ * vaakst voorkomt.
+ */
+function voorbeeldZaak(ingang) {
+  const zaaktype = ingang.zaak ? zoekZaaktype(ingang.zaak) : null;
+  return {
+    instantie: instantieInEenZin(ingang.instantie),
+    naam: ingang.instantie ? labelBestuursorgaan(ingang.instantie) : 'UWV',
+    procedure: zaaktype ? zaaktype.label : (ingang.instantie ? 'je aanvraag' : 'WIA-aanvraag'),
+    datum: '4 september',
+  };
+}
+
+/** Aan het begin van een zin hoort een hoofdletter, ook bij "je gemeente". */
+function metHoofdletter(tekst) {
+  return tekst.charAt(0).toUpperCase() + tekst.slice(1);
+}
+
+/**
+ * "UWV is te laat" klopt, "Gemeente is te laat" niet. Daarom een naam die in
+ * een lopende zin past, naast de naam voor een tabelregel.
+ */
+function instantieInEenZin(id) {
+  return { gemeente: 'je gemeente', svb: 'de SVB', belastingdienst: 'de Belastingdienst' }[id]
+    || (id ? labelBestuursorgaan(id) : 'UWV');
+}
+
+function heroKeuze(ingang) {
+  if (ingang.instantie) {
+    // De instantie is al bekend uit de advertentie; dan meteen doorpakken.
+    return `        <div class="hero__knoppen">
+          <a class="knop knop--primair knop--groot" href="${funnelPad(ingang)}">${veilig(ingang.knop)}</a>
+          <a class="knop knop--zacht" href="#werkwijze">Eerst lezen hoe het werkt</a>
+        </div>
+        <p class="hero__anders">Wacht je op iets anders? <a href="/">Begin dan hier</a>.</p>`;
+  }
+  return `        <div class="keuzekaarten" role="group" aria-label="Op welke instantie wacht je?">
+          <p class="keuzekaarten__vraag">Op welke instantie wacht je?</p>
+          <div class="keuzekaarten__rij">
+${INSTANTIEKEUZE.map((k) => `            <a class="keuzekaart" href="/aanvraag?instantie=${k.id}">
+              <span class="keuzekaart__naam">${veilig(k.label)}</span>
+              <span class="keuzekaart__onder">${veilig(k.onder)}</span>
+            </a>`).join('\n')}
+          </div>
+          <p class="keuzekaarten__over">Weet je het niet zeker?
+            <a href="/aanvraag">Upload je brief, dan zoeken wij het uit</a>.</p>
+        </div>`;
+}
+
+/**
+ * @param {object} ingang een record uit public/shared/campagnes.js
+ * @returns {string} de volledige html van die landingspagina
+ */
+export function landingHtml(ingang) {
+  const url = ingang.slug ? `${SITE}/${ingang.slug}` : `${SITE}/`;
+  const pad = funnelPad(ingang);
+  const voorbeeld = voorbeeldZaak(ingang);
+  // Een campagnepagina heeft geen eigen sectiekop nodig: die volgt uit de
+  // instantie, net als de eerste zin in de funnel zelf.
+  const uploadkop = ingang.uploadkop
+    || `Laten we kijken of ${instantieInEenZin(ingang.instantie)} te laat is`;
+  const uploadtekst = ingang.uploadtekst
+    || `Upload de brief waarin ${instantieInEenZin(ingang.instantie)} zegt wanneer je een `
+      + 'beslissing kon verwachten. Wij zoeken de relevante datum voor je op.';
+
+  return `<!doctype html>
 <html lang="nl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>nubeslist.nl, wacht je te lang op een beslissing?</title>
-<meta name="description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
-<link rel="canonical" href="https://nubeslist.nl/">
+<title>${veilig(ingang.titel)}</title>
+<meta name="description" content="${veilig(ingang.omschrijving)}">
+<link rel="canonical" href="${url}">
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="nubeslist.nl">
 <meta property="og:locale" content="nl_NL">
-<meta property="og:url" content="https://nubeslist.nl/">
-<meta property="og:title" content="Wacht je te lang op een beslissing?">
-<meta property="og:description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
-<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta property="og:url" content="${url}">
+<meta property="og:title" content="${veilig(ingang.kop)}">
+<meta property="og:description" content="${veilig(ingang.omschrijving)}">
+<meta property="og:image" content="${SITE}/deelkaart.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Het merkteken van nubeslist.nl">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Wacht je te lang op een beslissing?">
-<meta name="twitter:description" content="Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie. Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.">
-<meta name="twitter:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:title" content="${veilig(ingang.kop)}">
+<meta name="twitter:description" content="${veilig(ingang.omschrijving)}">
+<meta name="twitter:image" content="${SITE}/deelkaart.png">
 
 <link rel="icon" href="/merk.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icoon-180.png">
@@ -34,16 +166,7 @@
 <header class="balk">
   <div class="omhulsel balk__inhoud">
     <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
-      <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="verloop-merk__teken" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
-        </linearGradient></defs>
-        <rect width="64" height="64" rx="16" fill="url(#verloop-merk__teken)"/>
-        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
-              stroke-linecap="round" opacity=".48"/>
-        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      ${MERKTEKEN('merk__teken')}
       <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
     </a>
     <nav>
@@ -51,8 +174,8 @@
       <a class="nav-secundair" href="#kosten">Kosten</a>
       <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
-      <a class="knop knop--primair knop--klein" href="/aanvraag">
-        <span class="nav-lang">Controleer mijn brief</span><span class="nav-kort">Starten</span>
+      <a class="knop knop--primair knop--klein" href="${pad}">
+        <span class="nav-lang">${veilig(ingang.knop)}</span><span class="nav-kort">Starten</span>
       </a>
     </nav>
   </div>
@@ -64,41 +187,16 @@
   <section class="hero">
     <div class="omhulsel hero__raster">
       <div class="hero__tekst">
-        <h1>Wacht je te lang op een beslissing?</h1>
-        <p class="hero__onder">Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.</p>
-        <p class="hero__lead">Wacht je op UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut duidelijkheid over jouw situatie.</p>
+        <h1>${veilig(ingang.kop)}</h1>
+        <p class="hero__onder">${veilig(ingang.onder)}</p>
+        <p class="hero__lead">${veilig(ingang.lead)}</p>
 
-        <div class="keuzekaarten" role="group" aria-label="Op welke instantie wacht je?">
-          <p class="keuzekaarten__vraag">Op welke instantie wacht je?</p>
-          <div class="keuzekaarten__rij">
-            <a class="keuzekaart" href="/aanvraag?instantie=uwv">
-              <span class="keuzekaart__naam">UWV</span>
-              <span class="keuzekaart__onder">WIA, WW, Wajong, Ziektewet</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=gemeente">
-              <span class="keuzekaart__naam">Mijn gemeente</span>
-              <span class="keuzekaart__onder">Bijstand, Wmo, jeugdhulp</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=duo">
-              <span class="keuzekaart__naam">DUO</span>
-              <span class="keuzekaart__onder">Studiefinanciering</span>
-            </a>
-            <a class="keuzekaart" href="/aanvraag?instantie=anders">
-              <span class="keuzekaart__naam">Andere instantie</span>
-              <span class="keuzekaart__onder">SVB, Belastingdienst, overig</span>
-            </a>
-          </div>
-          <p class="keuzekaarten__over">Weet je het niet zeker?
-            <a href="/aanvraag">Upload je brief, dan zoeken wij het uit</a>.</p>
-        </div>
+${heroKeuze(ingang)}
 
         <ul class="waarborgen">
-          <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Gratis eerste controle</span></li>
-          <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Binnen 1 minuut duidelijkheid</span></li>
-          <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Geen juridisch uitzoekwerk</span></li>
+          <li>${VINK()}<span>Gratis eerste controle</span></li>
+          <li>${VINK()}<span>Binnen 1 minuut duidelijkheid</span></li>
+          <li>${VINK()}<span>Geen juridisch uitzoekwerk</span></li>
         </ul>
       </div>
 
@@ -111,11 +209,11 @@
           </div>
           <div class="proefkaart__lijf">
             <span class="chipje">Jouw uitslag</span>
-            <p class="proefkaart__kop">Het lijkt erop dat UWV te laat is</p>
+            <p class="proefkaart__kop">Het lijkt erop dat ${veilig(voorbeeld.instantie)} te laat is</p>
             <dl class="proefkaart__rijen">
-              <div><dt>Instantie</dt><dd>UWV</dd></div>
-              <div><dt>Procedure</dt><dd>WIA-aanvraag</dd></div>
-              <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>4 september</dd></div>
+              <div><dt>Instantie</dt><dd>${veilig(voorbeeld.naam)}</dd></div>
+              <div><dt>Procedure</dt><dd>${veilig(voorbeeld.procedure)}</dd></div>
+              <div><dt>Beslissen v&oacute;&oacute;r</dt><dd>${veilig(voorbeeld.datum)}</dd></div>
               <div><dt>Beslissing ontvangen</dt><dd>Nee</dd></div>
             </dl>
             <p class="proefkaart__stap">Volgende stap: melding te late beslissing</p>
@@ -171,8 +269,8 @@
   <section class="blok" id="werkwijze">
     <div class="omhulsel">
       <div class="sectiekop">
-        <h2>Laten we kijken of de instantie te laat is</h2>
-        <p>Upload de brief waarin staat wanneer je een beslissing kunt verwachten. Wij zoeken de relevante datum voor je op.</p>
+        <h2>${veilig(uploadkop)}</h2>
+        <p>${veilig(uploadtekst)}</p>
       </div>
 
       <ol class="fasen">
@@ -215,7 +313,7 @@
       </ol>
 
       <div class="middenknop">
-        <a class="knop knop--primair knop--groot" href="/aanvraag">Controleer mijn brief</a>
+        <a class="knop knop--primair knop--groot" href="${pad}">${veilig(ingang.knop)}</a>
         <p class="fijndruk">Gratis en vrijblijvend. Je zit nergens aan vast.</p>
       </div>
     </div>
@@ -263,7 +361,7 @@
           </li>
           <li class="tijdlijn__punt tijdlijn__punt--bezig">
             <span class="tijdlijn__datum">De twee weken daarna</span>
-            <span class="tijdlijn__tekst">UWV heeft nu een wettelijke vervolgtermijn</span>
+            <span class="tijdlijn__tekst">${veilig(metHoofdletter(voorbeeld.instantie))} heeft nu een wettelijke vervolgtermijn</span>
           </li>
           <li class="tijdlijn__punt">
             <span class="tijdlijn__datum">Na die twee weken</span>
@@ -292,21 +390,13 @@
         <article class="kaart ingang">
           <h3><span class="label-chip label-chip--blauw">UWV</span> Uitkeringen en beoordelingen</h3>
           <ul>
-            <li><a href="/uwv-wia">je WIA-beslissing</a></li>
-            <li><a href="/uwv-ww">je WW-uitkering</a></li>
-            <li><a href="/uwv-wajong">je Wajong-beslissing</a></li>
-            <li><a href="/uwv-ziektewet">je Ziektewet-uitkering</a></li>
-            <li><a href="/uwv-bezwaar">je bezwaar bij UWV</a></li>
+${ingangenPer('uwv').map(ingangLink).join('\n')}
           </ul>
         </article>
         <article class="kaart ingang">
           <h3><span class="label-chip label-chip--paars">Gemeente</span> Inkomen, zorg en hulp</h3>
           <ul>
-            <li><a href="/bijstand">je bijstandsuitkering</a></li>
-            <li><a href="/wmo">je Wmo-aanvraag</a></li>
-            <li><a href="/jeugdhulp">je aanvraag voor jeugdhulp</a></li>
-            <li><a href="/schuldhulp">je schuldhulpverlening</a></li>
-            <li><a href="/gemeente-bezwaar">je bezwaar bij de gemeente</a></li>
+${ingangenPer('gemeente').map(ingangLink).join('\n')}
           </ul>
         </article>
         <article class="kaart ingang">
@@ -332,20 +422,17 @@
       </div>
       <div class="kosten">
         <article class="kaart">
-          <h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Controleren is gratis</h3>
+          <h3>${VINK()} Controleren is gratis</h3>
           <p>De uitslag op het scherm kost je niets en verplicht je tot niets. Je beslist daarna
              zelf of je ons inschakelt.</p>
         </article>
         <article class="kaart">
-          <h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Geen vergoeding, geen kosten</h3>
+          <h3>${VINK()} Geen vergoeding, geen kosten</h3>
           <p>Wordt er geen dwangsom toegekend, dan brengen wij je niets in rekening. Het risico
              ligt bij ons.</p>
         </article>
         <article class="kaart">
-          <h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> Het geld gaat naar jou</h3>
+          <h3>${VINK()} Het geld gaat naar jou</h3>
           <p>Een toegekende dwangsom wordt door de instantie rechtstreeks op je eigen rekening
              gestort.</p>
         </article>
@@ -417,9 +504,9 @@
       </details>
 
       <div class="oproep">
-        <h2>Wacht je te lang op een beslissing?</h2>
+        <h2>${veilig(ingang.kop)}</h2>
         <p>Upload je brief en je weet binnen een minuut waar je aan toe bent.</p>
-        <a class="knop knop--primair knop--groot" href="/aanvraag">Controleer mijn brief</a>
+        <a class="knop knop--primair knop--groot" href="${pad}">${veilig(ingang.knop)}</a>
         <p class="oproep__fijn">Gratis, vrijblijvend en zonder account</p>
       </div>
     </div>
@@ -429,16 +516,7 @@
 <footer class="voet">
   <div class="omhulsel">
     <div class="voet__merk">
-      <svg class="voet__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="verloop-voet__teken" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
-        </linearGradient></defs>
-        <rect width="64" height="64" rx="16" fill="url(#verloop-voet__teken)"/>
-        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
-              stroke-linecap="round" opacity=".48"/>
-        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      ${MERKTEKEN('voet__teken')}
       <span>nubeslist.nl</span>
     </div>
     <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
@@ -447,7 +525,7 @@
        geen juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
     <ul class="voet__links">
       <li><a href="/">Startpagina</a></li>
-      <li><a href="/aanvraag">Controle starten</a></li>
+      <li><a href="${pad}">Controle starten</a></li>
       <li><a href="/hoe-werkt-het">Hoe de regeling werkt</a></li>
       <li><a href="#kosten">Kosten</a></li>
       <li><a href="#vragen">Veelgestelde vragen</a></li>
@@ -458,3 +536,14 @@
 
 </body>
 </html>
+`;
+}
+
+/** Alle pagina's die gegenereerd moeten worden, als {bestandsnaam, html}. */
+export function alleLandingspaginas() {
+  return [ALGEMEEN, ...CAMPAGNES].map((ingang) => ({
+    bestand: ingang.slug ? `${ingang.slug}.html` : 'index.html',
+    ingang,
+    html: landingHtml(ingang),
+  }));
+}

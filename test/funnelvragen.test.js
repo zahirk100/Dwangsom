@@ -37,7 +37,7 @@ test('staat er geen nummer in de brief, dan wordt het gewoon gevraagd', () => {
   const zaak = { bestuursorgaan: 'uwv', herkenning: { naam: 'K. Bakker' } };
   const velden = ids(zaak);
   assert.ok(velden.includes('bsn'));
-  assert.match(teVragenVelden(zaak).find((v) => v.id === 'bsn').hulp, /uw zaak te kunnen vinden/);
+  assert.match(teVragenVelden(zaak).find((v) => v.id === 'bsn').hulp, /je zaak te kunnen vinden/);
 });
 
 test('instanties die geen burgerservicenummer vragen, krijgen dat veld niet', () => {

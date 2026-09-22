@@ -1,0 +1,280 @@
+/*
+ * De landingspagina's. Wit als basis, blauw als accent: geen donkere vlakken,
+ * alleen zachte blauwe gloed, blauwe randen en blauwe tekst waar iets klikt.
+ * Diepte komt van lichte schaduwen en van var(--papier), niet van kleurvlakken.
+ */
+
+/* ------------------------------------------------------------------ hero -- */
+.hero {
+  position: relative;
+  /* Twee zachte blauwe gloeden op wit. Dat geeft de bovenkant lucht zonder
+     dat er ook maar iets donker wordt. */
+  background:
+    radial-gradient(760px 420px at 8% -18%, #dbe8fb 0%, rgba(219, 232, 251, 0) 70%),
+    radial-gradient(620px 380px at 92% -10%, #e8f1fd 0%, rgba(232, 241, 253, 0) 72%),
+    var(--vlak);
+  border-bottom: 1px solid var(--rand);
+}
+.hero__raster {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: 56px; align-items: center;
+  /* padding-block, want de zijmarge komt van .omhulsel. */
+  padding-block: 64px 68px;
+}
+.hero h1 {
+  font-size: clamp(2.05rem, 1.2rem + 3vw, 3.15rem); line-height: 1.07;
+  letter-spacing: -.032em; margin: 0 0 16px; text-wrap: balance; color: var(--blauw-900);
+}
+.hero__onder {
+  font-size: clamp(1.08rem, 1rem + .5vw, 1.3rem); font-weight: 600;
+  color: var(--blauw-700); line-height: 1.45; margin: 0 0 14px; max-width: 42ch;
+  /* Voorkomt dat er één woord alleen op de laatste regel achterblijft. */
+  text-wrap: pretty;
+}
+.hero__lead { font-size: 1.02rem; color: var(--tekst-zacht); margin: 0; max-width: 48ch; }
+.hero__knoppen { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 14px; }
+.hero__anders { font-size: .89rem; color: var(--tekst-zacht); margin: 0 0 22px; }
+
+/* De vier keuzes: de bezoeker wijst zijn eigen zaak aan, en dat is meteen
+   de eerste stap van de intake. */
+.keuzekaarten { margin: 28px 0 22px; }
+.keuzekaarten__vraag {
+  font-weight: 700; font-size: .95rem; color: var(--blauw-900); margin: 0 0 12px;
+}
+.keuzekaarten__rij { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.keuzekaart {
+  display: flex; flex-direction: column; gap: 2px; padding: 15px 16px;
+  border: 1.5px solid var(--rand-sterk); border-radius: var(--radius); background: var(--vlak);
+  text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+.keuzekaart:hover, .keuzekaart:focus-visible {
+  border-color: var(--blauw-500); box-shadow: 0 6px 18px rgba(36, 80, 154, .12);
+  transform: translateY(-1px);
+}
+.keuzekaart__naam { font-weight: 700; color: var(--blauw-800); font-size: 1rem; }
+.keuzekaart__onder { font-size: .82rem; color: var(--tekst-zacht); line-height: 1.35; }
+.keuzekaarten__over { font-size: .89rem; color: var(--tekst-zacht); margin: 12px 0 0; }
+
+.waarborgen {
+  list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 22px;
+}
+.waarborgen li {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: .89rem; font-weight: 580; color: var(--tekst-zacht);
+}
+.waarborgen svg { width: 17px; height: 17px; flex: none; }
+
+/* De proefkaart: laat zien wat je terugkrijgt, voordat je iets doet. */
+.hero__beeld { display: flex; flex-direction: column; gap: 14px; }
+.proefkaart {
+  border: 1px solid var(--rand); border-radius: 18px; background: var(--vlak);
+  box-shadow: 0 18px 44px rgba(20, 45, 90, .1); overflow: hidden;
+}
+.proefkaart__balk {
+  display: flex; gap: 6px; padding: 12px 16px; background: var(--papier);
+  border-bottom: 1px solid var(--rand);
+}
+.proefkaart__stip { width: 9px; height: 9px; border-radius: 50%; background: var(--rand-sterk); }
+.proefkaart__lijf { padding: 22px 22px 24px; }
+.chipje {
+  display: inline-block; padding: 4px 11px; border-radius: 999px;
+  background: var(--blauw-100); color: var(--blauw-600);
+  font-size: .72rem; font-weight: 720; text-transform: uppercase; letter-spacing: .06em;
+}
+.proefkaart__kop {
+  font-size: 1.16rem; font-weight: 740; color: var(--blauw-900);
+  margin: 12px 0 16px; line-height: 1.3; letter-spacing: -.015em;
+}
+.proefkaart__rijen { margin: 0; display: grid; gap: 0; }
+.proefkaart__rijen > div {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 9px 0; border-top: 1px solid var(--rand);
+}
+.proefkaart__rijen dt { font-size: .86rem; color: var(--tekst-zacht); margin: 0; }
+.proefkaart__rijen dd { font-size: .88rem; font-weight: 660; margin: 0; text-align: right; }
+.proefkaart__stap {
+  margin: 16px 0 0; padding: 11px 14px; border-radius: var(--radius-klein);
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  font-size: .87rem; font-weight: 640; color: var(--blauw-700);
+}
+.hero__beelduitleg { font-size: .85rem; color: var(--tekst-zacht); margin: 0; max-width: 42ch; }
+
+/* --------------------------------------------------------------- secties -- */
+.blok { padding-block: 66px; }
+.blok--papier { background: var(--papier); border-block: 1px solid var(--rand); }
+.sectiekop { max-width: 62ch; margin-bottom: 34px; }
+.sectiekop h2 { text-wrap: balance; color: var(--blauw-900); }
+.sectiekop p { color: var(--tekst-zacht); margin-bottom: 0; }
+.fijndruk { font-size: .85rem; color: var(--tekst-zacht); }
+
+/* --------------------------------------------------------- de vergoeding -- */
+.vergoeding__raster {
+  display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+  gap: 34px; align-items: start;
+}
+.bedragkaart { padding: 26px; }
+.bedragkaart__titel {
+  display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--tekst-zacht); font-weight: 720;
+}
+.bedragkaart__bedrag {
+  display: block; font-size: clamp(2.5rem, 6vw, 3.1rem); font-weight: 800;
+  letter-spacing: -.035em; margin: 4px 0 8px; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--blauw-800);
+}
+.bedragkaart__onder { color: var(--tekst-zacht); font-size: .92rem; margin: 0; }
+.staaf { display: grid; grid-template-columns: repeat(42, 1fr); gap: 3px; margin: 20px 0 14px; }
+.staaf span { height: 30px; border-radius: 4px; }
+.staaf .t1 { background: var(--blauw-100); }
+.staaf .t2 { background: #9dc2f0; }
+.staaf .t3 { background: var(--blauw-500); }
+.tarieven { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; }
+.tarieven li {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: .87rem; color: var(--tekst-zacht);
+}
+.tarieven strong {
+  min-width: 3.4em; font-size: 1rem; color: var(--blauw-800);
+  font-variant-numeric: tabular-nums;
+}
+.vergoeding__tekst h3 { color: var(--blauw-900); margin-bottom: 10px; }
+.vergoeding__tekst p { color: var(--tekst-zacht); }
+
+/* -------------------------------------------------------------- de fasen -- */
+.fasen { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.fase {
+  display: grid; grid-template-columns: 44px 1fr; gap: 18px; align-items: start;
+  padding: 22px 24px; border: 1px solid var(--rand); border-radius: var(--radius);
+  background: var(--vlak); box-shadow: var(--schaduw-klein);
+}
+.fase__merk {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px;
+  background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  color: var(--blauw-600); font-weight: 800; font-size: 1.1rem;
+}
+.fase h3 { font-size: 1.06rem; margin: 2px 0 6px; color: var(--blauw-900); }
+.fase p { font-size: .95rem; color: var(--tekst-zacht); margin: 0; max-width: 68ch; }
+.fase__tijd {
+  display: inline-block; margin-top: 10px; font-size: .79rem; font-weight: 660;
+  color: var(--blauw-600); background: var(--blauw-50); border-radius: 999px; padding: 3px 11px;
+}
+
+.middenknop { margin-top: 32px; text-align: center; }
+.middenknop .fijndruk { margin: 12px 0 0; }
+
+/* ----------------------------------------------------------- het plan ---- */
+.plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.plan__stap { padding: 24px; }
+.plan__wanneer {
+  display: inline-block; font-size: .74rem; font-weight: 740; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--blauw-600); margin-bottom: 10px;
+}
+.plan__stap h3 { font-size: 1.02rem; margin-bottom: 8px; color: var(--blauw-900); }
+.plan__stap p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+
+/* De tijdlijn: wat de klant na het machtigen te zien krijgt. */
+.tijdlijnvoorbeeld {
+  margin-top: 30px; padding: 28px; border-radius: var(--radius);
+  background: var(--vlak); border: 1px solid var(--rand);
+}
+.tijdlijnvoorbeeld h3 { font-size: 1.02rem; margin-bottom: 18px; color: var(--blauw-900); }
+.tijdlijn { list-style: none; padding: 0; margin: 0; }
+.tijdlijn__punt {
+  position: relative; padding: 0 0 20px 34px;
+  display: grid; gap: 1px;
+}
+.tijdlijn__punt::before {
+  content: ""; position: absolute; left: 4px; top: 4px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--vlak); border: 2px solid var(--rand-sterk);
+}
+/* De lijn loopt van bolletje naar bolletje, niet voorbij het laatste. */
+.tijdlijn__punt::after {
+  content: ""; position: absolute; left: 9.5px; top: 18px; bottom: 0;
+  width: 2px; background: var(--rand);
+}
+.tijdlijn__punt:last-child { padding-bottom: 0; }
+.tijdlijn__punt:last-child::after { display: none; }
+.tijdlijn__punt--klaar::before { background: var(--groen-600); border-color: var(--groen-600); }
+.tijdlijn__punt--bezig::before { background: var(--blauw-500); border-color: var(--blauw-500); }
+.tijdlijn__datum {
+  font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--tekst-zacht);
+}
+.tijdlijn__tekst { font-size: .95rem; font-weight: 580; }
+.tijdlijnvoorbeeld .fijndruk { margin: 14px 0 0; }
+
+/* -------------------------------------------------------------- ingangen -- */
+.ingangen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.ingang { padding: 24px; }
+.ingang h3 {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 1.02rem; color: var(--blauw-900);
+}
+.ingang ul { list-style: none; padding: 0; margin: 14px 0 0; }
+.ingang li { border-top: 1px solid var(--rand); }
+.ingang li:first-child { border-top: 0; }
+.ingang a {
+  display: block; padding: 9px 0; font-size: .93rem; font-weight: 560;
+  color: var(--blauw-600); text-decoration: none;
+}
+.ingang a:hover { text-decoration: underline; }
+
+/* ---------------------------------------------------------------- kosten -- */
+.kosten { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.kosten article { padding: 24px; }
+.kosten h3 {
+  display: flex; align-items: center; gap: 9px; font-size: 1rem; margin-bottom: 8px;
+  color: var(--blauw-900);
+}
+.kosten h3 svg { width: 20px; height: 20px; flex: none; }
+.kosten p { font-size: .93rem; color: var(--tekst-zacht); margin: 0; }
+
+/* ---------------------------------------------------------------- vragen -- */
+details.vraag { border-bottom: 1px solid var(--rand); padding: 17px 0; }
+details.vraag:first-of-type { border-top: 1px solid var(--rand); }
+details.vraag summary {
+  cursor: pointer; font-weight: 640; list-style: none; color: var(--blauw-900);
+  display: flex; justify-content: space-between; gap: 18px; align-items: flex-start;
+}
+details.vraag summary::-webkit-details-marker { display: none; }
+details.vraag summary::after {
+  content: "+"; color: var(--blauw-600); font-size: 1.45rem; line-height: 1; flex: none;
+}
+details.vraag[open] summary::after { content: "\2212"; }
+details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht); max-width: 72ch; }
+
+/* ----------------------------------------------------------------- slot --- */
+.oproep {
+  margin-top: 56px; padding: 44px 40px; border-radius: 20px; text-align: center;
+  background: linear-gradient(160deg, var(--blauw-50), #dfebfd);
+  border: 1px solid var(--blauw-100);
+}
+.oproep h2 { color: var(--blauw-900); text-wrap: balance; }
+.oproep p { color: var(--blauw-700); max-width: 48ch; margin: 0 auto 24px; }
+.oproep__fijn { font-size: .84rem; color: var(--tekst-zacht); margin: 18px auto 0; }
+
+.knop--groot { padding: 15px 28px; font-size: 1.04rem; }
+
+/* --------------------------------------------------------------- mobiel --- */
+@media (max-width: 980px) {
+  .hero__raster { grid-template-columns: 1fr; gap: 40px; padding-block: 44px 48px; }
+  .hero__beeld { max-width: 520px; }
+  .vergoeding__raster { grid-template-columns: 1fr; gap: 26px; }
+}
+
+@media (max-width: 640px) {
+  .blok { padding-block: 46px; }
+  .hero__raster { padding-block: 34px 40px; }
+  .keuzekaarten__rij { grid-template-columns: 1fr; }
+  .hero__knoppen .knop, .middenknop .knop, .oproep .knop { width: 100%; }
+  .waarborgen { gap: 8px; }
+  .waarborgen li { width: 100%; }
+  .fase { grid-template-columns: 36px 1fr; gap: 14px; padding: 20px 18px; }
+  .fase__merk { width: 36px; height: 36px; border-radius: 11px; font-size: 1rem; }
+  .bedragkaart, .plan__stap, .ingang, .kosten article, .tijdlijnvoorbeeld { padding: 20px 18px; }
+  .staaf span { height: 24px; }
+  .oproep { padding: 30px 20px; margin-top: 40px; }
+  .proefkaart__lijf { padding: 18px; }
+  .proefkaart__rijen > div { gap: 10px; }
+}

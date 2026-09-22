@@ -73,8 +73,8 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
       'Staat op de machtiging; het bestuursorgaan vindt de zaak daarmee terug.'),
     veld('iban', treedtOp, 'Hierop wordt een toegekende vergoeding uitbetaald.'),
     veld('kenmerk', false, invoer.bestuursorgaan === 'uwv'
-      ? 'Het kenmerk of klantnummer uit de brief van UWV; daarmee vindt men uw zaak direct terug.'
-      : 'Het zaaknummer uit de ontvangstbevestiging; daarmee vindt men uw zaak direct terug.'),
+      ? 'Het kenmerk of klantnummer uit de brief van UWV; daarmee is de zaak direct terug te vinden.'
+      : 'Het zaaknummer uit de ontvangstbevestiging; daarmee is de zaak direct terug te vinden.'),
   ];
 
   const stukken = [];
@@ -82,10 +82,10 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
   if (isBezwaar) {
     stukken.push(stuk('primair-besluit', 'Het besluit waartegen u bezwaar maakte',
       { uitleg: 'Daaruit blijkt vanaf wanneer de bezwaartermijn liep.' }));
-    stukken.push(stuk('bezwaarschrift', 'Uw bezwaarschrift en het verzendbewijs',
+    stukken.push(stuk('bezwaarschrift', 'Het bezwaarschrift en het verzendbewijs',
       { uitleg: 'Bijvoorbeeld de ontvangstbevestiging of het verzendbewijs van de post.' }));
   } else {
-    stukken.push(stuk('ontvangstbevestiging', 'Bewijs van uw aanvraag',
+    stukken.push(stuk('ontvangstbevestiging', 'Bewijs van de aanvraag',
       { uitleg: 'De ontvangstbevestiging, of een ander bewijs van de datum waarop u aanvroeg.' }));
   }
 
@@ -107,7 +107,7 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
     // mailtje dat we willen voorkomen.
     const doorOns = Boolean(invoer.ingebrekestellingDoorOns);
     stukken.push(stuk('ingebrekestelling',
-      doorOns ? 'De ingebrekestelling die wij verstuurden' : 'Uw ingebrekestelling',
+      doorOns ? 'De ingebrekestelling die wij verstuurden' : 'De eigen ingebrekestelling van de aanvrager',
       {
         door: doorOns ? 'wij' : 'klant',
         uitleg: doorOns
@@ -127,7 +127,7 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
 
   if (machtiging && treedtOp) {
     stukken.push(stuk('machtiging', 'Een ondertekende machtiging',
-      { uitleg: 'Die stellen wij op en sturen wij u toe; u zet alleen uw handtekening.', door: 'wij' }));
+      { uitleg: 'Die stellen wij op en sturen wij toe; de aanvrager zet alleen een handtekening.', door: 'wij' }));
   }
 
   return { gegevens, stukken };

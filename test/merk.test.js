@@ -24,7 +24,8 @@ test.after(async () => {
 });
 
 const haal = (pad) => fetch(basisUrl + pad);
-const PUBLIEKE_PAGINAS = ['/', '/aanvraag', '/hoe-werkt-het', '/aanvraag-klassiek'];
+const PUBLIEKE_PAGINAS = ['/', '/aanvraag', '/hoe-werkt-het', '/aanvraag-klassiek',
+  '/uwv-wia', '/bijstand', '/studiefinanciering'];
 const ALLE_PAGINAS = [...PUBLIEKE_PAGINAS, '/beheer'];
 
 test('de oude naam staat nergens meer in de uitgeleverde pagina\'s', async () => {
@@ -111,6 +112,39 @@ test('de zichtbare teksten gebruiken geen streepjes als scheidingsteken', async 
       assert.ok(!zichtbaar.includes(teken),
         `${pad} bevat nog "${teken}" in de lopende tekst`);
     }
+  }
+});
+
+test('de site is licht: wit als achtergrond en geen donkere variant', async () => {
+  const css = await (await haal('/assets/stijl.css')).text();
+  assert.match(css, /--achtergrond: #ffffff;/, 'de achtergrond hoort wit te zijn');
+  assert.match(css, /color-scheme: light;/, 'het lichte thema staat vast');
+  assert.ok(!/prefers-color-scheme: dark/.test(css),
+    'een donkere variant zou de afspraak wit-met-blauw omdraaien');
+
+  for (const pad of PUBLIEKE_PAGINAS) {
+    const html = await (await haal(pad)).text();
+    assert.match(html, /<meta name="theme-color" content="#ffffff">/, `${pad} heeft geen witte themakleur`);
+  }
+});
+
+test('de bezoeker wordt overal met je aangesproken, niet met u', async () => {
+  // Eén site, één toon. Een enkel "u" tussen de je-vorm valt meteen op.
+  for (const pad of ['/', '/aanvraag', '/hoe-werkt-het', '/uwv-wia']) {
+    const html = await (await haal(pad)).text();
+    const zichtbaar = html
+      .replace(/<style[\s\S]*?<\/style>/g, '')
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<[^>]+>/g, ' ');
+    const fout = zichtbaar.match(/\b(uw|Uw|Heeft u|heeft u|kunt u|Kunt u)\b/g);
+    assert.equal(fout, null, `${pad} spreekt nog met u: ${fout && fout.join(', ')}`);
+  }
+  // Ook de teksten die javascript later in het scherm zet.
+  for (const bestand of ['/assets/funnel.js', '/shared/dwangsom.js', '/shared/funnelvragen.js']) {
+    const tekst = await (await haal(bestand)).text();
+    const fout = tekst.match(/\b(uw|Uw|Heeft u|heeft u|kunt u)\b/g);
+    assert.equal(fout, null, `${bestand} spreekt nog met u: ${fout && fout.join(', ')}`);
   }
 });
 

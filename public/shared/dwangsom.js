@@ -223,7 +223,7 @@ function bepaalRapport(ruweInvoer = {}) {
     return rapport;
   }
   if (!invoer.basisdatum) {
-    rapport.kop = 'Vul eerst de datum van uw aanvraag in';
+    rapport.kop = 'Vul eerst de datum van je aanvraag in';
     rapport.samenvatting = 'De beslistermijn wordt vanaf die datum geteld.';
     rapport.onvolledig = true;
     return rapport;
@@ -240,7 +240,7 @@ function bepaalRapport(ruweInvoer = {}) {
     blokkades.push(blokkade(
       'woo',
       'Bij een Woo-verzoek geldt geen dwangsom',
-      'Sinds 1 mei 2022 is de dwangsomregeling uitgesloten voor verzoeken op grond van de Wet open overheid. U kunt wel direct beroep instellen bij de rechtbank wegens niet tijdig beslissen.',
+      'Sinds 1 mei 2022 is de dwangsomregeling uitgesloten voor verzoeken op grond van de Wet open overheid. Je kunt wel direct beroep instellen bij de rechtbank wegens niet tijdig beslissen.',
     ));
   }
   if (invoer.asielzaak) {
@@ -254,14 +254,14 @@ function bepaalRapport(ruweInvoer = {}) {
     blokkades.push(blokkade(
       'belanghebbende',
       'Alleen de aanvrager of belanghebbende heeft recht op een dwangsom',
-      'Art. 4:17 lid 6 sub b Awb sluit de dwangsom uit als u geen belanghebbende bent bij het besluit.',
+      'Art. 4:17 lid 6 sub b Awb sluit de dwangsom uit als je geen belanghebbende bent bij het besluit.',
     ));
   }
   if (invoer.buitenBehandeling) {
     blokkades.push(blokkade(
       'buiten-behandeling',
       'De aanvraag is buiten behandeling gesteld',
-      'Een besluit om de aanvraag niet te behandelen (art. 4:5 Awb) is ook een besluit. Daarmee is op tijd beslist. Wel kunt u tegen dat besluit bezwaar maken.',
+      'Een besluit om de aanvraag niet te behandelen (art. 4:5 Awb) is ook een besluit. Daarmee is op tijd beslist. Je kunt wel tegen dat besluit bezwaar maken.',
     ));
   }
 
@@ -270,7 +270,7 @@ function bepaalRapport(ruweInvoer = {}) {
     rapport.kop = 'Waarschijnlijk geen recht op een dwangsom';
     rapport.samenvatting = blokkades[0].titel + '.';
     rapport.volgendeStappen = [
-      'U kunt uw situatie alsnog laten beoordelen; wij kijken of er een andere route is, bijvoorbeeld beroep bij niet tijdig beslissen.',
+      'Je kunt je situatie alsnog laten beoordelen; wij kijken of er een andere route is, bijvoorbeeld beroep bij niet tijdig beslissen.',
     ];
     return rapport;
   }
@@ -288,7 +288,7 @@ function bepaalRapport(ruweInvoer = {}) {
   tijdlijn.push({
     sleutel: 'aanvraag',
     label: zaaktype.termijnVanaf === TERMIJN_VANAF.BEZWAARTERMIJN
-      ? 'Datum van het besluit waartegen u bezwaar maakte'
+      ? 'Datum van het besluit waartegen je bezwaar maakte'
       : 'Aanvraag ontvangen',
     datum: formatDatum(invoer.basisdatum),
     status: 'gehaald',
@@ -321,12 +321,12 @@ function bepaalRapport(ruweInvoer = {}) {
     const resterend = verschilDagen(peildatum, eindeTermijn) + 1;
     rapport.uitkomst = UITKOMST.TERMIJN_LOOPT;
     rapport.kop = 'De beslistermijn loopt nog';
-    rapport.samenvatting = `Het bestuursorgaan heeft nog tot en met ${toonDatum(eindeTermijn)} de tijd (${resterend} ${resterend === 1 ? 'dag' : 'dagen'}). Pas daarna kunt u in gebreke stellen.`;
+    rapport.samenvatting = `Het bestuursorgaan heeft nog tot en met ${toonDatum(eindeTermijn)} de tijd (${resterend} ${resterend === 1 ? 'dag' : 'dagen'}). Pas daarna kan er in gebreke worden gesteld.`;
     rapport.vooruitblik = vooruitblikVanafIngebrekestelling(plusDagen(eindeTermijn, 1));
     rapport.volgendeStappen = [
       `Wacht tot ${toonDatum(eindeTermijn)}.`,
       'Is er dan nog geen besluit? Stel het bestuursorgaan schriftelijk in gebreke.',
-      'Wij kunnen die ingebrekestelling voor u opstellen en versturen.',
+      'Wij kunnen die ingebrekestelling voor je opstellen en versturen.',
     ];
     return rapport;
   }
@@ -350,8 +350,8 @@ function bepaalRapport(ruweInvoer = {}) {
       + 'Die kan niet met terugwerkende kracht worden gedaan.',
     ));
     rapport.volgendeStappen = [
-      'Bent u het niet eens met het besluit zelf? Dan kunt u daartegen bezwaar maken.',
-      'Wij kijken vrijblijvend of er in uw geval toch een route is.',
+      'Ben je het niet eens met het besluit zelf? Dan kun je daartegen bezwaar maken.',
+      'Wij kijken vrijblijvend of er in jouw geval toch een route is.',
     ];
     return rapport;
   }
@@ -360,13 +360,13 @@ function bepaalRapport(ruweInvoer = {}) {
     const fictieveIgs = peildatum;
     rapport.uitkomst = UITKOMST.INGEBREKESTELLING_NODIG;
     rapport.kop = 'De termijn is verstreken: stel eerst in gebreke';
-    rapport.samenvatting = `De beslistermijn is op ${toonDatum(eindeTermijn)} verstreken, ${dagenTeLaat} ${dagenTeLaat === 1 ? 'dag' : 'dagen'} geleden. De dwangsom gaat pas lopen nadat u het bestuursorgaan schriftelijk in gebreke heeft gesteld en er daarna twee weken zijn verstreken.`;
+    rapport.samenvatting = `De beslistermijn is op ${toonDatum(eindeTermijn)} verstreken, ${dagenTeLaat} ${dagenTeLaat === 1 ? 'dag' : 'dagen'} geleden. De dwangsom gaat pas lopen nadat het bestuursorgaan schriftelijk in gebreke is gesteld en er daarna twee weken zijn verstreken.`;
     rapport.vooruitblik = vooruitblikVanafIngebrekestelling(fictieveIgs);
     rapport.volgendeStappen = [
       'Stel het bestuursorgaan schriftelijk in gebreke. Bewaar het bewijs van verzending.',
       'Het bestuursorgaan krijgt daarna twee weken om alsnog te beslissen.',
       'Blijft een besluit uit, dan loopt de dwangsom automatisch op tot maximaal € 1.442.',
-      'Dien uw aanvraag bij ons in: wij stellen de ingebrekestelling op, versturen die en bewaken de termijnen.',
+      'Meld je bij ons aan: wij stellen de ingebrekestelling op, versturen die en bewaken de termijnen.',
     ];
     if (dagenTeLaat > ONREDELIJK_LAAT_DAGEN) {
       waarschuwingen.push({
@@ -389,7 +389,7 @@ function bepaalRapport(ruweInvoer = {}) {
     waarschuwingen.push({
       code: 'prematuur',
       titel: 'Ingebrekestelling mogelijk te vroeg verstuurd',
-      uitleg: `U heeft in gebreke gesteld op ${toonDatum(invoer.ingebrekestellingDatum)}, terwijl de beslistermijn liep tot en met ${toonDatum(eindeTermijn)}. Een ingebrekestelling vóór het einde van de termijn is prematuur en telt meestal niet mee. In de berekening hieronder rekenen wij daarom vanaf het einde van de beslistermijn. Veilig is om opnieuw in gebreke te stellen.`,
+      uitleg: `Er is in gebreke gesteld op ${toonDatum(invoer.ingebrekestellingDatum)}, terwijl de beslistermijn liep tot en met ${toonDatum(eindeTermijn)}. Een ingebrekestelling vóór het einde van de termijn is prematuur en telt meestal niet mee. In de berekening hieronder rekenen wij daarom vanaf het einde van de beslistermijn. Veilig is om opnieuw in gebreke te stellen.`,
     });
   }
 
@@ -397,7 +397,7 @@ function bepaalRapport(ruweInvoer = {}) {
     waarschuwingen.push({
       code: 'onredelijk-laat',
       titel: 'Ingebrekestelling mogelijk onredelijk laat',
-      uitleg: 'Er zit meer dan een jaar tussen het einde van de beslistermijn en uw ingebrekestelling. Het bestuursorgaan kan zich beroepen op art. 4:17 lid 6 sub a Awb. Een beoordeling door ons is dan extra zinvol.',
+      uitleg: 'Er zit meer dan een jaar tussen het einde van de beslistermijn en de ingebrekestelling. Het bestuursorgaan kan zich beroepen op art. 4:17 lid 6 sub a Awb. Een beoordeling door ons is dan extra zinvol.',
     });
   }
 
@@ -445,7 +445,7 @@ function bepaalRapport(ruweInvoer = {}) {
     if (invoer.besluitDatum <= laatsteHersteldag) {
       rapport.uitkomst = UITKOMST.GEEN_RECHT;
       rapport.kop = 'Alsnog beslist binnen twee weken';
-      rapport.samenvatting = `Het besluit van ${toonDatum(invoer.besluitDatum)} viel binnen de twee weken na uw ingebrekestelling. Dan is geen dwangsom verschuldigd (art. 4:17 lid 3 Awb).`;
+      rapport.samenvatting = `Het besluit van ${toonDatum(invoer.besluitDatum)} viel binnen de twee weken na de ingebrekestelling. Dan is geen dwangsom verschuldigd (art. 4:17 lid 3 Awb).`;
       blokkades.push(blokkade('binnen-herstel', 'Binnen de hersteltermijn beslist', 'Het bestuursorgaan heeft de gelegenheid benut die de ingebrekestelling gaf.'));
       return rapport;
     }
@@ -454,7 +454,7 @@ function bepaalRapport(ruweInvoer = {}) {
   if (peildatum < eersteDag) {
     const resterend = verschilDagen(peildatum, laatsteHersteldag) + 1;
     rapport.uitkomst = UITKOMST.HERSTELTERMIJN_LOOPT;
-    rapport.kop = 'De twee weken na uw ingebrekestelling lopen nog';
+    rapport.kop = 'De twee weken na de ingebrekestelling lopen nog';
     rapport.samenvatting = `Het bestuursorgaan heeft nog tot en met ${toonDatum(laatsteHersteldag)} om te beslissen (${resterend} ${resterend === 1 ? 'dag' : 'dagen'}). Komt er geen besluit, dan is vanaf ${toonDatum(eersteDag)} een dwangsom verschuldigd.`;
     rapport.berekening = maakBerekening({ eersteDag, laatsteDag: null, dagen: 0, doorlopend: true, uiterlijkLaatsteDag });
     rapport.vooruitblik = {
@@ -464,7 +464,7 @@ function bepaalRapport(ruweInvoer = {}) {
     };
     rapport.volgendeStappen = [
       `Noteer ${toonDatum(eersteDag)}: vanaf die dag telt de dwangsom.`,
-      'Dien uw aanvraag nu alvast bij ons in, dan bewaken wij de datum en claimen wij direct.',
+      'Meld je nu alvast bij ons aan, dan bewaken wij de datum en claimen wij direct.',
     ];
     return rapport;
   }
@@ -492,7 +492,7 @@ function bepaalRapport(ruweInvoer = {}) {
     : `Het bestuursorgaan is een dwangsom verschuldigd van ${bedragTekst}, berekend over ${dagen} ${dagen === 1 ? 'dag' : 'dagen'}.`;
 
   rapport.volgendeStappen = [
-    'Dien uw aanvraag bij ons in. Wij controleren de stukken en de data.',
+    'Meld je bij ons aan. Wij controleren de stukken en de data.',
     'Wij vorderen de dwangsom bij het bestuursorgaan; het moet de hoogte binnen twee weken bij beschikking vaststellen (art. 4:18 Awb).',
     'Blijft het besluit uit, dan kunnen wij beroep instellen bij de rechtbank wegens niet tijdig beslissen (art. 6:12 Awb).',
   ];

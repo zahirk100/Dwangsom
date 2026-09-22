@@ -24,7 +24,7 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
 
   const velden = [];
   const eenvoudig = [
-    ['naam', 'Uw naam'],
+    ['naam', 'Je naam'],
     ['adres', 'Straat en huisnummer'],
     ['postcode', 'Postcode'],
     ['woonplaats', 'Woonplaats'],
@@ -35,7 +35,7 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
 
   velden.push({
     id: 'geboortedatum', label: 'Geboortedatum', type: 'date', verplicht: true,
-    hulp: 'Nodig op de machtiging, zodat de instantie u kan herkennen.',
+    hulp: 'Nodig op de machtiging, zodat de instantie je kan herkennen.',
   });
 
   if (vraagtBsn(bestuursorgaan)) {
@@ -45,8 +45,8 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
       velden.push({
         id: 'bsn', label: 'Burgerservicenummer', type: 'text', verplicht: true,
         hulp: onbruikbaar
-          ? 'Wij lazen een nummer uit uw brief dat geen geldig burgerservicenummer is. Vul het hier in.'
-          : 'Vraagt de instantie om uw zaak te kunnen vinden.',
+          ? 'Wij lazen een nummer uit je brief dat geen geldig burgerservicenummer is. Vul het hier in.'
+          : 'Vraagt de instantie om je zaak te kunnen vinden.',
       });
     }
   }
@@ -55,12 +55,12 @@ export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan =
   velden.push({
     id: 'iban', label: 'IBAN', type: 'text', verplicht: true,
     hulp: gelezenIban !== '' && !ibanKlopt(gelezenIban)
-      ? 'Het rekeningnummer uit uw brief klopt niet. Vul het hier in.'
-      : 'Een eventuele vergoeding wordt rechtstreeks aan u uitbetaald.',
+      ? 'Het rekeningnummer uit je brief klopt niet. Vul het hier in.'
+      : 'Een eventuele vergoeding wordt rechtstreeks aan jou uitbetaald.',
   });
   velden.push({
     id: 'email', label: 'E-mailadres', type: 'email', verplicht: true,
-    hulp: 'Hierop houden wij u op de hoogte.',
+    hulp: 'Hierop houden wij je op de hoogte.',
   });
   velden.push({ id: 'telefoon', label: 'Telefoonnummer', type: 'tel', verplicht: false });
 

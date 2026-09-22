@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bereken uw dwangsom bij nubeslist.nl</title>
-<meta name="description" content="Beantwoord een paar vragen en zie direct of u recht heeft op een dwangsom wegens niet tijdig beslissen.">
+<title>Bereken je dwangsom bij nubeslist.nl</title>
+<meta name="description" content="Beantwoord een paar vragen en zie direct of je recht heeft op een dwangsom wegens niet tijdig beslissen.">
 <link rel="canonical" href="https://nubeslist.nl/aanvraag-klassiek">
-<meta name="theme-color" content="#24509a">
+<meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex, follow">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="nubeslist.nl">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="https://nubeslist.nl/aanvraag-klassiek">
-<meta property="og:title" content="Bereken uw dwangsom">
-<meta property="og:description" content="Beantwoord een paar vragen en zie direct of u recht heeft op een dwangsom wegens niet tijdig beslissen.">
+<meta property="og:title" content="Bereken je dwangsom">
+<meta property="og:description" content="Beantwoord een paar vragen en zie direct of je recht heeft op een dwangsom wegens niet tijdig beslissen.">
 <meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -62,11 +62,12 @@
     <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
       <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#2f6bc4"/><stop offset="1" stop-color="#1c3a6e"/>
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
         </linearGradient></defs>
         <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
-        <circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="4" opacity=".45"/>
-        <path d="M22.5 32.8 29.2 39.5 43 24.8" fill="none" stroke="#fff" stroke-width="5.4"
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
@@ -89,11 +90,11 @@
 
     <!-- ============================================ 1. Soort aanvraag -->
     <section class="stap" data-stap="1">
-      <h1 class="stap-titel">Waar wacht u op?</h1>
-      <p class="stap-intro">Wij bepalen aan de hand van uw antwoord welke beslistermijn geldt.</p>
+      <h1 class="stap-titel">Waar wacht je op?</h1>
+      <p class="stap-intro">Wij bepalen aan de hand van je antwoord welke beslistermijn geldt.</p>
 
       <div class="veld">
-        <span class="veld__kop">Bij welke organisatie heeft u de aanvraag ingediend?</span>
+        <span class="veld__kop">Bij welke organisatie heb je de aanvraag ingediend?</span>
         <div class="keuzes keuzes--twee" id="keuze-bestuursorgaan"></div>
         <p class="veld__fout verborgen" data-fout="bestuursorgaan"></p>
       </div>
@@ -133,8 +134,8 @@
       <p class="stap-intro">Met deze datums rekenen wij uit wanneer de beslistermijn afliep.</p>
 
       <div class="veld">
-        <label for="basisdatum" id="basisdatum-label">Datum van uw aanvraag</label>
-        <p class="veld__hulp" id="basisdatum-hulp">De datum waarop de organisatie uw aanvraag heeft ontvangen.</p>
+        <label for="basisdatum" id="basisdatum-label">Datum van je aanvraag</label>
+        <p class="veld__hulp" id="basisdatum-hulp">De datum waarop de organisatie je aanvraag heeft ontvangen.</p>
         <input type="date" id="basisdatum" name="basisdatum">
         <p class="veld__fout verborgen" data-fout="basisdatum"></p>
       </div>
@@ -151,7 +152,7 @@
       </div>
 
       <div class="veld">
-        <span class="veld__kop">Heeft de organisatie u een datum genoemd waarop u een besluit krijgt?</span>
+        <span class="veld__kop">Heeft de organisatie je een datum genoemd waarop je een besluit krijgt?</span>
         <p class="veld__hulp">Kijk in de ontvangstbevestiging. Een genoemde datum gaat altijd vóór op de standaardtermijn.</p>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="termijnBekend" value="nee" checked>
@@ -169,7 +170,7 @@
       </div>
 
       <div class="veld">
-        <span class="veld__kop">Heeft u bericht gekregen dat de beslissing is uitgesteld?</span>
+        <span class="veld__kop">Heb je bericht gekregen dat de beslissing is uitgesteld?</span>
         <p class="veld__hulp">Ook wel "verdaging" of "verlenging van de beslistermijn".</p>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="verdaagd" value="nee" checked>
@@ -185,10 +186,10 @@
       </div>
 
       <details>
-        <summary class="subtiel" style="cursor:pointer">Is uw aanvraag tussendoor stilgelegd? (opschorting)</summary>
+        <summary class="subtiel" style="cursor:pointer">Is je aanvraag tussendoor stilgelegd? (opschorting)</summary>
         <div class="veld" style="margin-top:14px">
           <label for="opschortingDagen">Aantal dagen opschorting</label>
-          <p class="veld__hulp">Bijvoorbeeld de periode waarin u gevraagde gegevens moest aanleveren. De beslistermijn staat dan stil (art. 4:15 Awb). Weet u het niet zeker? Laat 0 staan; wij controleren het.</p>
+          <p class="veld__hulp">Bijvoorbeeld de periode waarin je gevraagde gegevens moest aanleveren. De beslistermijn staat dan stil (art. 4:15 Awb). Weet je het niet zeker? Laat 0 staan; wij controleren het.</p>
           <input type="number" id="opschortingDagen" name="opschortingDagen" min="0" max="365" step="1" value="0">
         </div>
       </details>
@@ -197,15 +198,15 @@
     <!-- ========================================= 3. Ingebrekestelling -->
     <section class="stap verborgen" data-stap="3">
       <h1 class="stap-titel">Wat is er daarna gebeurd?</h1>
-      <p class="stap-intro">De dwangsom gaat pas lopen nadat u de organisatie schriftelijk in gebreke heeft gesteld.</p>
+      <p class="stap-intro">De dwangsom gaat pas lopen nadat je de organisatie schriftelijk in gebreke heeft gesteld.</p>
 
       <div class="veld">
-        <span class="veld__kop">Heeft u de organisatie al in gebreke gesteld?</span>
-        <p class="veld__hulp">Een ingebrekestelling is een brief of e-mail waarin u schrijft dat de termijn is verstreken en om een besluit vraagt.</p>
+        <span class="veld__kop">Heb je de organisatie al in gebreke gesteld?</span>
+        <p class="veld__hulp">Een ingebrekestelling is een brief of e-mail waarin je schrijft dat de termijn is verstreken en om een besluit vraagt.</p>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="ingebrekeGesteld" value="nee" checked>
             <span class="keuze__tekst">Nog niet
-              <span class="keuze__uitleg">Wij kunnen dit voor u doen</span></span></label>
+              <span class="keuze__uitleg">Wij kunnen dit voor je doen</span></span></label>
           <label class="keuze"><input type="radio" name="ingebrekeGesteld" value="ja">
             <span class="keuze__tekst">Ja, dat heb ik gedaan</span></label>
         </div>
@@ -213,13 +214,13 @@
 
       <div class="veld verborgen" data-toon-als="ingebrekestellingDatum">
         <label for="ingebrekestellingDatum">Datum waarop de organisatie de ingebrekestelling ontving</label>
-        <p class="veld__hulp">Weet u dat niet precies? Neem de verzenddatum plus twee dagen.</p>
+        <p class="veld__hulp">Weet je dat niet precies? Neem de verzenddatum plus twee dagen.</p>
         <input type="date" id="ingebrekestellingDatum" name="ingebrekestellingDatum">
         <p class="veld__fout verborgen" data-fout="ingebrekestellingDatum"></p>
       </div>
 
       <div class="veld">
-        <span class="veld__kop">Heeft u inmiddels een besluit ontvangen?</span>
+        <span class="veld__kop">Heb je inmiddels een besluit ontvangen?</span>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="besluitGenomen" value="nee" checked>
             <span class="keuze__tekst">Nee, nog steeds niet</span></label>
@@ -242,7 +243,7 @@
       <p class="stap-intro">In een paar situaties sluit de wet de dwangsom uit. Dat checken we even.</p>
 
       <div class="veld">
-        <span class="veld__kop">Heeft u de aanvraag zelf ingediend, of bent u direct belanghebbende?</span>
+        <span class="veld__kop">Heb je de aanvraag zelf ingediend, of bent je direct belanghebbende?</span>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="belanghebbende" value="ja" checked>
             <span class="keuze__tekst">Ja</span></label>
@@ -252,7 +253,7 @@
       </div>
 
       <div class="veld">
-        <span class="veld__kop">Heeft u bericht gekregen dat uw aanvraag <em>buiten behandeling</em> is gesteld?</span>
+        <span class="veld__kop">Heb je bericht gekregen dat je aanvraag <em>buiten behandeling</em> is gesteld?</span>
         <p class="veld__hulp">Dat gebeurt bijvoorbeeld als gevraagde gegevens niet op tijd zijn aangeleverd.</p>
         <div class="keuzes keuzes--twee">
           <label class="keuze"><input type="radio" name="buitenBehandeling" value="nee" checked>
@@ -265,13 +266,13 @@
 
     <!-- ============================================== 5. Uitkomst -->
     <section class="stap verborgen" data-stap="5">
-      <h1 class="stap-titel alleen-schermlezer">Uw uitkomst</h1>
+      <h1 class="stap-titel alleen-schermlezer">Je uitkomst</h1>
       <div id="uitkomst"></div>
     </section>
 
     <!-- ============================================== 6. Gegevens -->
     <section class="stap verborgen" data-stap="6">
-      <h1 class="stap-titel">Uw gegevens</h1>
+      <h1 class="stap-titel">Je gegevens</h1>
       <p class="stap-intro" id="gegevens-intro">Wij vragen alleen wat wij voor deze zaak nodig hebben.</p>
 
       <div class="rij">
@@ -332,7 +333,7 @@
 
       <div class="veld">
         <label for="toelichting">Toelichting <span class="subtiel">(optioneel)</span></label>
-        <p class="veld__hulp">Is er iets bijzonders aan uw zaak dat wij moeten weten?</p>
+        <p class="veld__hulp">Is er iets bijzonders aan je zaak dat wij moeten weten?</p>
         <textarea id="toelichting" name="toelichting" maxlength="2000"></textarea>
       </div>
 
@@ -343,7 +344,7 @@
               <span class="keuze__uitleg">Wij stellen de machtiging op en sturen die ter ondertekening toe</span></span></label>
           <label class="keuze"><input type="checkbox" name="akkoordVoorwaarden">
             <span class="keuze__tekst">Ik ga ermee akkoord dat mijn gegevens worden gebruikt om deze zaak te behandelen
-              <span class="keuze__uitleg">Wij bewaren uw gegevens alleen voor dit dossier</span></span></label>
+              <span class="keuze__uitleg">Wij bewaren je gegevens alleen voor dit dossier</span></span></label>
         </div>
         <p class="veld__fout verborgen" data-fout="akkoordVoorwaarden"></p>
       </div>
@@ -351,9 +352,9 @@
 
     <!-- ============================================== 7. Stukken -->
     <section class="stap verborgen" data-stap="7">
-      <h1 class="stap-titel">Wat wij van u nodig hebben</h1>
-      <p class="stap-intro">Op basis van uw antwoorden hebben wij onderstaande stukken nodig. Vink aan
-         wat u heeft; wat ontbreekt zoeken wij samen met u uit. U hoeft nu nog niets te uploaden.</p>
+      <h1 class="stap-titel">Wat wij van jou nodig hebben</h1>
+      <p class="stap-intro">Op basis van je antwoorden hebben wij onderstaande stukken nodig. Vink aan
+         wat je hebt; wat ontbreekt zoeken wij samen met je uit. Je hoeft nu nog niets te uploaden.</p>
       <div id="stukkenlijst"></div>
       <div id="indien-fout"></div>
     </section>
@@ -362,8 +363,8 @@
     <section class="stap verborgen" data-stap="8">
       <div class="bevestiging">
         <div style="font-size:2.6rem">✅</div>
-        <h1 class="stap-titel" id="bevestiging-titel">Uw aanvraag is ontvangen</h1>
-        <p class="subtiel">Uw referentienummer</p>
+        <h1 class="stap-titel" id="bevestiging-titel">Je aanvraag is ontvangen</h1>
+        <p class="subtiel">Je referentienummer</p>
         <div class="referentie" id="referentienummer"></div>
         <p class="subtiel" id="bevestiging-tekst"></p>
         <div id="bevestiging-extra"></div>

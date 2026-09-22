@@ -30,6 +30,7 @@ import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.j
 import { leesBrief } from './src/brieflezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
+import { campagnePaden } from './public/shared/campagnes.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, 'public');
@@ -493,6 +494,10 @@ const PAGINAS = {
   '/aanvraag-klassiek': 'aanvraag-klassiek.html',
   '/beheer': 'beheer.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
+  // Elke advertentie-ingang is een echt bestand, gemaakt door
+  // scripts/maak-paginas.mjs. Hier alleen het pad zonder .html erbij, zodat
+  // lokaal hetzelfde werkt als cleanUrls op Vercel.
+  ...Object.fromEntries(campagnePaden().map((pad) => [pad, `${pad.slice(1)}.html`])),
 };
 
 /** API plus statische bestanden: de complete applicatie op één poort. */

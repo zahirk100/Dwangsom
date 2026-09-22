@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Controleer uw brief bij nubeslist.nl</title>
-<meta name="description" content="Upload de brief van UWV, DUO, de SVB of uw gemeente. Binnen een minuut weet u of er een dwangsom voor u openstaat van maximaal € 1.442.">
+<title>Controleer je brief bij nubeslist.nl</title>
+<meta name="description" content="Upload de brief van UWV, DUO, de SVB of je gemeente. Binnen een minuut weet je of er een dwangsom voor je openstaat van maximaal € 1.442.">
 <link rel="canonical" href="https://nubeslist.nl/aanvraag">
-<meta name="theme-color" content="#24509a">
+<meta name="theme-color" content="#ffffff">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="nubeslist.nl">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="https://nubeslist.nl/aanvraag">
-<meta property="og:title" content="Controleer of de overheid te laat is met uw beslissing">
-<meta property="og:description" content="Upload de brief van UWV, DUO, de SVB of uw gemeente. Binnen een minuut weet u of er een dwangsom voor u openstaat van maximaal € 1.442.">
+<meta property="og:title" content="Controleer of de overheid te laat is met je beslissing">
+<meta property="og:description" content="Upload de brief van UWV, DUO, de SVB of je gemeente. Binnen een minuut weet je of er een dwangsom voor je openstaat van maximaal € 1.442.">
 <meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
 <meta name="twitter:card" content="summary_large_image">
 
@@ -23,9 +23,62 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
 <style>
   .funnel { max-width: 640px; margin: 0 auto; padding: 30px 16px 80px; }
-  .voortgang-bol { display: flex; gap: 8px; justify-content: center; margin-bottom: 26px; }
-  .voortgang-bol span { width: 8px; height: 8px; border-radius: 50%; background: var(--rand-sterk); transition: background .25s, transform .25s; }
-  .voortgang-bol span.actief { background: var(--blauw-600); transform: scale(1.35); }
+  /* Fasen, geen nummers: de bezoeker ziet waar hij is in zijn eigen zaak. */
+  .fasebalk { display: flex; gap: 6px; margin-bottom: 24px; }
+  .fasebalk__fase {
+    flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: center;
+    text-align: center; min-width: 0;
+  }
+  .fasebalk__merk {
+    display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+    font-size: .78rem; font-weight: 740; flex: none;
+    background: var(--grijs-100); color: var(--tekst-zacht);
+    border: 1.5px solid var(--rand); transition: background .2s, color .2s, border-color .2s;
+  }
+  .fasebalk__label {
+    font-size: .72rem; font-weight: 620; color: var(--tekst-zacht); line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .fasebalk__fase--klaar .fasebalk__merk {
+    background: var(--groen-100); color: var(--groen-600); border-color: var(--groen-600);
+  }
+  .fasebalk__fase--bezig .fasebalk__merk {
+    background: var(--blauw-600); color: #fff; border-color: var(--blauw-600);
+  }
+  .fasebalk__fase--bezig .fasebalk__label { color: var(--blauw-700); font-weight: 720; }
+  @media (max-width: 420px) { .fasebalk__label { font-size: .66rem; } }
+
+  /* Het actieplan: wat wij nu, daarna en later doen. */
+  .actieplan {
+    margin: 0 0 20px; padding: 18px 20px; border-radius: var(--radius);
+    background: var(--blauw-50); border: 1px solid var(--blauw-100);
+  }
+  .actieplan h2 { font-size: 1rem; margin: 0 0 12px; color: var(--blauw-900); }
+  .actieplan ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 11px; }
+  .actieplan li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; }
+  .actieplan__wanneer {
+    font-size: .7rem; font-weight: 740; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--blauw-600); background: var(--vlak); border-radius: 999px; padding: 3px 9px;
+    white-space: nowrap;
+  }
+  .actieplan__wat { font-size: .92rem; }
+  .actieplan__slot { margin: 12px 0 0; font-size: .86rem; color: var(--blauw-700); font-weight: 600; }
+
+  /* De zaak zoals wij die nu kennen, zodat het dossier al klaar lijkt te staan. */
+  .jouwzaak { margin: 0 0 22px; border: 1px solid var(--rand); border-radius: var(--radius); }
+  .jouwzaak h2 {
+    font-size: .74rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 720;
+    color: var(--tekst-zacht); margin: 0; padding: 13px 18px; border-bottom: 1px solid var(--rand);
+    background: var(--papier);
+  }
+  .jouwzaak dl { margin: 0; padding: 4px 18px 10px; }
+  .jouwzaak dl > div {
+    display: flex; justify-content: space-between; gap: 16px; padding: 9px 0;
+    border-top: 1px solid var(--rand);
+  }
+  .jouwzaak dl > div:first-child { border-top: 0; }
+  .jouwzaak dt { font-size: .86rem; color: var(--tekst-zacht); margin: 0; }
+  .jouwzaak dd { font-size: .89rem; font-weight: 640; margin: 0; text-align: right; }
 
   .paneel { padding: 28px; }
   @media (max-width: 560px) { .paneel { padding: 20px 16px; } .funnel { padding-top: 18px; } }
@@ -116,11 +169,12 @@
     <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
       <svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#2f6bc4"/><stop offset="1" stop-color="#1c3a6e"/>
+          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
         </linearGradient></defs>
         <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
-        <circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="4" opacity=".45"/>
-        <path d="M22.5 32.8 29.2 39.5 43 24.8" fill="none" stroke="#fff" stroke-width="5.4"
+        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
+              stroke-linecap="round" opacity=".48"/>
+        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
@@ -133,20 +187,20 @@
 </header>
 
 <main class="funnel">
-  <div class="voortgang-bol" id="bollen" aria-hidden="true"></div>
+  <div class="fasebalk" id="bollen" aria-label="Voortgang"></div>
 
   <form id="funnel" class="kaart paneel" novalidate>
 
     <!-- ===================================================== 1. uploaden -->
     <section class="stap" data-stap="1">
-      <h1 class="kop">Upload uw laatste brief</h1>
-      <p class="onder">De brief waarin staat wanneer u een beslissing kunt verwachten. Wij lezen er
-         zelf uit welke instantie het is, waar het over gaat en welke datum er geldt.</p>
+      <h1 class="kop" id="stap1-kop">Laten we kijken of de instantie te laat is</h1>
+      <p class="onder" id="stap1-onder">Upload de brief waarin staat wanneer je een beslissing kunt
+         verwachten. Wij zoeken de relevante datum voor je op.</p>
 
       <label class="dropzone" id="dropzone">
         <input type="file" id="bestand" accept=".pdf,.txt,application/pdf,text/plain,image/*">
         <div class="dropzone__icoon">📄</div>
-        <div class="dropzone__titel">Kies uw brief of maak een foto</div>
+        <div class="dropzone__titel" id="dropzone-titel">Kies mijn brief of maak een foto</div>
         <div class="dropzone__uitleg">Pdf of tekstbestand, duurt ongeveer tien seconden</div>
       </label>
 
@@ -154,13 +208,14 @@
       <details>
         <summary style="cursor:pointer; font-size:.92rem">Brief niet digitaal? Plak de tekst</summary>
         <div class="veld" style="margin-top:12px">
-          <textarea id="plaktekst" rows="6" placeholder="Plak hier de tekst van uw brief, met de datum waarop u een beslissing zou krijgen."></textarea>
+          <textarea id="plaktekst" rows="6" placeholder="Plak hier de tekst van je brief, met de datum waarop je een beslissing zou krijgen."></textarea>
           <button type="button" class="knop knop--zacht knop--klein" id="knop-plak" style="margin-top:10px">Deze tekst gebruiken</button>
         </div>
       </details>
 
       <div id="upload-melding" style="margin-top:18px"></div>
-      <p class="fijndruk">Wij gebruiken uw brief alleen om uw zaak te beoordelen.</p>
+      <p class="fijndruk">Wij gebruiken je brief alleen om je zaak te beoordelen. Je zit nergens
+         aan vast tot je zelf tekent.</p>
     </section>
 
     <!-- ====================================================== 2. uitslag -->
@@ -171,26 +226,32 @@
     <!-- ================================================== 3. controleren -->
     <section class="stap verborgen" data-stap="3">
       <h1 class="kop">Klopt dit?</h1>
-      <p class="onder">Dit hebben wij uit uw brief gehaald. Controleer het even; aanpassen kan.</p>
+      <p class="onder">Dit hebben wij uit je brief gehaald. Controleer het even; aanpassen kan.</p>
       <div id="uitbrief"></div>
       <div id="aanvullen" style="margin-top:24px"></div>
     </section>
 
     <!-- ================================================== 4. machtiging -->
     <section class="stap verborgen" data-stap="4">
-      <h1 class="kop">Geef ons toestemming</h1>
-      <p class="onder">Dit is het enige wat u hoeft te ondertekenen.</p>
+      <h1 class="kop">Nog één stap en wij kunnen aan de slag</h1>
+      <p class="onder">Dit is het enige wat je hoeft te ondertekenen.</p>
+
+      <!-- Wat wij gaan doen, en de zaak zoals wij die nu kennen. Allebei
+           gevuld door funnel.js, zodat het over déze zaak gaat. -->
+      <div id="actieplan"></div>
+      <div id="jouwzaak"></div>
+
       <div class="machtigingtekst" id="machtigingtekst"></div>
 
       <div class="veld">
-        <span class="veld__kop">Uw handtekening</span>
+        <span class="veld__kop">Je handtekening</span>
         <div class="handtekeningvak" id="handtekeningvak">
-          <canvas id="handtekening" width="1100" height="340" aria-label="Teken hier uw handtekening"></canvas>
-          <div class="handtekeningvak__hint">Teken hier met uw vinger of muis</div>
+          <canvas id="handtekening" width="1100" height="340" aria-label="Teken hier je handtekening"></canvas>
+          <div class="handtekeningvak__hint">Teken hier met je vinger of muis</div>
         </div>
         <div class="handtekening-rij">
           <button type="button" class="knop knop--stil knop--klein" id="knop-wissen">Opnieuw</button>
-          <span class="subtiel" style="font-size:.82rem">Wij leggen datum en tijd vast bij uw handtekening.</span>
+          <span class="subtiel" style="font-size:.82rem">Wij leggen datum en tijd vast bij je handtekening.</span>
         </div>
         <p class="veld__fout verborgen" data-fout="handtekening"></p>
       </div>
@@ -213,7 +274,7 @@
         <div class="uitslag__icoon">✅</div>
         <h2 id="klaar-titel">Gelukt</h2>
         <p id="klaar-tekst"></p>
-        <p class="subtiel" style="font-size:.86rem">Uw referentienummer</p>
+        <p class="subtiel" style="font-size:.86rem">Je referentienummer</p>
         <div style="font-size:1.4rem; font-weight:780; letter-spacing:.02em" id="referentie"></div>
         <ul class="tracker" id="tracker"></ul>
         <div style="margin-top:24px">
