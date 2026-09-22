@@ -116,6 +116,41 @@ om), en alles wat je dagelijks aanraakt — het certificaat, de records voor de
 site, de records voor de mail — beheer je op één plek in Vercel. Dat is het
 dichtst bij "één dak" dat je voor een `.nl` kunt krijgen.
 
+### Kan alles bij TransIP?
+
+Voor het **domein**: ja, prima keuze. Nederlandse partij, Nederlandse support,
+en dat is precies waar je een registrar voor nodig hebt.
+
+Voor de **hosting van deze applicatie**: nee, en dat is geen detail.
+
+- **Hun webhostingpakketten draaien PHP en MySQL.** Deze applicatie is
+  JavaScript op Node. Op gedeelde hosting kun je Node hooguit als achtergrond-
+  proces via SSH draaien; de webserver op poort 80 vervangen kan er niet. De
+  site zou er dus niet op werken.
+- **Hun VPS is een kale virtuele machine.** Geen beheerde database, geen
+  objectopslag, geen serverloze functies. Je krijgt een Linux-server met een
+  netwerkkaart en een schijf. Dat betekent dat jij degene bent die het
+  besturingssysteem bijwerkt, de firewall inricht, het TLS-certificaat
+  vernieuwt, de back-ups maakt én test, en 's nachts kijkt als het stilvalt.
+  Dat is een baan, geen instelling.
+- **Beheerde database hebben ze niet.** Onze `db/`-map is Postgres. Op een
+  TransIP-VPS zou je die zelf installeren, beveiligen en back-uppen.
+
+Wat je met "alles onder één dak" wint is één factuur. Wat je verliest is dat
+Vercel nu het certificaat, de schaal, de deploys en het terugrollen voor je
+doet, en dat een fout deployment één klik terug is. Voor een dienst die
+burgerservicenummers verwerkt, is zelf een server beheren een risico dat je
+alleen moet nemen als je het ook echt wilt beheren.
+
+**Advies: domein bij TransIP, hosting op Vercel, database bij Vercel of
+Supabase.** Verhuis de nameservers naar Vercel (zie hieronder), dan staat alles
+wat je dagelijks aanraakt toch op één plek. De enige keer dat je bij TransIP
+inlogt is voor de jaarlijkse verlenging.
+
+Wil je later tóch alles op eigen ijzer, dan kan dat: de applicatie heeft geen
+enkele afhankelijkheid en draait met `node server.js` overal waar Node staat.
+Maar doe dat als bewuste stap, niet als bijvangst van een domeinregistratie.
+
 **Welke registrar.** `.nl` loopt altijd via SIDN, welke verkoper je ook kiest;
 het verschil zit in prijs, support en hoeveel er standaard aanstaat dat je niet
 wilt. Nederlandse partijen als TransIP, Versio, Antagonist of Hostnet zijn voor
