@@ -423,6 +423,35 @@ export class Gebruikers {
    * De handtekening wordt eerst gecontroleerd: zonder geldige handtekening
    * gaan we niet eens in de opslag kijken.
    */
+  /**
+   * Waarom werd dit cookie niet geaccepteerd?
+   *
+   * Alleen om te kunnen zoeken. `uitCookie` geeft null terug en daarmee vallen
+   * zes verschillende oorzaken samen: een kapotte vorm, een handtekening van
+   * een andere sleutel, een sessie die niet in de opslag staat, een verlopen
+   * sessie, een verdwenen gebruiker. Zonder dat onderscheid is een storing in
+   * productie niet te vinden - en dat bleek.
+   *
+   * Dit verandert niets aan wie er binnenkomt; het beschrijft alleen wat
+   * `uitCookie` net heeft geweigerd.
+   */
+  async waaromGeenSessie(waarde) {
+    if (typeof waarde !== 'string' || waarde.indexOf('.') <= 0) return 'vorm';
+    const sessieId = waarde.slice(0, waarde.indexOf('.'));
+    const meegestuurd = Buffer.from(waarde.slice(waarde.indexOf('.') + 1));
+    const verwacht = Buffer.from(this.#onderteken(sessieId));
+    if (meegestuurd.length !== verwacht.length || !timingSafeEqual(meegestuurd, verwacht)) {
+      return 'handtekening';
+    }
+    const sessie = await this.opslag.rij(V_SESSIES, sessieId);
+    if (!sessie) return 'geen-sessie-in-opslag';
+    if (sessie.verlooptOp < Date.now()) return 'verlopen';
+    const gebruiker = await this.vind(sessie.gebruikerId);
+    if (!gebruiker) return 'geen-gebruiker';
+    if (gebruiker.actief === false) return 'niet-actief';
+    return `rol-${gebruiker.rol}`;
+  }
+
   async uitCookie(waarde) {
     if (typeof waarde !== 'string') return null;
     const punt = waarde.indexOf('.');

@@ -588,6 +588,18 @@ function uitlegBijMislukking(reden) {
     + 'laat het ons dan weten.'];
 }
 
+/**
+ * Het technische detail erbij, klein en onderaan.
+ *
+ * Niet voor de klant - die heeft er niets aan - maar wel voor de melding die
+ * hij ons stuurt. Met "geen-sessie-in-opslag" of "handtekening" erbij is een
+ * storing in één keer te plaatsen; zonder dat kost het een avond.
+ */
+function detailregel(detail) {
+  if (!detail) return null;
+  return el('p', { class: 'fijndruk', style: 'margin:8px 0 0' }, `Code: ${detail}`);
+}
+
 (async function start() {
   const ingewisseld = await wisselKoppelingIn();
   // Eerst vragen of we ingelogd zijn; dat scheelt een 401 in de console bij
@@ -600,7 +612,10 @@ function uitlegBijMislukking(reden) {
       const [kop, tekst] = uitlegBijMislukking(sessie.reden);
       inloggen.classList.remove('verborgen');
       portaal.classList.add('verborgen');
-      melding(document.getElementById('inlogmelding'), 'let-op', kop, tekst);
+      const vak = document.getElementById('inlogmelding');
+      melding(vak, 'let-op', kop, tekst);
+      const regel = detailregel(sessie.detail);
+      if (regel) vak.firstChild.append(regel);
       return;
     }
     return toonInloggen();

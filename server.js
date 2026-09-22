@@ -378,6 +378,9 @@ async function klantApi(req, res, url) {
     return stuurJson(res, 200, {
       ingelogd: Boolean(klant),
       reden: klant ? 'goed' : (cookie ? 'niet-herkend' : 'geen-cookie'),
+      // Eén laag dieper, alleen als het cookie er wél is en toch niet wordt
+      // geaccepteerd. Dat is het punt waar het zoeken anders stilvalt.
+      detail: klant || !cookie ? '' : await gebruikers.waaromGeenSessie(cookie),
     });
   }
 
