@@ -235,19 +235,32 @@ nubeslist.nl vraagt geld voor een dienst, dus dat is commercieel. Voor de eerste
 echte klant moet het project op een betaald plan staan. Reken op ongeveer
 $20 per gebruiker per maand; controleer de actuele prijs bij het overzetten.
 
-### DNS naar Vercel
+### DNS: laat hem bij TransIP staan
 
-Twee manieren, kies er één:
+Twee manieren, en welke de beste is hangt af van waar je mailbox staat.
 
-**A. Nameservers naar Vercel (aanbevolen).** In Vercel: *Settings → Domains →
-Add*. Vercel geeft twee nameservers. Die zet je bij je registrar in plaats van
-de hunne. Vanaf dan beheer je alle DNS in Vercel, inclusief de records voor je
-e-mail. Dit is de variant die "alles op één plek" oplevert.
+**Neem je een mailbox bij TransIP — het advies hierboven — laat de DNS dan
+ook bij TransIP.** Voeg daar toe wat Vercel je opgeeft: een `A`-record voor
+`nubeslist.nl` en een `CNAME` voor `www` naar `cname.vercel-dns.com`. **Neem
+de exacte waarden over uit het Vercel-scherm**; die kunnen wijzigen, schrijf ze
+niet over uit dit document.
 
-**B. Records bij de registrar laten staan.** Voeg toe wat Vercel je opgeeft: een
-`A`-record voor `nubeslist.nl` en een `CNAME` voor `www` naar
-`cname.vercel-dns.com`. **Neem de exacte waarden over uit het Vercel-scherm**;
-die kunnen wijzigen, schrijf ze niet over uit dit document.
+Waarom niet de nameservers naar Vercel, wat "alles op één plek" zou opleveren?
+Omdat TransIP dan de regie over je DNS kwijt is, en de `MX`-records voor je
+mailbox niet meer vanzelf goed staan. Die moet je dan met de hand overnemen.
+Het risico zit in de faalmodus: gaat er iets mis met een `MX`-record, dan
+verdwijnt inkomende post zonder foutmelding — je merkt het pas als een klant
+belt dat hij geen antwoord krijgt. Gaat er iets mis met het `A`-record van de
+site, dan laadt de site niet en zie je dat binnen een minuut.
+
+Zes regels met de hand plakken bij TransIP (twee voor Vercel, drie DKIM van je
+verzenddienst, één SPF, plus DMARC) is die stille faalmodus niet waard.
+
+**Verhuis je de nameservers tóch naar Vercel** — bijvoorbeeld omdat je je
+mailbox ergens anders neemt en je die records sowieso met de hand zet — dan
+beheer je vanaf dat moment álle DNS in Vercel, inclusief `MX`, `SPF`, `DKIM` en
+`DMARC`. Controleer na de verhuizing of je nog mail ontvangt; dat is de test
+die mensen overslaan.
 
 Kies daarna in Vercel welke vorm de hoofdvorm is. Advies: `nubeslist.nl` als
 hoofdvorm en `www` doorverwijzen. Het certificaat regelt Vercel zelf.
