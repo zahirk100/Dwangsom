@@ -444,9 +444,25 @@ kunt controleren; is dat er niet, dan is het blok niet af.
    `KV_REST_API_URL` en `KV_REST_API_TOKEN` vanzelf in de omgeving, en dat is
    precies wat deze applicatie leest — je hoeft niets over te typen.
 
+   **Kies een Europese regio** (Frankfurt of Amsterdam). Hier komen
+   burgerservicenummers in te staan; die laat je niet zonder reden buiten de
+   EU opslaan. Dit is achteraf niet te wijzigen zonder de database opnieuw aan
+   te maken.
+
+   **Kies Redis, geen Postgres.** In dezelfde lijst staan Neon, Supabase en
+   andere Postgres-aanbieders. Die spreekt deze applicatie niet; er is alleen
+   een Redis-driver. Het schema in `db/` ligt klaar voor een latere overstap,
+   maar de code die het gebruikt is nog niet geschreven.
+
    Het gratis niveau is ruim voldoende om te beginnen. Zet wel meteen de
    back-up aan die Upstash biedt: dit is vanaf dat moment je enige kopie van
    alle dossiers.
+
+7b. **Maak meteen de eerste beheerder aan.** Zolang er nog geen enkel account
+   is, kan iedereen die `/beheer` opent er een aanmaken — dat is met opzet zo,
+   want anders kom je er zelf nooit in, maar het betekent wel dat er een
+   kort venster openstaat. Doe dit dus direct nadat de database werkt, en zet
+   de tweede factor meteen op.
 7. Zet `SESSIE_GEHEIM` op een lange willekeurige reeks.
 8. Kies je tarief en zet `TARIEF_PERCENTAGE` of `TARIEF_VAST`. Zolang dit leeg
    is, noemt de site nergens een bedrag.
