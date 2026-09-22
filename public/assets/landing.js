@@ -22,6 +22,7 @@ import { CAMPAGNES } from '/shared/campagnes.js';
 
 const keuzevak = document.getElementById('instantiekeuze');
 const vervolgvak = document.getElementById('procedurekeuze');
+const actievak = document.getElementById('keuzeactie');
 
 /** "UWV is te laat" klopt, "Gemeente is te laat" niet. */
 function inEenZin(id) {
@@ -169,7 +170,7 @@ function toonProcedures(instantie) {
       for (const ander of rij.querySelectorAll('.keuzeknop')) ander.classList.remove('gekozen');
       knop.classList.add('gekozen');
       personaliseer(instantie, zaak.id);
-      naarBoven();
+      toonActie(instantie, zaak.id);
     });
     rij.append(knop);
   }
@@ -182,7 +183,7 @@ function toonProcedures(instantie) {
     for (const ander of rij.querySelectorAll('.keuzeknop')) ander.classList.remove('gekozen');
     anders.classList.add('gekozen');
     personaliseer(instantie, '');
-    naarBoven();
+    toonActie(instantie, '');
   });
   rij.append(anders);
 
@@ -198,12 +199,55 @@ function kortLabel(zaaktype) {
   return metHoofdletter(campagne.kort.replace(/^je /, ''));
 }
 
-/** Na een keuze de kop weer in beeld, zodat je de nieuwe tekst ziet. */
-function naarBoven() {
-  const kop = document.querySelector('[data-kop]');
-  if (kop && kop.getBoundingClientRect().top < 0) {
-    kop.scrollIntoView({ behavior: 'smooth', block: 'start' });
+/**
+ * De volgende stap, direct onder de keuze die net gemaakt is.
+ *
+ * Hiervoor werd de hele pagina herschreven en daarna naar boven gescrold. Wie
+ * op zijn telefoon bij de keuzeknoppen stond, zag dus niets gebeuren op de
+ * plek waar hij tikte, en er stond daar ook geen knop. Nu verschijnt hier wat
+ * er te doen valt: een knop naar de funnel, met de naam van zijn eigen zaak.
+ */
+function toonActie(instantie, zaak = '') {
+  if (!actievak) return;
+  const zin = inEenZin(instantie);
+  const kort = zaak ? procedureKort(zaak) : '';
+  const vragen = new URLSearchParams({ instantie });
+  if (zaak) vragen.set('zaak', zaak);
+
+  actievak.textContent = '';
+  actievak.append(
+    el('p', 'keuzeactie__kop', kort
+      ? `Wacht je op ${kort}?`
+      : `Wacht je op een beslissing van ${zin}?`),
+    el('p', 'keuzeactie__onder',
+      `Upload de brief van ${zin} waarin staat wanneer je een beslissing kon verwachten. `
+      + 'Binnen een minuut weet je of de termijn voorbij is.'),
+  );
+
+  const knop = document.createElement('a');
+  knop.className = 'knop knop--primair knop--groot keuzeactie__knop';
+  knop.href = `/aanvraag?${vragen.toString()}`;
+  knop.textContent = `Upload mijn ${briefnaam(instantie)}`;
+  actievak.append(knop,
+    el('p', 'keuzeactie__fijn',
+      'Je zit nergens aan vast tot je zelf tekent.'));
+
+  actievak.classList.remove('verborgen');
+
+  // Alleen bijsturen als de knop niet in beeld staat; een scroll terwijl je al
+  // kijkt naar wat je zocht, is alleen maar verwarrend.
+  const doos = actievak.getBoundingClientRect();
+  if (doos.bottom > window.innerHeight || doos.top < 0) {
+    actievak.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
+}
+
+/** Kort hulpje: een element met klasse en tekst. */
+function el(tag, klasse, tekst) {
+  const knoop = document.createElement(tag);
+  if (klasse) knoop.className = klasse;
+  if (tekst) knoop.textContent = tekst;
+  return knoop;
 }
 
 // ------------------------------------------------------------------- start --
@@ -218,6 +262,7 @@ if (keuzevak) {
       }
       personaliseer(instantie);
       toonProcedures(instantie);
+      toonActie(instantie);
     });
   }
 }

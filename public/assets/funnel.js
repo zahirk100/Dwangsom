@@ -741,6 +741,15 @@ function rendereJouwZaak() {
  * het scherm waar je je handtekening zet, kost meer vertrouwen dan het getal
  * zelf ooit kan kosten.
  */
+/**
+ * Wat de klant ons betaalt, vlak voordat hij tekent.
+ *
+ * Hier stond een lijst met uitkomsten en bedragen door elkaar: "Geen dwangsom
+ * toegekend - € 0". Een scherm eerder staat "mogelijk recht op € 1.442", dus
+ * dat las als "jij krijgt nul". Elke regel gaat nu onmiskenbaar over onze
+ * rekening, en erboven staat dat het dwangsombedrag zelf altijd naar de klant
+ * gaat.
+ */
 function rendereKosten() {
   const vak = document.getElementById('kostenblok');
   if (!vak) return;
@@ -748,17 +757,26 @@ function rendereKosten() {
   const t = tarief(INSTELLINGEN);
 
   const lijst = el('ul', { class: 'kostenlijst' },
-    el('li', {}, el('span', { tekst: 'De controle die je net deed' }),
-      el('strong', { tekst: 'gratis' })),
-    el('li', {}, el('span', { tekst: 'Geen dwangsom toegekend' }),
-      el('strong', { tekst: '\u20ac 0' })),
-    el('li', {}, el('span', { tekst: 'Wel een dwangsom toegekend' }),
+    el('li', {}, el('span', { tekst: 'Voor de controle die je net deed' }),
+      el('strong', { tekst: 'je betaalt niets' })),
+    el('li', {}, el('span', { tekst: 'Als er géén dwangsom wordt toegekend' }),
+      el('strong', { tekst: 'je betaalt niets' })),
+    el('li', { class: 'kostenlijst__wel' },
+      el('span', { tekst: 'Als er wél een dwangsom wordt toegekend' }),
       el('strong', { tekst: tariefKort(t) })));
 
   const blok = el('div', { class: 'kostenblok' },
     el('h2', { tekst: 'Wat het je kost' }),
-    lijst,
-    el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
+    el('p', { class: 'kostenblok__kop' },
+      'Hieronder staat wat jij ',
+      el('em', {}, 'ons'),
+      ' betaalt. De dwangsom zelf wordt altijd rechtstreeks aan jou uitbetaald; '
+      + 'wij krijgen dat geld niet in handen.'),
+    lijst);
+  // Staat het tarief in de regel hierboven, dan zegt die zin het nog een keer.
+  // Alleen als er géén tarief is ingesteld voegt hij iets toe: dan is het de
+  // enige plek waar staat dat je het vooraf hoort.
+  if (!t.bekend) blok.append(el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
   const voorbeeld = tariefVoorbeeld(t);
   if (voorbeeld) blok.append(el('p', { class: 'kostenblok__voorbeeld', tekst: voorbeeld }));
   vak.append(blok);

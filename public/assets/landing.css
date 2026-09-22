@@ -534,3 +534,29 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
 .nogniet__punten svg { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 @media (min-width: 860px) { .nogniet { grid-template-columns: 1.5fr 1fr; gap: 40px; } }
 @media (max-width: 520px) { .nogniet { padding: 24px 20px; } }
+
+/* ------------------------------------------------- de volgende stap (keuze) -- */
+/* Verschijnt onder de keuzeknoppen zodra iemand heeft aangewezen op wie hij
+   wacht. Eerder veranderde de pagina wel, maar alleen boven de vouw: op een
+   telefoon leek een tik dan niets te doen. */
+.keuzeactie {
+  margin-top: 18px; padding: 22px 24px; border-radius: var(--radius);
+  background: var(--blauw-600); color: #fff;
+  box-shadow: 0 10px 30px -12px rgba(20, 41, 77, .45);
+}
+.keuzeactie__kop {
+  margin: 0 0 6px; font-size: clamp(1.05rem, .98rem + .4vw, 1.22rem);
+  font-weight: 720; color: #fff; letter-spacing: -.01em;
+}
+.keuzeactie__onder { margin: 0 0 16px; font-size: .93rem; color: rgba(255, 255, 255, .88); }
+.keuzeactie__knop {
+  width: 100%; background: #fff; color: var(--blauw-700); border-color: #fff;
+}
+.keuzeactie__knop:hover { background: var(--blauw-50); color: var(--blauw-800); }
+.keuzeactie__fijn {
+  margin: 12px 0 0; font-size: .82rem; color: rgba(255, 255, 255, .82); text-align: center;
+}
+@media (min-width: 620px) {
+  .keuzeactie__knop { width: auto; min-width: 280px; }
+  .keuzeactie__fijn { text-align: left; }
+}

@@ -197,3 +197,15 @@ test('er is een ingang voor wie nog niet te laat is', () => {
   assert.equal(ingang.instantie, '', 'deze ingang geldt voor elke instantie');
   assert.match(ingang.knop, /bijhouden|bijhoud|Houd/i);
 });
+
+test('elke pagina heeft een plek waar de volgende stap verschijnt', () => {
+  // Zonder dit vak veranderde er na een keuze wel van alles, maar allemaal
+  // boven de vouw: op een telefoon leek een tik niets te doen en stond er bij
+  // de keuzeknoppen geen knop om verder te gaan.
+  for (const ingang of alleIngangen()) {
+    const html = landingHtml(ingang);
+    if (!html.includes('id="instantiekeuze"')) continue;
+    assert.match(html, /id="keuzeactie"/,
+      `"${ingang.slug || '/'}" heeft keuzeknoppen maar geen vak voor de volgende stap`);
+  }
+});
