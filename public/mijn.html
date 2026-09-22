@@ -135,6 +135,45 @@
   .nieuwepost strong { display: block; font-size: .99rem; margin-bottom: 4px; }
   .nieuwepost p { margin: 0; font-size: .89rem; color: var(--tekst-zacht); }
 
+  /* De keuzelijst bij meerdere zaken. */
+  .zakenlijst { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .zaakregel {
+    width: 100%; text-align: left; cursor: pointer; font: inherit;
+    display: grid; gap: 5px;
+    padding: 16px 18px; border-radius: var(--radius);
+    background: var(--vlak); border: 1px solid var(--rand);
+    transition: border-color .15s, box-shadow .15s, transform .08s;
+  }
+  .zaakregel:hover { border-color: var(--blauw-500); box-shadow: var(--schaduw-klein); }
+  .zaakregel:active { transform: translateY(1px); }
+  .zaakregel--open { border-color: var(--blauw-600); background: var(--blauw-50); }
+  .zaakregel__kop {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap;
+  }
+  .zaakregel__kop strong { font-size: 1.02rem; color: var(--tekst); }
+  .zaakregel__staat {
+    font-size: .76rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--grijs-100); color: var(--tekst-zacht); white-space: nowrap;
+  }
+  .zaakregel__staat--goed { background: var(--groen-100); color: var(--groen-600); }
+  .zaakregel__staat--info { background: var(--blauw-100); color: var(--blauw-600); }
+  .zaakregel__staat--let-op { background: var(--oranje-100); color: var(--oranje-600); }
+  .zaakregel__onder { font-size: .9rem; color: var(--tekst-zacht); }
+  .zaakregel__voet {
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    font-size: .78rem; color: var(--tekst-zacht); margin-top: 2px;
+  }
+  .zaakregel__actie { display: flex; align-items: center; gap: 9px; }
+  .zaakregel__pijl {
+    font-size: 1.2rem; line-height: 1; color: var(--blauw-600);
+    transition: transform .15s;
+  }
+  .zaakregel:hover .zaakregel__pijl { transform: translateX(3px); }
+  @media (max-width: 420px) {
+    .zaakregel__kop { display: block; }
+    .zaakregel__staat { display: inline-block; margin-top: 5px; }
+  }
+
   .uitlogrij { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .hulp { margin-top: 30px; font-size: .88rem; color: var(--tekst-zacht); }
   .hulp a { font-weight: 600; }

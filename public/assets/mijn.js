@@ -80,6 +80,88 @@ function toonInloggen(boodschap) {
 }
 
 /**
+ * Meerdere zaken: eerst kiezen, dan lezen.
+ *
+ * Alle dossiers onder elkaar zetten werkt bij één zaak prima en wordt bij zes
+ * een muur waarin je je eigen zaak niet terugvindt. Bovenaan staat nu een
+ * regel per zaak met het enige waar je op zoekt - om wie het gaat en waar hij
+ * staat - en pas als je erop klikt vouwt die zaak open.
+ */
+function zakenvak(dossiers) {
+  const houder = el('div', {});
+  const lijst = el('ul', { class: 'zakenlijst' });
+  const detail = el('div', {});
+
+  const hint = el('p', { class: 'fijndruk', style: 'margin:10px 0 0' },
+    'Klik op een zaak om hem te openen.');
+
+  const sluit = () => {
+    detail.textContent = '';
+    for (const knop of lijst.querySelectorAll('.zaakregel')) {
+      knop.classList.remove('zaakregel--open');
+      knop.setAttribute('aria-expanded', 'false');
+    }
+    hint.hidden = false;
+  };
+
+  const toon = (dossier) => {
+    detail.textContent = '';
+    for (const knop of lijst.querySelectorAll('.zaakregel')) {
+      const open = knop.dataset.id === dossier.id;
+      knop.classList.toggle('zaakregel--open', open);
+      knop.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    // De uitleg onder de lijst slaat alleen ergens op zolang er niets openstaat.
+    hint.hidden = true;
+    const terug = el('button', { class: 'knop knop--stil knop--klein', type: 'button' },
+      '\u2190 Al mijn zaken');
+    terug.addEventListener('click', () => {
+      sluit();
+      lijst.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    detail.append(el('div', { style: 'margin-bottom:14px' }, terug), rendereDossier(dossier));
+    detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  for (const dossier of dossiers) {
+    const samen = klantSamenvatting(dossier);
+    const orgaan = dossier.invoer.organisatienaam
+      || labelBestuursorgaan(dossier.invoer.bestuursorgaan) || 'Onbekende instantie';
+    const zaaktype = zoekZaaktype(dossier.invoer.zaaktype);
+    const aftelling = klantAftelling(dossier);
+
+    const knop = el('button', {
+      class: 'zaakregel', type: 'button', 'data-id': dossier.id, 'aria-expanded': 'false',
+    },
+      el('span', { class: 'zaakregel__kop' },
+        el('strong', { tekst: orgaan }),
+        el('span', { class: `zaakregel__staat zaakregel__staat--${samen.kleur}`, tekst: samen.kop })),
+      el('span', { class: 'zaakregel__onder',
+        tekst: zaaktype ? zaaktype.label : dossier.invoer.zaaktype || 'Aanvraag' }),
+      el('span', { class: 'zaakregel__voet' },
+        el('span', { tekst: dossier.referentie }),
+        // Rechts staat waar je naar zoekt: hoeveel tijd er nog is, en een pijl
+        // die laat zien dat deze regel ergens heen gaat.
+        el('span', { class: 'zaakregel__actie' },
+          aftelling
+            ? el('span', { tekst: `nog ${aftelling.dagen} ${aftelling.dagen === 1 ? 'dag' : 'dagen'}` })
+            : null,
+          el('span', { class: 'zaakregel__pijl', tekst: '\u203a', 'aria-hidden': 'true' }))));
+
+    knop.addEventListener('click', () => toon(dossier));
+    lijst.append(el('li', {}, knop));
+  }
+
+  houder.append(
+    el('div', { class: 'kolomkop', tekst: `Jouw zaken (${dossiers.length})` }),
+    lijst,
+    hint,
+    detail,
+  );
+  return houder;
+}
+
+/**
  * Eén dossier, van boven naar beneden: waar sta je, wat gebeurt er, wat
  * weten wij van je, en wat missen wij nog.
  */
@@ -523,8 +605,11 @@ async function laad() {
 
   if (data.dossiers.length === 0) {
     inhoud.append(rendereGeenDossier(data.gebruiker));
+  } else if (data.dossiers.length === 1) {
+    // Eén zaak: dan is een keuzelijst alleen een extra klik.
+    inhoud.append(rendereDossier(data.dossiers[0]));
   } else {
-    for (const dossier of data.dossiers) inhoud.append(rendereDossier(dossier));
+    inhoud.append(zakenvak(data.dossiers));
   }
 
   const uitloggen = el('button', { class: 'knop knop--stil knop--klein', type: 'button' }, 'Uitloggen');
