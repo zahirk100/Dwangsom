@@ -166,6 +166,11 @@ async function publiekeApi(req, res, url) {
       // het na een nieuwe deploy?
       opslagDuurzaam: opslag.duurzaam,
       beheerOpen: BEHEER_OPEN,
+      // Zonder dit geheim verzint elke serverloze instantie zijn eigen sleutel
+      // voor de sessiecookies. Dan maakt instantie A een sessie die instantie B
+      // niet herkent, en kom je na het inloggen meteen weer op het inlogscherm.
+      // Lokaal valt dat nooit op, want daar is er één proces.
+      sessiegeheim: !sessiegeheimOntbreekt,
       gestartOp: GESTART_OP,
       tijd: new Date().toISOString(),
     });

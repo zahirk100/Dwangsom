@@ -231,3 +231,35 @@ test('verlopen sessies en koppelingen worden opgeruimd', async () => {
   assert.equal(await g.ruimOp(morgen), 2);
   assert.equal(await g.ruimOp(morgen), 0, 'en dan is er niets meer op te ruimen');
 });
+
+test('zonder gedeeld sessiegeheim herkent de ene instantie de sessie van de andere niet', async () => {
+  // Dit is wat er op serverloze hosting misging en lokaal nooit opvalt.
+  //
+  // De sessiecookie is `sessieId.HMAC(sessieId, sleutel)`. Staat SESSIE_GEHEIM
+  // niet in de omgeving, dan verzint elk proces bij het opstarten zijn eigen
+  // sleutel. Op Vercel is elk verzoek een eigen instantie: instantie A maakt
+  // de sessie bij het inwisselen van de inloglink, instantie B controleert hem
+  // een tel later en herkent de handtekening niet. De klant belandt dan
+  // opnieuw op het inlogscherm, zonder foutmelding, alsof de link stuk is.
+  const { sessieSleutel } = await import('../src/sessie.js');
+  const opslag = new GeheugenOpslag();
+
+  const instantieA = new Gebruikers({ opslag, sleutel: sessieSleutel({}) });
+  const instantieB = new Gebruikers({ opslag, sleutel: sessieSleutel({}) });
+  const klant = await instantieA.maakEersteBeheerder({
+    email: 'klant@nubeslist.nl', naam: 'K', wachtwoord: 'een-lang-wachtwoord',
+  });
+
+  const cookie = await instantieA.maakSessie(klant);
+  assert.ok(await instantieA.uitCookie(cookie), 'de eigen instantie herkent hem wel');
+  assert.equal(await instantieB.uitCookie(cookie), null,
+    'en precies dat is de storing: een andere instantie herkent hem niet');
+
+  // Met een geheim uit de omgeving delen ze dezelfde sleutel.
+  const env = { SESSIE_GEHEIM: 'een-lang-geheim-uit-de-omgeving' };
+  const instantieC = new Gebruikers({ opslag, sleutel: sessieSleutel(env) });
+  const instantieD = new Gebruikers({ opslag, sleutel: sessieSleutel(env) });
+  const gedeeld = await instantieC.maakSessie(klant);
+  assert.ok(await instantieD.uitCookie(gedeeld),
+    'met SESSIE_GEHEIM herkennen alle instanties elkaars sessies');
+});
