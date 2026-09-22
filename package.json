@@ -5,6 +5,7 @@
   "description": "nubeslist.nl: aanvraag- en beheerapplicatie voor dwangsom bij niet tijdig beslissen (Awb art. 4:17 e.v.)",
   "type": "module",
   "scripts": {
+    "build": "node scripts/maak-paginas.mjs",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test test/*.test.js"

@@ -66,6 +66,18 @@ voordeur zit dezelfde flow: de knop geeft `?instantie=` en `?zaak=` mee, waarna 
 funnel "Laten we kijken of UWV te laat is" zegt en "Kies mijn UWV-brief" op de
 uploadknop zet.
 
+**Die bestanden worden bij elke deploy opnieuw geschreven**, door `npm run
+build`. Dat is geen detail: in die pagina's staan waarden uit de omgeving — de
+bedrijfsgegevens onder "Achter nubeslist.nl" en het tarief. Draaide het script
+alleen op de machine van de ontwikkelaar, dan staan diens lege waarden voor
+altijd in het bestand, hoe goed je de variabelen in Vercel ook invult. Precies
+dat gebeurde: de KvK en het vestigingsadres bleven leeg terwijl ze wel waren
+ingevoerd.
+
+Gevolg voor de bediening: **wijzig je zo'n variabele, dan moet je opnieuw
+deployen.** Een variabele veranderen alleen is niet genoeg, want de pagina is
+al geschreven.
+
 Waarom bestanden en geen server die rendert? Twee redenen. Op Vercel gaat het
 bestandssysteem vóór de functie, dus een bestand is de zekerste route. En de titel hoort
 in de bron te staan, niet door javascript te worden ingevuld. `test/campagnes.test.js`

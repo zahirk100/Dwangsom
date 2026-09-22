@@ -479,7 +479,10 @@ kunt controleren; is dat er niet, dan is het blok niet af.
 7. Zet `SESSIE_GEHEIM` op een lange willekeurige reeks.
 8. Kies je tarief en zet `TARIEF_PERCENTAGE` of `TARIEF_VAST`. Zolang dit leeg
    is, noemt de site nergens een bedrag.
-9. Vul de `BEDRIJF_*`-variabelen in; die komen op de machtiging.
+9. Vul de `BEDRIJF_*`-variabelen in. Die komen op de machtiging én in het blok
+   "Achter nubeslist.nl" op elke campagnepagina. Let op: die pagina's worden
+   bij de **build** geschreven, dus na het wijzigen van zo'n variabele moet je
+   opnieuw deployen — anders staat de oude (lege) waarde er nog.
 10. Richt de mailbox in en zet SPF, DKIM en DMARC (zie stap 4). Koppel de
     verzenddienst (`RESEND_API_KEY` of `POSTMARK_API_KEY`) en `MAIL_AFZENDER`.
 11. **Haal `BEHEER_OPEN` weg.**
