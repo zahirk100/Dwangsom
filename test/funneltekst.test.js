@@ -95,9 +95,51 @@ test('het kostenblok is een afspraak, geen kostenopgave met aftreksom', () => {
   assert.match(funnel, /voor het behandelen van je zaak/);
 });
 
+test('het kostenblok begint met wat de klant nu betaalt: niets', () => {
+  assert.match(code, /Je betaalt nu niets/);
+  assert.match(code, /kostenblok__nu/);
+});
+
+test('de twee gevallen staan als vraag met antwoord', () => {
+  // Een tabel met bedragen leest als een rekening; dit moet als afspraak
+  // lezen, want de klant heeft net besloten dat wij het regelen.
+  assert.match(code, /Krijg je uiteindelijk geen vergoeding van/);
+  assert.match(code, /Dan betaal je ons niets/);
+  assert.match(code, /Krijg je wél een vergoeding omdat/);
+  assert.match(code, /voor het behandelen van je zaak/);
+});
+
+test('het blok belooft geen melding als die nog niet is vastgesteld', () => {
+  // Is de uitslag onvolledig of onbekend, dan staat er nog helemaal niet
+  // vást dat er een melding moet. "Wij regelen nu de melding" is dan een
+  // toezegging die wij op dat moment niet kunnen waarmaken. Daarom hoort de
+  // neutrale zin de terugvaloptie te zijn, niet die melding.
+  const blok = /const watWijNuDoen = \{[\s\S]*?\}\[uitkomst\][\s\S]*?;/.exec(code)[0];
+  const terugval = blok.split('}[uitkomst]')[1];
+  assert.ok(!/regelen nu de melding/.test(terugval),
+    'de terugvaloptie belooft een melding die nog niet is vastgesteld');
+  assert.match(terugval, /zoeken uit welke stap er nodig is/);
+  assert.match(blok, /UITKOMST\.INGEBREKESTELLING_NODIG\]: `Wij regelen nu de melding/);
+});
+
+test('de instantie krijgt geen hoofdletter midden in een zin', () => {
+  // instantieInEenZin() geeft "je gemeente"; met een hoofdletter erop werd
+  // dat "bij Je gemeente".
+  const blok = /function rendereKosten\(\)[\s\S]*?\n\}/.exec(code)[0];
+  assert.ok(!/metHoofdletter\(instantieInEenZin/.test(blok),
+    'hier staat de instantie steeds midden in een zin');
+});
+
+test('er staat nergens "beslissen over je ...-beslissing"', () => {
+  // De korte vorm van een WIA-zaak is "je WIA-beslissing"; achter "moet
+  // beslissen over" wordt dat dubbelop.
+  assert.ok(!/moet beslissen\$\{overZaak\}/.test(code));
+  assert.ok(!/beslissen over \$\{kortezaak\}/.test(code));
+});
+
 test('het kostenblok zegt dat het geld rechtstreeks naar de klant gaat', () => {
-  assert.match(funnel, /rechtstreeks aan jou/);
-  assert.match(funnel, /Wij ontvangen jouw vergoeding niet/);
+  assert.match(code, /rechtstreeks aan jou betaald/);
+  assert.match(code, /Wij ontvangen jouw vergoeding niet/);
 });
 
 test('het tarief komt uit de instellingen, niet uit de tekst', () => {

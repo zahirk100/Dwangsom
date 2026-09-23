@@ -106,44 +106,22 @@
   .kostenblok h2 { font-size: 1rem; margin: 0 0 12px; color: var(--blauw-900); }
   .kostenblok__kop { margin: 0 0 14px; font-size: .92rem; color: var(--tekst-zacht); }
   .kostenblok__kop em { font-style: normal; font-weight: 700; color: var(--tekst); }
-  .kostenlijst { list-style: none; padding: 0; margin: 0; }
-  .kostenlijst__wel strong { color: var(--blauw-700); }
-  .kostenlijst li {
-    display: flex; justify-content: space-between; gap: 16px; align-items: baseline;
-    padding: 9px 0; border-top: 1px solid var(--rand); font-size: .93rem;
+  .kostenblok__nu { margin: 0 0 10px; font-size: 1.02rem; }
+  /*
+    Twee gevallen als vraag met antwoord. Dat leest als een afspraak; een
+    tabel met bedragen leest als een rekening, en dat is niet wat hier
+    gebeurt: de klant heeft net besloten dat wij het regelen.
+  */
+  .kostengeval {
+    margin: 14px 0 0; padding: 13px 15px; border-radius: var(--radius-klein);
+    background: var(--grijs-50, #f7fafd); border: 1px solid var(--rand);
   }
-  .kostenlijst li:first-child { border-top: 0; }
-  .kostenlijst strong { color: var(--blauw-800); white-space: nowrap; text-align: right; }
-  /* Op een smal scherm duwt een lang bedrag ("25% van de vergoeding") de tekst
-     tegen de rand. Dan liever onder elkaar. */
-  @media (max-width: 440px) {
-    .kostenlijst li { display: block; }
-    .kostenlijst strong { display: block; margin-top: 3px; text-align: left; white-space: normal; }
-  }
+  .kostengeval--wel { background: var(--blauw-50); border-color: var(--blauw-100); }
+  .kostengeval__vraag { margin: 0 0 5px; font-size: .92rem; color: var(--tekst-zacht); }
+  .kostengeval__antwoord { margin: 0; font-size: .96rem; }
+  .kostengeval--wel .kostengeval__antwoord strong { color: var(--blauw-700); }
+  .kostenblok__slot { margin: 14px 0 0; font-size: .88rem; color: var(--tekst-zacht); }
   .kostenblok__zin { margin: 12px 0 0; font-size: .9rem; color: var(--tekst-zacht); }
-  /* De som met het bedrag van deze zaak erin. */
-  .kostensom {
-    margin: 14px 0 0; padding: 14px 16px; border-radius: var(--radius-klein);
-    background: var(--blauw-50); border: 1px solid var(--blauw-100);
-  }
-  .kostensom__uitleg { margin: 0 0 10px; font-size: .88rem; color: var(--blauw-700); }
-  .kostensom__rij {
-    display: flex; justify-content: space-between; gap: 14px; align-items: baseline;
-    padding: 6px 0; font-size: .93rem; color: var(--blauw-800);
-  }
-  .kostensom__rij strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .kostensom__rij--af { color: var(--tekst-zacht); }
-  .kostensom__rij--uit {
-    margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--blauw-100);
-    font-weight: 700;
-  }
-  .kostensom__rij--uit strong { font-size: 1.15rem; color: var(--blauw-800); }
-  .kostenblok__voorbeeld {
-    margin: 10px 0 0; padding: 10px 12px; border-radius: var(--radius-klein);
-    background: var(--blauw-50); border: 1px solid var(--blauw-100);
-    font-size: .88rem; color: var(--blauw-800);
-  }
-
   .machtiging__uitleg {
     margin: 0 0 14px; padding: 12px 14px; border-radius: var(--radius-klein);
     background: var(--blauw-50); border: 1px solid var(--blauw-100); font-size: .92rem;

@@ -831,35 +831,67 @@ function rendereKosten() {
   if (!vak) return;
   vak.textContent = '';
   const t = tarief(INSTELLINGEN);
+  // Overal midden in een zin ("bij je gemeente", "van UWV"), dus geen
+  // hoofdletter: die maakte er "bij Je gemeente" van.
+  const orgaan = instantieInEenZin(zaak.invoer.bestuursorgaan);
+  const kortezaak = zaakInEenZin();
+  const overZaak = kortezaak ? ` over ${kortezaak}` : '';
+  const uitkomst = (zaak.rapport || {}).uitkomst;
 
-  const lijst = el('ul', { class: 'kostenlijst' },
-    el('li', {}, el('span', { tekst: 'De controle die je zojuist deed' }),
-      el('strong', { tekst: 'gratis' })),
-    el('li', {}, el('span', { tekst: 'Geen vergoeding van de instantie?' }),
-      el('strong', { tekst: 'je betaalt ons niets' })),
-    el('li', { class: 'kostenlijst__wel' },
-      el('span', { tekst: 'Wel een vergoeding?' }),
-      el('strong', { tekst: t.bekend ? tariefKort(t) : 'je hoort het vooraf' })));
+  // Wat wij "nu" doen, hangt af van waar de zaak staat. "Wij regelen nu de
+  // melding" is bij een termijn die nog loopt gewoon onwaar: dan houden wij
+  // een datum in de gaten. Eén vaste zin zou hier een belofte doen die wij
+  // op dat moment niet nakomen.
+  //
+  // De laatste regel is met opzet de terugvaloptie en niet "wij regelen nu de
+  // melding". Is de uitslag onvolledig of onbekend - de brief gaf te weinig,
+  // of er speelt een uitsluiting - dan is er nog helemaal niet vastgesteld
+  // dát er een melding moet. Dat dan toch beloven is een toezegging die wij
+  // op dat moment niet kunnen waarmaken.
+  const watWijNuDoen = {
+    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wij regelen nu de melding${overZaak} bij ${orgaan} en `
+      + 'nemen het vervolg van je zaak voor je uit handen.',
+    // Hier bewust zonder de zaaknaam: "beslissen over je WIA-beslissing" is
+    // dubbelop. Het actieplan erboven noemt de zaak al.
+    [UITKOMST.TERMIJN_LOOPT]: `Wij houden de datum in de gaten waarop ${orgaan} moet beslissen, `
+      + 'en versturen de melding zodra die voorbij is.',
+    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij nemen de lopende procedure${overZaak} van je over en `
+      + `bewaken de termijn die voor ${orgaan} loopt.`,
+    [UITKOMST.RECHT]: `Wij eisen de vergoeding${overZaak} bij ${orgaan} op en nemen het vervolg `
+      + 'van je zaak voor je uit handen.',
+  }[uitkomst]
+    || `Wij nemen ${kortezaak || 'je zaak'} in behandeling, zoeken uit welke stap er nodig is en `
+      + 'nemen het vervolg voor je uit handen.';
 
   const blok = el('div', { class: 'kostenblok' },
     el('h2', { tekst: 'Onze afspraak met jou' }),
-    lijst);
+    el('p', { class: 'kostenblok__nu' }, el('strong', {}, 'Je betaalt nu niets.')),
+    el('p', { class: 'kostenblok__kop', tekst: watWijNuDoen }));
 
-  if (t.bekend) {
-    // Waarvoor betaal je. Zonder deze zin is het "een deel van mijn geld";
-    // mét deze zin is het een prijs voor werk dat hij net heeft zien staan.
-    blok.append(el('p', { class: 'kostenblok__kop' },
-      t.soort === 'percentage'
-        ? `Ontvang je een vergoeding, dan rekenen wij ${t.percentage}% daarvan voor het `
-          + 'behandelen van je zaak.'
-        : `Ontvang je een vergoeding, dan rekenen wij ${tariefKort(t)} voor het behandelen van je zaak.`));
-  } else {
-    blok.append(el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
-  }
+  // Twee gevallen, elk als vraag met antwoord. Dat leest als een afspraak;
+  // een tabel met bedragen leest als een rekening.
+  const geval = (vraag, antwoord, klasse) => el('div', { class: `kostengeval ${klasse || ''}` },
+    el('p', { class: 'kostengeval__vraag', tekst: vraag }),
+    el('p', { class: 'kostengeval__antwoord' }, el('strong', { tekst: antwoord })));
 
-  blok.append(el('p', { class: 'kostenblok__kop' },
-    `${metHoofdletter(instantieInEenZin(zaak.invoer.bestuursorgaan))} betaalt een eventuele `
-    + 'vergoeding rechtstreeks aan jou. Wij ontvangen jouw vergoeding niet.'));
+  blok.append(geval(
+    `Krijg je uiteindelijk geen vergoeding van ${orgaan}?`,
+    'Dan betaal je ons niets.',
+  ));
+
+  blok.append(geval(
+    `Krijg je wél een vergoeding omdat ${orgaan} te laat is met de beslissing${overZaak}?`,
+    t.bekend
+      ? (t.soort === 'percentage'
+        ? `Dan rekenen wij ${t.percentage}% van die vergoeding voor het behandelen van je zaak.`
+        : `Dan rekenen wij ${tariefKort(t)} voor het behandelen van je zaak.`)
+      : 'Dan hoor je vooraf wat het behandelen van je zaak kost.',
+    'kostengeval--wel',
+  ));
+
+  blok.append(el('p', { class: 'kostenblok__slot' },
+    `Een eventuele vergoeding wordt door ${orgaan} rechtstreeks aan jou betaald. `
+    + 'Wij ontvangen jouw vergoeding niet.'));
 
   vak.append(blok);
 

@@ -674,14 +674,16 @@ ${TARIEF.tranches.map((tr, i) => `            <li><span>${i === 0 ? 'De eerste' 
     <p class="kolomkop">Wat het kost</p>
     <h2>${veilig(prijs.kop)}</h2>
     <p>${prijs.regels[0]}</p>
-${t.bekend ? `    <div class="prijsrij">
+${t.bekend ? `    <p>Ga je daarna met ons verder, dan regelen wij de melding bij UWV en nemen wij het
+       vervolg van je zaak voor je uit handen. Wat dat kost, hangt af van de uitkomst:</p>
+    <div class="prijsrij">
       <div class="prijsvak prijsvak--uit">
         <p class="prijsvak__getal prijsvak__getal--nul">€ 0</p>
-        <p style="margin:0;color:var(--tekst-zacht)"><strong>Geen vergoeding?</strong><br>Dan betaal je ons niets.</p>
+        <p style="margin:0;color:var(--tekst-zacht)"><strong>Krijg je geen vergoeding van UWV?</strong><br>Dan betaal je ons niets.</p>
       </div>
       <div class="prijsvak">
         <p class="prijsvak__getal prijsvak__getal--fee">${veilig(prijs.label)}</p>
-        <p style="margin:0;color:var(--tekst-zacht)"><strong>Wel een vergoeding?</strong><br>Alleen dan betaal je ${t.soort === 'vast' ? 'dit bedrag' : 'dit deel van de vergoeding die je ontvangt'}.</p>
+        <p style="margin:0;color:var(--tekst-zacht)"><strong>Krijg je wél een vergoeding omdat UWV te laat is?</strong><br>Dan rekenen wij ${t.soort === 'vast' ? 'dit bedrag' : 'dit deel van die vergoeding'} voor het behandelen van je zaak.</p>
       </div>
     </div>` : `    <p>${prijs.regels[1]}</p>`}
 ${prijs.voorbeeld ? `    <p class="kolomkop" style="margin-top:26px">Rekenvoorbeeld</p>
@@ -694,8 +696,8 @@ ${prijs.voorbeeld ? `    <p class="kolomkop" style="margin-top:26px">Rekenvoorbe
       vergoeding van € ${duizend(prijs.voorbeeld.maximum)} is onze vergoeding
       € ${centen(prijs.voorbeeld.maxSplit.vergoeding)} en houd jij
       € ${centen(prijs.voorbeeld.maxSplit.overhoudt)} over.</p>` : ''}
-    <p class="hero__bedrag" style="margin-top:22px"><strong>De vergoeding wordt door UWV
-      rechtstreeks aan jou overgemaakt.</strong> Hij komt niet eerst bij ons binnen.</p>
+    <p class="hero__bedrag" style="margin-top:22px"><strong>Een eventuele vergoeding wordt door
+      UWV rechtstreeks aan jou betaald.</strong> Wij ontvangen jouw vergoeding niet.</p>
     <p style="margin-top:16px">Geen onverwachte rekening: je weet vooraf waar je aan toe bent.</p>
   </div>
 </section>
