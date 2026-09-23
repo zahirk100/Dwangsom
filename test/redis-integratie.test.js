@@ -19,6 +19,9 @@ function maakNepRedis() {
   // Sessies, gebruikers en inloglinks staan niet in een lijst maar in een set
   // met losse rijen; zonder deze commando's testte dat pad helemaal niet mee.
   const verzamelingen = new Map();
+  // Tellers staan in hashes. Zonder deze commando's draait het cijferscherm
+  // lokaal prima en blijft het op Vercel leeg, zonder foutmelding.
+  const hashes = new Map();
 
   const voerUit = ([naam, ...args]) => {
     switch (String(naam).toUpperCase()) {
@@ -46,6 +49,22 @@ function maakNepRedis() {
         const had = sleutels.delete(args[0]);
         return had ? 1 : 0;
       }
+      case 'HINCRBY': {
+        const hash = hashes.get(args[0]) || new Map();
+        const nieuw = Number(hash.get(args[1]) || 0) + Number(args[2]);
+        hash.set(args[1], nieuw);
+        hashes.set(args[0], hash);
+        return nieuw;
+      }
+      case 'HGETALL': {
+        const hash = hashes.get(args[0]);
+        if (!hash) return [];
+        // Upstash geeft een vlakke lijst terug: veld, waarde, veld, waarde…
+        const plat = [];
+        for (const [k, w] of hash) plat.push(k, String(w));
+        return plat;
+      }
+      case 'EXPIRE': return 1;
       case 'SADD': {
         const set = verzamelingen.get(args[0]) || new Set();
         for (const lid of args.slice(1)) set.add(String(lid));
@@ -171,4 +190,35 @@ test('inloggen met een e-maillink werkt op een REST-database', async () => {
   const sessie = await nogEenInstantie.uitCookie(cookie);
   assert.ok(sessie, 'en de sessie hoort door een volgende instantie herkend te worden');
   assert.equal(sessie.gebruiker.email, 'klant@voorbeeld.nl');
+});
+
+/**
+ * De tellingen over Redis.
+ *
+ * Dit pad draait in productie en nergens anders. Lokaal gebruikt de
+ * applicatie het JSON-bestand, dus een fout in de HGETALL-verwerking levert
+ * hier geen enkele klacht op en op Vercel een leeg cijferscherm.
+ */
+test('tellers gaan omhoog en komen er weer uit', async () => {
+  const opslag = await new RedisOpslag(instellingen).init();
+  await opslag.tel('2026-09-23', 'bezoek|meta|uwv-te-laat');
+  await opslag.tel('2026-09-23', 'bezoek|meta|uwv-te-laat', 4);
+  await opslag.tel('2026-09-23', 'aanvraag|meta');
+  await opslag.tel('2026-09-22', 'bezoek|organisch');
+
+  const dag = await opslag.tellingen('2026-09-23');
+  assert.equal(dag['bezoek|meta|uwv-te-laat'], 5, 'ophogen hoort op te tellen');
+  assert.equal(dag['aanvraag|meta'], 1);
+  assert.equal(typeof dag['aanvraag|meta'], 'number', 'Redis geeft strings terug; die horen omgezet');
+
+  const gisteren = await opslag.tellingen('2026-09-22');
+  assert.equal(gisteren['bezoek|organisch'], 1);
+  assert.ok(!('bezoek|meta|uwv-te-laat' in gisteren), 'dagen horen gescheiden te blijven');
+
+  assert.deepEqual((await opslag.meetdagen()).sort(), ['2026-09-22', '2026-09-23']);
+});
+
+test('een dag zonder tellingen geeft een leeg object, geen fout', async () => {
+  const opslag = await new RedisOpslag(instellingen).init();
+  assert.deepEqual(await opslag.tellingen('2020-01-01'), {});
 });

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cijfers van nubeslist.nl</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .blad { max-width: 980px; margin: 0 auto; padding: 28px 16px 70px; }
+  .kop { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+  .periode { display: flex; gap: 6px; }
+  .periode button {
+    padding: 7px 13px; border-radius: 8px; border: 1px solid var(--rand);
+    background: var(--vlak); font: inherit; font-size: .86rem; cursor: pointer;
+  }
+  .periode button[aria-pressed="true"] { background: var(--blauw-600); color: #fff; border-color: var(--blauw-600); }
+  .tegels { display: grid; gap: 12px; margin: 22px 0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .tegel { padding: 16px 18px; border: 1px solid var(--rand); border-radius: var(--radius); background: var(--vlak); }
+  .tegel__getal { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  .tegel__label { font-size: .82rem; color: var(--tekst-zacht); margin-top: 3px; }
+  h2 { margin: 34px 0 12px; font-size: 1.1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th { text-align: left; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--tekst-zacht); padding: 0 8px 8px 0; border-bottom: 1px solid var(--rand); }
+  td { padding: 9px 8px 9px 0; border-top: 1px solid var(--rand); }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .balk { position: relative; }
+  .balk__vulling { position: absolute; inset: 0 auto 0 0; background: var(--blauw-100); border-radius: 4px; }
+  .balk__tekst { position: relative; padding: 3px 6px; }
+  .stil { color: var(--tekst-licht); }
+  /* Vijf kolommen passen niet op een telefoon; schuiven is hier beter dan
+     kolommen verbergen, want in een beheerscherm wil je alles zien. */
+  .rol { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .rol table { min-width: 460px; }
+  .melding { padding: 16px 18px; border-radius: var(--radius); background: var(--oranje-50);
+             border: 1px solid var(--oranje-100); margin: 18px 0; }
+  .uitleg { font-size: .88rem; color: var(--tekst-zacht); margin-top: 26px;
+            padding-top: 18px; border-top: 1px solid var(--rand); }
+</style>
+</head>
+<body>
+
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/beheer"><span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span></a>
+    <nav><a class="nav-secundair" href="/beheer">Dossiers</a></nav>
+  </div>
+</header>
+
+<main class="blad">
+  <div class="kop">
+    <h1 style="margin:0">Cijfers</h1>
+    <div class="periode" id="periode" role="group" aria-label="Periode"></div>
+  </div>
+  <div id="inhoud"><p class="stil">Bezig met laden…</p></div>
+
+  <p class="uitleg">
+    Deze cijfers zijn tellingen, geen bezoekersprofielen. Er wordt geen cookie gezet, geen
+    ip-adres bewaard en niets wat naar één bezoeker terugleidt. Daardoor kun je hier niet zien
+    wie iets deed — alleen hoeveel keer het gebeurde.
+  </p>
+</main>
+
+<script type="module" src="/assets/cijfers.js"></script>
+</body>
+</html>

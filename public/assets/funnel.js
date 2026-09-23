@@ -13,6 +13,7 @@ import { BESTUURSORGANEN, labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '/
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/identiteit.js';
 import { teVragenVelden } from '/shared/funnelvragen.js';
 import { tarief, tariefZin, tariefVoorbeeld, tariefKort, tariefSplitsing, euroTekst } from '/shared/tarief.js';
+import { meet } from '/assets/meting.js';
 
 /**
  * De fasen die de bezoeker ziet. Niet "stap 7 van 12", maar waar hij is in
@@ -977,6 +978,7 @@ async function verzend() {
       foutVak.append(melding('fout', data.fout || 'Indienen is niet gelukt', ''));
       return;
     }
+    meet('aanvraag');
     rendereKlaar(data);
     gaNaar(5);
   } catch (err) {
@@ -1066,8 +1068,23 @@ function rendereKlaar(data) {
 
 // ------------------------------------------------------------ navigatie ---
 
+/**
+ * Welke stap welke meting oplevert.
+ *
+ * Alleen de eerste keer dat een stap wordt bereikt telt mee. Wie terugloopt
+ * en opnieuw doorklikt, zou anders drie keer als "uitslag gezien" in de
+ * cijfers staan, en dan lijkt de trechter beter dan hij is.
+ */
+const MEETSTAP = { 2: 'funnel-uitslag', 3: 'funnel-gegevens', 4: 'funnel-akkoord' };
+const gemeten = new Set();
+
 function gaNaar(nummer) {
   stap = Math.max(1, Math.min(TOTAAL, nummer));
+  const gebeurtenis = MEETSTAP[stap];
+  if (gebeurtenis && !gemeten.has(gebeurtenis)) {
+    gemeten.add(gebeurtenis);
+    meet(gebeurtenis);
+  }
   for (const sectie of form.querySelectorAll('.stap')) {
     sectie.classList.toggle('verborgen', Number(sectie.dataset.stap) !== stap);
   }
@@ -1143,3 +1160,6 @@ function zetIngangstekst() {
 
 zetIngangstekst();
 gaNaar(1);
+// De funnel is geopend. Het bezoek zelf wordt al geteld doordat meting.js
+// wordt geladen; dit zegt dat iemand ook echt aan de aanvraag begint.
+meet('funnel-start');

@@ -765,6 +765,8 @@ ${vragen(t, prijs)}
   </div>
 </footer>
 
+<script type="module" src="/assets/meting.js"></script>
+
 </body>
 </html>
 `;

@@ -202,6 +202,7 @@ ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li
   </div>
 </footer>
 
+<script type="module" src="/assets/meting.js"></script>
 <script type="module" src="/assets/menu.js"></script>
 </body>
 </html>

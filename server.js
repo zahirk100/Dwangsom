@@ -40,6 +40,10 @@ import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/
 import { campagnePaden } from './public/shared/campagnes.js';
 import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 import { kennispaginas } from './src/kennispagina.js';
+import {
+  geldigeGebeurtenis, normaliseerBron, normaliseerPagina, veld, vandaagSleutel,
+  laatsteDagen, overzicht, GEBEURTENISSEN,
+} from './src/meting.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, 'public');
@@ -107,6 +111,10 @@ function gereed() {
 const indienBegrenzer = new Snelheidsbegrenzer({ max: 20, vensterMs: 60 * 60 * 1000 });
 const briefBegrenzer = new Snelheidsbegrenzer({ max: 40, vensterMs: 60 * 60 * 1000 });
 const loginBegrenzer = new Snelheidsbegrenzer({ max: 8, vensterMs: 15 * 60 * 1000 });
+// Ruimer dan de andere: één bezoeker stuurt tijdens een bezoek een handvol
+// meldingen. Wel een grens, want deze route staat open en een open route die
+// naar de opslag schrijft is een uitnodiging.
+const meetBegrenzer = new Snelheidsbegrenzer({ max: 60, vensterMs: 10 * 60 * 1000 });
 
 // ---------------------------------------------------------------- sessie --
 
@@ -323,6 +331,41 @@ async function publiekeApi(req, res, url) {
       portaal: Boolean(klant),
       rapport,
     });
+  }
+
+  /**
+   * Eén gebeurtenis tellen.
+   *
+   * Deze route staat open - hij wordt vanuit de browser aangeroepen - en
+   * schrijft naar de opslag. Daarom drie sloten: een vaste lijst
+   * gebeurtenissen, een vaste lijst bronnen, en een snelheidsgrens per adres.
+   * Zonder die eerste kan iemand er willekeurige tellers in schrijven en zijn
+   * je cijfers waardeloos.
+   *
+   * Er wordt niets over de bezoeker bewaard: geen ip, geen useragent, geen
+   * cookie. Alleen een getal per dag per gebeurtenis per bron gaat omhoog.
+   */
+  if (url.pathname === '/api/meting' && req.method === 'POST') {
+    // Altijd 204, ook bij onzin. Een meetroute hoort nooit een reden te zijn
+    // dat er iets op het scherm misgaat, en een foutmelding zou verklappen
+    // welke gebeurtenissen wel bestaan.
+    const klaar = () => { res.writeHead(204, { 'Cache-Control': 'no-store' }); res.end(); return true; };
+    if (!meetBegrenzer.controleer(clientIp(req)).toegestaan) return klaar();
+    let body;
+    try { body = await leesJsonBody(req); } catch { return klaar(); }
+    const gebeurtenis = String((body && body.g) || '');
+    if (!geldigeGebeurtenis(gebeurtenis)) return klaar();
+    const bron = normaliseerBron(body.b, body.v);
+    const pagina = gebeurtenis === 'bezoek'
+      ? normaliseerPagina(body.p, Object.keys(PAGINAS))
+      : '';
+    try {
+      await opslag.tel(vandaagSleutel(), veld(gebeurtenis, bron, pagina));
+    } catch (err) {
+      // Een mislukte telling mag nooit iets kosten aan de bezoeker.
+      console.error('[meting] tellen mislukt:', err.message);
+    }
+    return klaar();
   }
 
   /**
@@ -844,6 +887,20 @@ async function beheerApi(req, res, url) {
     });
   }
 
+  if (url.pathname === '/api/beheer/metingen' && req.method === 'GET') {
+    const aantalDagen = Math.min(Math.max(Number(url.searchParams.get('dagen')) || 30, 1), 120);
+    const dagen = laatsteDagen(aantalDagen);
+    const ruw = [];
+    for (const dag of dagen) {
+      ruw.push({ dag, tellingen: await opslag.tellingen(dag).catch(() => ({})) });
+    }
+    return stuurJson(res, 200, {
+      vanaf: dagen[0], tot: dagen[dagen.length - 1],
+      gebeurtenissen: GEBEURTENISSEN,
+      ...overzicht(ruw),
+    });
+  }
+
   if (url.pathname === '/api/beheer/export.csv' && req.method === 'GET') {
     const rijen = await store.lijst({ status: url.searchParams.get('status') });
     return stuurTekst(res, 200, naarCsv(rijen), {
@@ -1165,6 +1222,7 @@ const PAGINAS = {
   '/aanvraag-nieuw': 'start.html',
   '/aanvraag-klassiek': 'aanvraag-klassiek.html',
   '/beheer': 'beheer.html',
+  '/cijfers': 'cijfers.html',
   '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
   '/privacy': 'privacy.html',
