@@ -194,3 +194,27 @@ test('elke gebeurtenis heeft een leesbare naam voor het scherm', () => {
     assert.ok(label && label.length > 3, `${id} mist een label`);
   }
 });
+
+/**
+ * Een scherm zonder link bestaat niet.
+ *
+ * /cijfers was gebouwd, getest en bereikbaar - maar nergens aangeklikt kunnen
+ * worden. Je kon er alleen komen door het adres te typen. Dat is geen klein
+ * detail: een functie die je niet kunt vinden, heb je niet.
+ */
+test('de beheeromgeving linkt naar de cijfers, en terug', async () => {
+  const beheer = await (await fetch(`${basis}/beheer`)).text();
+  assert.match(beheer, /href="\/cijfers"/, 'vanuit /beheer is /cijfers niet aan te klikken');
+
+  const cijfers = await (await fetch(`${basis}/cijfers`)).text();
+  assert.match(cijfers, /href="\/beheer"/, 'vanuit /cijfers is er geen weg terug');
+});
+
+test('de cijfers staan niet in het menu van de openbare site', async () => {
+  // Een bezoeker heeft er niets te zoeken en krijgt toch 401; die link zou
+  // alleen verwarring opleveren.
+  for (const pad of ['/', '/uwv', '/ingebrekestelling']) {
+    const html = await (await fetch(basis + pad)).text();
+    assert.ok(!html.includes('href="/cijfers"'), `${pad} linkt naar de cijfers`);
+  }
+});
