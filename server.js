@@ -929,6 +929,26 @@ async function beheerApi(req, res, url) {
       });
     }
 
+    if (!subpad && req.method === 'DELETE') {
+      // Verwijderen is de enige onomkeerbare handeling hier, en daarom de
+      // enige die een behandelaar niet mag. Een verkeerd gezette status draai
+      // je terug; een weggegooid dossier niet.
+      if (!magBeheren(ik)) {
+        return stuurFout(res, 403, 'Alleen een beheerder kan een dossier verwijderen.');
+      }
+      // De referentie moet meegestuurd worden en kloppen. Dat maakt een
+      // misklik onmogelijk: je kunt niet per ongeluk het verkeerde dossier
+      // raken als je de naam ervan hebt moeten meesturen.
+      const body = await leesJsonBody(req).catch(() => ({}));
+      if (String(body.referentie || '') !== aanvraag.referentie) {
+        return stuurFout(res, 400, 'Geef het referentienummer mee om te bevestigen.');
+      }
+      const uitslag = await store.verwijderAanvraag(aanvraag.id);
+      console.log(`[beheer] dossier ${uitslag.referentie} verwijderd door ${ik.email}`
+        + ` (${uitslag.bestanden} bijlagen)`);
+      return stuurJson(res, 200, uitslag);
+    }
+
     if (!subpad && req.method === 'PATCH') {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);

@@ -675,6 +675,10 @@ function rendereLade() {
       a.historie.map((h) => el('li', { 'data-status': 'gehaald' },
         el('div', { class: 'tijdlijn__datum', tekst: datumTijd(h.op) }),
         el('div', { class: 'tijdlijn__label', tekst: h.tekst })))),
+
+    // Helemaal onderaan, apart van de rest: dit is de enige handeling die je
+    // niet terug kunt draaien, dus hij hoort niet tussen de dagelijkse knoppen.
+    verwijderBlok(a),
   );
 
   ladeHouder.textContent = '';
@@ -1170,6 +1174,74 @@ function zetFout(id, tekst) {
  * een status zonder cijfers erachter, en is achteraf niet te zien wat het
  * heeft opgeleverd.
  */
+/**
+ * Een dossier definitief weggooien.
+ *
+ * Staat onderaan, apart, en alleen voor een beheerder. Dit is de enige
+ * onomkeerbare handeling in de applicatie: een verkeerd gezette status draai
+ * je terug, een weggegooid dossier niet.
+ *
+ * Daarom moet het referentienummer worden overgetypt. Een bevestigingsvenster
+ * klik je weg zonder te lezen; een nummer overtypen niet. Dat is precies de
+ * bedoeling bij een dossier met iemands bsn erin.
+ */
+function verwijderBlok(a) {
+  if (!ik || ik.rol !== 'beheerder') return null;
+  const fout = el('div', {});
+  const open = el('div', { class: 'verborgen' });
+  const veld = el('input', {
+    class: 'veld__invoer', type: 'text', placeholder: a.referentie,
+    'aria-label': `Typ ${a.referentie} om te bevestigen`, autocomplete: 'off',
+  });
+
+  const echtWeg = maakKnop('Definitief verwijderen', async () => {
+    fout.textContent = '';
+    if (veld.value.trim().toUpperCase() !== a.referentie.toUpperCase()) {
+      fout.append(el('p', { class: 'veld__fout', tekst: `Typ ${a.referentie} om te bevestigen.` }));
+      veld.focus();
+      return;
+    }
+    echtWeg.disabled = true;
+    try {
+      const uitslag = await api(`/api/beheer/aanvragen/${a.id}`, {
+        method: 'DELETE', body: JSON.stringify({ referentie: a.referentie }),
+      });
+      sluitLade();
+      await laadLijst();
+      const vak = document.getElementById('werklijst-melding');
+      if (vak) {
+        vak.textContent = '';
+        vak.append(el('div', { class: 'melding',
+          tekst: `Dossier ${uitslag.referentie} is verwijderd`
+            + (uitslag.bestanden
+              ? `, inclusief ${uitslag.bestanden} bijlage${uitslag.bestanden === 1 ? '' : 'n'}.`
+              : '.') }));
+      }
+    } catch (err) {
+      echtWeg.disabled = false;
+      fout.append(el('p', { class: 'veld__fout', tekst: `Verwijderen mislukt: ${err.message}` }));
+    }
+  }, 'knop--gevaar');
+
+  open.append(
+    el('p', { class: 'subtiel', style: 'font-size:.9rem; margin:0 0 10px' },
+      'Dit verwijdert het dossier en alle bijlagen. Dit kan niet ongedaan worden gemaakt. '
+      + 'Het account van de aanvrager blijft bestaan.'),
+    el('label', { class: 'veld' },
+      el('span', { class: 'veld__label', tekst: `Typ ${a.referentie} om te bevestigen` }), veld),
+    fout,
+    el('div', { class: 'knoprij' }, echtWeg,
+      maakKnop('Annuleren', () => { open.classList.add('verborgen'); veld.value = ''; fout.textContent = ''; })),
+  );
+
+  const start = maakKnop('Dossier verwijderen…', () => {
+    open.classList.remove('verborgen');
+    veld.focus();
+  }, 'knop--stil');
+
+  return el('div', {}, el('div', { class: 'knoprij' }, start), open);
+}
+
 function afhandelingBlok(a) {
   const huidig = a.afhandeling || {};
   const berekening = (a.rapport && a.rapport.berekening) || {};

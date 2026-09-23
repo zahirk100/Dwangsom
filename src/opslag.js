@@ -114,6 +114,14 @@ export class BestandsOpslag {
     return this.aanvragen.find((a) => a.id === id || a.referentie === id) || null;
   }
 
+  async verwijder(id) {
+    const voor = this.aanvragen.length;
+    this.aanvragen = this.aanvragen.filter((a) => a.id !== id && a.referentie !== id);
+    if (this.aanvragen.length === voor) return false;
+    await this.#bewaar();
+    return true;
+  }
+
   async voegToe(aanvraag) {
     this.aanvragen.unshift(aanvraag);
     await this.#bewaar();
@@ -264,6 +272,16 @@ export class RedisOpslag {
     return aanvraag;
   }
 
+  async verwijder(id) {
+    // Ook uit de index halen, anders blijft haalAlle() naar een lege sleutel
+    // wijzen en krijg je een gat in de lijst in plaats van een verdwenen rij.
+    const [weg] = await this.#roep([
+      ['DEL', SLEUTEL_AANVRAAG + id],
+      ['LREM', SLEUTEL_INDEX, '0', id],
+    ]);
+    return Number(weg) > 0;
+  }
+
   async zet(aanvraag) {
     await this.#roep([['SET', SLEUTEL_AANVRAAG + aanvraag.id, JSON.stringify(aanvraag)]]);
     return aanvraag;
@@ -368,6 +386,11 @@ export class GeheugenOpslag {
   async haalAlle() { return this.aanvragen; }
   async haal(id) { return this.aanvragen.find((a) => a.id === id || a.referentie === id) || null; }
   async voegToe(aanvraag) { this.aanvragen.unshift(aanvraag); return aanvraag; }
+  async verwijder(id) {
+    const voor = this.aanvragen.length;
+    this.aanvragen = this.aanvragen.filter((a) => a.id !== id && a.referentie !== id);
+    return this.aanvragen.length < voor;
+  }
 
   async zet(aanvraag) {
     const index = this.aanvragen.findIndex((a) => a.id === aanvraag.id);

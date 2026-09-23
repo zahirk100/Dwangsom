@@ -190,6 +190,41 @@ export class Store {
     return this.opslag.haal(id);
   }
 
+  /**
+   * Een dossier definitief verwijderen.
+   *
+   * Dit is de enige onomkeerbare handeling in de applicatie, dus hij doet
+   * precies één ding en vraagt er niets bij. De bijlagen gaan mee: die staan
+   * sinds de verhuizing naar Redis in eigen rijen, en zouden anders als
+   * weeskinderen achterblijven in de opslag - onzichtbaar, maar wel met
+   * persoonsgegevens erin.
+   *
+   * Het account van de aanvrager blijft met opzet staan. Dat kan hetzelfde
+   * account zijn als waarmee jij inlogt (bij het proefdraaien gebeurt dat
+   * zo), en een dossier opruimen hoort nooit iemands toegang te kosten.
+   *
+   * @returns {Promise<{verwijderd: boolean, referentie?: string, bestanden: number}>}
+   */
+  async verwijderAanvraag(id) {
+    const aanvraag = await this.vind(id);
+    if (!aanvraag) return { verwijderd: false, bestanden: 0 };
+
+    let bestanden = 0;
+    for (const bestand of (Array.isArray(aanvraag.bestanden) ? aanvraag.bestanden : [])) {
+      if (!bestand || !bestand.id) continue;
+      try {
+        await this.opslag.wisRij(VERZAMELING_BESTANDEN, bestand.id);
+        bestanden++;
+      } catch (err) {
+        // Een bijlage die niet weg wil, mag het dossier niet laten staan.
+        console.error('[store] bijlage verwijderen mislukt:', err.message);
+      }
+    }
+
+    const verwijderd = await this.opslag.verwijder(aanvraag.id);
+    return { verwijderd, referentie: aanvraag.referentie, bestanden };
+  }
+
   async wijzigStatus(id, status, door) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
