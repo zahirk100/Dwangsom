@@ -218,3 +218,40 @@ test('de cijfers staan niet in het menu van de openbare site', async () => {
     assert.ok(!html.includes('href="/cijfers"'), `${pad} linkt naar de cijfers`);
   }
 });
+
+/**
+ * De herkomst moet de sprong naar de funnel overleven.
+ *
+ * Dit ging mis en het kostte precies wat je niet wilt kwijtraken. De
+ * advertentielanding stuurde `bron=uwv-te-laat` mee - een paginanaam in het
+ * veld voor het kanaal - en daarmee viel elke advertentieklik onder "overig"
+ * in plaats van onder "meta". In de cijfers stond Meta op nul aanvragen
+ * terwijl Meta ze wel degelijk had geleverd.
+ */
+test('een paginanaam hoort niet in het kanaalveld', () => {
+  // Als dit ooit weer gebeurt, is het aan de uitkomst te zien: een
+  // paginanaam die als kanaal wordt aangeboden, wordt "overig".
+  assert.equal(normaliseerBron('uwv-te-laat'), 'overig');
+  assert.equal(normaliseerBron('meta'), 'meta');
+});
+
+test('de advertentielanding zet de paginanaam in `van`, niet in `bron`', async () => {
+  const { campagneHtml } = await import('../src/campagnepagina.js');
+  const html = campagneHtml({ TARIEF_PERCENTAGE: '25' });
+  const links = [...html.matchAll(/href="(\/aanvraag[^"]*)"/g)].map((m) => m[1]);
+  assert.ok(links.length > 0);
+  for (const link of links) {
+    assert.ok(!/bron=uwv-te-laat/.test(link), `${link} zet een paginanaam in bron`);
+    assert.match(link, /van=uwv-te-laat/, `${link} mist de paginamarkering`);
+  }
+});
+
+test('het meetscript geeft de herkomst door aan de funnelknoppen', async () => {
+  const fsp = await import('node:fs/promises');
+  const pad = new URL('../public/assets/meting.js', import.meta.url);
+  const script = await fsp.readFile(pad, 'utf8');
+  assert.match(script, /geefHerkomstDoor/);
+  assert.match(script, /a\[href\^="\/aanvraag"\]/);
+  // Een link die zelf al een bron draagt, wordt niet overschreven.
+  assert.match(script, /searchParams\.has\('bron'\)/);
+});

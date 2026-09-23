@@ -144,13 +144,17 @@ test('er staat niets in de balk dat op een knop lijkt maar er geen is', () => {
   assert.ok(!balk.includes('balk__rust'), 'het oude niet-klikbare label hoort weg');
 });
 
-test('alle knoppen gaan naar de funnel, met de herkomst erachter', () => {
+test('alle knoppen gaan naar de funnel, met deze pagina erachter', () => {
+  // `van` en niet `bron`: `bron` is het kanaal waar de bezoeker vandaan komt
+  // en `van` is de pagina waarop hij klikte. Stond hier eerst een paginanaam
+  // in `bron`, en toen viel elke advertentieklik onder "overig".
   const h = html();
   const knoppen = [...h.matchAll(/href="(\/aanvraag[^"]*)"/g)].map((m) => m[1]);
   assert.ok(knoppen.length >= 4, `verwacht meerdere knoppen, kreeg ${knoppen.length}`);
   for (const k of knoppen) {
     assert.match(k, /instantie=uwv/, 'de instantie hoort al gekozen te zijn');
-    assert.match(k, /bron=uwv-te-laat/, 'zonder herkomst is niet te meten wat deze pagina doet');
+    assert.match(k, /van=uwv-te-laat/, 'zonder markering is niet te meten wat deze pagina doet');
+    assert.ok(!/bron=/.test(k), 'het kanaal wordt door meting.js toegevoegd, niet hier');
   }
 });
 

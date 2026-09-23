@@ -53,6 +53,24 @@ Zet in Meta altijd een herkomst achter je link:
 https://nubeslist.nl/uwv-te-laat?bron=meta
 ```
 
+Die `bron` reist mee naar de funnel. Zonder dat zou de keten breken: iemand
+klikt op je advertentie, landt op de landingspagina — dat bezoek telt netjes
+onder **meta** — en klikt door naar `/aanvraag`. Op dat moment is de enige
+verwijzer nubeslist.nl zelf, dus zou de rest van zijn bezoek als **direct**
+tellen, en zou de aanvraag die hij invult niet op naam staan van de
+advertentie die ervoor betaald heeft.
+
+> **Verwar `bron` niet met de pagina.** `bron` is het kanaal (meta, google),
+> `van` is de pagina waarop iemand klikte. Die twee stonden hier ooit door
+> elkaar — er ging `bron=uwv-te-laat` mee — en daarmee viel elke
+> advertentieklik onder *overig*. In de cijfers stond Meta op nul aanvragen
+> terwijl Meta ze wel had geleverd.
+
+**Wat nog niet meereist: organisch verkeer.** Wie via Google op een
+landingspagina komt telt daar als *organisch*, maar zijn funnelbezoek telt
+als *direct* — er is dan geen `bron` in de url om door te geven. Voor betaald
+verkeer, waar het geld zit, klopt de keten wel.
+
 Wil je per advertentie meten, gebruik dan Meta's eigen parameters erachter —
 die tellen we niet mee, maar ze blijven wel in de url staan voor als je later
 een pixel toevoegt.

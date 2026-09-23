@@ -45,8 +45,35 @@ export function meet(gebeurtenis, extra = {}) {
   } catch { /* meten mag nooit iets kosten */ }
 }
 
+/**
+ * De herkomst meegeven aan de knoppen naar de funnel.
+ *
+ * Zonder dit stopt de herkomst bij de landingspagina. Iemand klikt op een
+ * Meta-advertentie, landt op /uwv-te-laat?bron=meta - dat bezoek telt netjes
+ * onder meta - en klikt door naar /aanvraag. Op dat moment is de enige
+ * verwijzer nubeslist.nl zelf, dus telt de rest van zijn bezoek als
+ * "direct". De aanvraag die hij invult staat dan niet op naam van de
+ * advertentie die ervoor betaald heeft.
+ *
+ * Daarom reist `bron` mee naar de funnel. Er wordt niets opgeslagen: het
+ * staat in de link en verder nergens.
+ */
+function geefHerkomstDoor() {
+  const herkomst = bron();
+  if (!herkomst) return;
+  for (const link of document.querySelectorAll('a[href^="/aanvraag"]')) {
+    try {
+      const doel = new URL(link.getAttribute('href'), location.origin);
+      if (doel.searchParams.has('bron')) continue;
+      doel.searchParams.set('bron', herkomst);
+      link.setAttribute('href', doel.pathname + doel.search);
+    } catch { /* een rare link mag de rest niet ophouden */ }
+  }
+}
+
 // Elke pagina die dit script laadt, telt één bezoek.
 meet('bezoek');
+geefHerkomstDoor();
 
 // Zodat andere scripts hem kunnen gebruiken zonder te importeren.
 window.nbMeet = meet;

@@ -37,8 +37,19 @@ const SITE = 'https://nubeslist.nl';
 /** Het pad van deze pagina, zonder .html. */
 export const CAMPAGNE_PAD = '/uwv-te-laat';
 
-/** Waar de knoppen heen gaan. `bron` staat in de url zodat dit meetbaar is. */
-const BESTEMMING = '/aanvraag?instantie=uwv&amp;bron=uwv-te-laat';
+/**
+ * Waar de knoppen heen gaan.
+ *
+ * `van` en niet `bron`: `bron` is het kanaal waar de bezoeker vandaan komt
+ * (meta, google, organisch) en `van` is de pagina waar hij op klikte. Die
+ * twee door elkaar halen kostte precies wat je niet wilt kwijtraken - er
+ * stond eerst `bron=uwv-te-laat`, en daarmee viel elke advertentieklik in de
+ * cijfers onder "overig" in plaats van onder "meta".
+ *
+ * Het kanaal zelf wordt door assets/meting.js aan deze link toegevoegd,
+ * zodat het de hop van landingspagina naar funnel overleeft.
+ */
+const BESTEMMING = '/aanvraag?instantie=uwv&amp;van=uwv-te-laat';
 
 function veilig(tekst) {
   return String(tekst ?? '')
