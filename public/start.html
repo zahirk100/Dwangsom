@@ -199,6 +199,26 @@
   .uitslag__icoon { font-size: 2.6rem; line-height: 1; }
   .uitslag h2 { margin: 12px 0 6px; font-size: 1.45rem; }
   .uitslag p { color: var(--tekst-zacht); }
+  /*
+    Twee vakken naast elkaar: de datum uit de brief, en wat dat betekent.
+    Eén lopende zin las als uitleg; hiernaast gezet leest het als bewijs.
+  */
+  .feitrij { display: grid; gap: 10px; margin: 18px 0 4px; }
+  @media (min-width: 520px) { .feitrij { grid-template-columns: 1fr 1fr; } }
+  .feitrij__vak {
+    padding: 15px 17px; border-radius: var(--radius);
+    background: var(--vlak); border: 1px solid var(--rand);
+  }
+  .feitrij__vak--let-op { background: var(--oranje-50); border-color: var(--oranje-100); }
+  .feitrij__kop { display: block; font-size: .8rem; color: var(--tekst-zacht); }
+  .feitrij__waarde {
+    display: block; margin: 4px 0 2px; font-size: 1.28rem; line-height: 1.2;
+    letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  }
+  .feitrij__vak--let-op .feitrij__waarde { color: var(--oranje-700); }
+  .feitrij__onder { display: block; font-size: .82rem; color: var(--tekst-licht); }
+  .aanvulkop { margin: 22px 0 14px; font-size: .95rem; color: var(--tekst-zacht); }
+
   .feit {
     background: var(--blauw-50); border: 1px solid var(--blauw-100); border-radius: var(--radius-klein);
     padding: 14px 16px; margin: 18px 0; font-size: .95rem;
@@ -384,7 +404,13 @@
           <label class="keuze"><input type="checkbox" id="akkoord">
             <span class="keuze__tekst">Ik machtig nubeslist.nl en ga akkoord met de
               <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a>
-              <span class="keuze__uitleg">Geen vergoeding toegekend, dan geen kosten</span></span></label>
+              <!--
+                Hier mag het zakelijker dan in het blok erboven. Dit is het
+                moment waarop de klant de afspraak bevestigt, en dan is
+                ondubbelzinnigheid belangrijker dan een prettige formulering.
+                De tekst wordt door funnel.js ingevuld met het geldende tarief.
+              -->
+              <span class="keuze__uitleg" id="akkoord-tarief">Geen vergoeding is € 0.</span></span></label>
         </div>
         <p class="veld__fout verborgen" data-fout="akkoord"></p>
       </div>

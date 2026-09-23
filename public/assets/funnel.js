@@ -7,12 +7,12 @@
  * het af.
  */
 
-import { berekenDwangsom, euro, UITKOMST, TARIEF as WET_TARIEF } from '/shared/dwangsom.js';
+import { berekenDwangsom, euro, UITKOMST } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
 import { BESTUURSORGANEN, labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '/shared/catalogus.js';
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/identiteit.js';
 import { teVragenVelden } from '/shared/funnelvragen.js';
-import { tarief, tariefZin, tariefVoorbeeld, tariefKort, tariefSplitsing, euroTekst } from '/shared/tarief.js';
+import { tarief, tariefZin, tariefKort } from '/shared/tarief.js';
 import { meet } from '/assets/meting.js';
 
 /**
@@ -241,16 +241,33 @@ function herbereken() {
  * Alles wat we al weten, gebruiken we: dat is het verschil tussen een uitslag
  * over een instantie en een uitslag over jouw zaak.
  */
-function zaakErbij() {
+/**
+ * De zaak van deze klant in gewone taal: "je WW-aanvraag".
+ *
+ * Het label uit de catalogus is een werkwoordzin voor een keuzelijst ("WIA-
+ * uitkering aanvragen of beoordelen") en past nergens in een lopende zin.
+ * Kleine letters maken helpt niet: dan wordt WW ineens ww. Daarom hier één
+ * korte vorm per zaaktype, die overal wordt hergebruikt.
+ *
+ * @returns {string} bijvoorbeeld 'je WW-aanvraag', of '' als wij het niet weten
+ */
+function zaakInEenZin() {
   const zaaktype = zoekZaaktype(zaak.invoer && zaak.invoer.zaaktype);
   if (!zaaktype) return '';
-  const kort = { 'uwv-wia': 'je WIA-beslissing', 'uwv-ww': 'je WW-aanvraag',
+  return { 'uwv-wia': 'je WIA-beslissing', 'uwv-ww': 'je WW-aanvraag',
     'uwv-wajong': 'je Wajong-beslissing', 'uwv-zw': 'je Ziektewet-uitkering',
-    'uwv-bezwaar': 'je bezwaar', 'gem-bijstand': 'je bijstandsaanvraag',
+    'uwv-herbeoordeling': 'je herbeoordeling', 'uwv-bezwaar': 'je bezwaar',
+    'gem-bijstand': 'je bijstandsaanvraag', 'gem-bijzondere-bijstand': 'je aanvraag voor bijzondere bijstand',
     'gem-wmo': 'je Wmo-aanvraag', 'gem-jeugdwet': 'je aanvraag voor jeugdhulp',
-    'gem-schuldhulp': 'je aanvraag voor schuldhulp', 'gem-bezwaar': 'je bezwaar',
-    'duo-studiefinanciering': 'je studiefinanciering', 'svb-aow': 'je AOW-aanvraag',
-    'bel-toeslag': 'je toeslag' }[zaaktype.id];
+    'gem-schuldhulp': 'je aanvraag voor schuldhulp', 'gem-parkeervergunning': 'je aanvraag bij de gemeente',
+    'gem-bezwaar': 'je bezwaar', 'duo-studiefinanciering': 'je studiefinanciering',
+    'duo-bezwaar': 'je bezwaar', 'svb-aow': 'je AOW-aanvraag', 'svb-bezwaar': 'je bezwaar',
+    'bel-toeslag': 'je toeslag', 'bel-bezwaar': 'je bezwaar',
+    'overig-aanvraag': 'je aanvraag', 'overig-bezwaar': 'je bezwaar' }[zaaktype.id] || '';
+}
+
+function zaakErbij() {
+  const kort = zaakInEenZin();
   return kort ? ` met ${kort}` : '';
 }
 
@@ -304,20 +321,38 @@ function rendereUitslag() {
 
   if (einddatum) {
     const dagen = r.beslistermijn ? verschilDagen(parseDatum(r.beslistermijn.einddatum), vandaag()) : 0;
-    // Bij een datum die nog moet komen is "had moeten beslissen" onzin, en juist
-    // op dit scherm moet de bezoeker merken dat wij zijn brief echt gelezen hebben.
-    vak.append(el('div', { class: 'feit' },
-      dagen > 0
-        ? el('div', {}, 'Volgens je brief had ', el('strong', { tekst: orgaan }),
-          ' uiterlijk ', el('strong', { tekst: einddatum }), ' moeten beslissen.')
-        : el('div', {}, 'Volgens je brief moet ', el('strong', { tekst: orgaan }),
-          ' uiterlijk ', el('strong', { tekst: einddatum }), ' beslissen.'),
-      dagen > 0
-        ? el('div', { style: 'margin-top:6px' }, `Dat is ${dagen} ${dagen === 1 ? 'dag' : 'dagen'} geleden.`)
-        : el('div', { style: 'margin-top:6px' }, dagen === 0
-          ? 'Dat is vandaag.'
-          : `Dat is over ${-dagen} ${dagen === -1 ? 'dag' : 'dagen'}.`)));
+    // Twee naast elkaar, niet één lopende zin: dit is het moment waarop iemand
+    // moet zien dat wij zijn brief echt gelezen hebben.
+    //
+    // En "dat is 114 dagen geleden" is rekenwerk; de bezoeker wil de betekenis.
+    // "Je wacht 114 dagen langer dan in je brief staat" zegt: je stelt je niet
+    // aan. Dat is dezelfde informatie met een heel ander effect.
+    const onder = dagen > 0
+      ? { kop: 'Je wacht inmiddels', waarde: `${dagen} ${dagen === 1 ? 'dag' : 'dagen'} langer`,
+        onder: 'dan de datum in je brief' }
+      : dagen === 0
+        ? { kop: 'Dat is', waarde: 'vandaag', onder: 'de laatste dag volgens je brief' }
+        : { kop: 'Dat is over', waarde: `${-dagen} ${dagen === -1 ? 'dag' : 'dagen'}`,
+          onder: 'vanaf vandaag gerekend' };
+
+    vak.append(el('div', { class: 'feitrij' },
+      el('div', { class: 'feitrij__vak' },
+        el('span', { class: 'feitrij__kop',
+          tekst: dagen > 0 ? `${orgaan} zou uiterlijk beslissen` : `${orgaan} moet beslissen uiterlijk` }),
+        el('strong', { class: 'feitrij__waarde', tekst: einddatum }),
+        el('span', { class: 'feitrij__onder', tekst: 'volgens jouw brief' })),
+      el('div', { class: `feitrij__vak${dagen > 0 ? ' feitrij__vak--let-op' : ''}` },
+        el('span', { class: 'feitrij__kop', tekst: onder.kop }),
+        el('strong', { class: 'feitrij__waarde', tekst: onder.waarde }),
+        el('span', { class: 'feitrij__onder', tekst: onder.onder }))));
   }
+
+  // --- 3. Wat er hierna komt is geen vragenlijst maar een aanvulling --------
+  // Zonder deze zin verandert het gevoel van "ze hebben mijn zaak uitgezocht"
+  // naar "oké, nu begint alsnog een formulier".
+  vak.append(el('p', { class: 'aanvulkop' },
+    'Je brief is duidelijk. We hoeven alleen nog een paar dingen van je te weten om te '
+    + 'controleren of je nu daadwerkelijk in actie kunt komen.'));
 
   // Twee korte vragen die de uitkomst kunnen omgooien.
   vak.append(vraag('Heb je inmiddels een beslissing ontvangen?', 'beslissing',
@@ -354,7 +389,7 @@ function rendereUitslag() {
     // Bewust niet "aangemaand": dat woord kent bijna niemand. En bewust een
     // derde antwoord: iemand kan best iets gestuurd hebben zonder te weten of
     // dat juridisch als melding telt. Dat laten wij beoordelen, niet hem.
-    vak.append(vraag(`Heb je ${orgaan} al officieel laten weten dat de beslistermijn voorbij is?`,
+    vak.append(vraag(`Heb je ${orgaan} al een brief of bericht gestuurd omdat je te lang wacht?`,
       'igs', zaak.invoer.ingebrekeGesteld, (ja) => {
         zaak.invoer.ingebrekeGesteld = ja === true;
         zaak.invoer.igsOnzeker = ja === 'onzeker';
@@ -364,7 +399,7 @@ function rendereUitslag() {
         if (!ja || zaak.invoer.ingebrekestellingDatum) herbereken();
         rendereUitslag();
       },
-      'Bijvoorbeeld met een melding te late beslissing of een ingebrekestelling.',
+      'Je hoeft niet te weten of dat juridisch als officiële melding telt; dat zoeken wij uit.',
       [{ label: 'Nee', waarde: false }, { label: 'Ja', waarde: true },
         { label: 'Weet ik niet', waarde: 'onzeker' }]));
 
@@ -399,23 +434,42 @@ function rendereUitslag() {
     // precies overnemen: dat is waar iemand ja op zegt.
     const lijst = el('ul', { class: 'wijdoen' });
     for (const regel of [
-      `de formele melding aan ${orgaan}`,
-      'het versturen en het bewaren van het verzendbewijs',
-      'het bewaken van de vervolgtermijn',
-      'het controleren en vorderen van een eventuele dwangsom',
+      `stellen wij de melding aan ${orgaan} voor je op`,
+      'versturen wij deze en bewaren wij het verzendbewijs',
+      `houden wij bij wanneer ${orgaan} moet reageren`,
+      'controleren wij daarna of je recht hebt op een vergoeding',
     ]) {
       lijst.append(el('li', {}, el('span', { class: 'wijdoen__vink', tekst: '\u2713' }),
         el('span', { tekst: regel })));
     }
-    vak.append(el('div', { class: 'melding melding--goed', style: 'margin-top:20px' },
-      el('strong', {}, 'Goed nieuws: we kunnen je hierbij helpen'),
-      el('p', {}, bedrag
-        ? `Op basis van wat je hebt ingevuld is de beslistermijn van ${orgaan} verstreken en staat `
-          + `er nu ${bedrag} open. Ga je door, dan regelen wij:`
-        : `Op basis van wat je hebt ingevuld lijkt de beslistermijn van ${orgaan} verstreken. `
-          + 'Ga je door, dan regelen wij:'),
-      lijst,
-      el('p', { class: 'wijdoen__slot' }, 'Jij hoeft de procedure niet zelf bij te houden.')));
+    // De conclusie herhaalt wat de bezoeker zélf heeft aangeleverd, in zijn
+    // eigen woorden. "De beslistermijn lijkt verstreken" wist hij al vanaf de
+    // kop; dat hij daarom nú iets kan doen, is de conclusie waar hij op wacht.
+    const kortezaak = zaakInEenZin();
+    const overZaak = kortezaak ? ` met ${kortezaak}` : '';
+    const uitEigenInvoer = [];
+    if (einddatum) {
+      uitEigenInvoer.push(`Volgens je brief had ${orgaan} uiterlijk ${einddatum} moeten beslissen.`);
+    }
+    const nogNiets = [];
+    if (!zaak.invoer.besluitGenomen) nogNiets.push('nog geen beslissing');
+    if (!zaak.invoer.verdaagd) nogNiets.push('geen nieuwe datum');
+    if (nogNiets.length) {
+      uitEigenInvoer.push(`Je gaf aan dat je ${nogNiets.join(' en ')} van ${orgaan} hebt ontvangen.`);
+    }
+    uitEigenInvoer.push(zaak.invoer.ingebrekeGesteld
+      ? `Je hebt ${orgaan} zelf al laten weten dat je wacht; wij nemen die melding over.`
+      : `Daarom kunnen wij ${orgaan} nu officieel laten weten dat je nog steeds wacht.`);
+
+    const blok = el('div', { class: 'melding melding--goed', style: 'margin-top:20px' },
+      el('strong', {}, `Je kunt nu in actie komen${overZaak}`));
+    for (const regel of uitEigenInvoer) blok.append(el('p', { tekst: regel }));
+    if (bedrag) {
+      blok.append(el('p', {}, 'Er staat op dit moment ', el('strong', { tekst: bedrag }), ' open.'));
+    }
+    blok.append(el('p', { style: 'margin-bottom:6px' }, 'Als je doorgaat:'), lijst,
+      el('p', { class: 'wijdoen__slot' }, 'Jij hoeft dit zelf niet uit te zoeken of bij te houden.'));
+    vak.append(blok);
     knopVerder.textContent = 'Ja, regel dit voor mij →';
     navigatie.classList.remove('verborgen');
   } else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) {
@@ -703,10 +757,31 @@ function rendereActieplan() {
       el('span', { class: 'actieplan__wanneer', tekst: wanneer }),
       el('span', { class: 'actieplan__wat', tekst: wat })));
   }
+  // De kop noemt de zaak van deze klant. "Dit gaan we nu voor je doen" is
+  // waar; "voor jouw WW-aanvraag" is van hem.
+  const kortezaak = zaakInEenZin();
+  const kop = kortezaak
+    ? `Dit gaan we nu doen voor ${kortezaak}`
+    : 'Dit gaan we nu voor je doen';
   vak.append(el('div', { class: 'actieplan' },
-    el('h2', { tekst: 'Dit gaan we nu voor je doen' }),
+    el('h2', { tekst: kop }),
     lijst,
-    el('p', { class: 'actieplan__slot', tekst: 'Je hoeft de procedure niet zelf bij te houden.' })));
+    el('p', { class: 'actieplan__slot', tekst: 'Jij hoeft ondertussen niets te doen.' })));
+}
+
+/**
+ * De volgende stap in de taal van de klant.
+ *
+ * `actieLabel` komt uit de rekenmodule en is voor de behandelaar geschreven:
+ * "Ingebrekestelling versturen". Dat is precies het woord dat wij horen te
+ * vertalen. De juridische term staat op de uitlegpagina voor wie hem wil.
+ */
+function volgendeStapInGewoneTaal(vervolg, orgaan) {
+  const ruw = String((vervolg && vervolg.actieLabel) || '');
+  if (/ingebrekestelling/i.test(ruw)) return `${orgaan} laten weten dat je nog wacht`;
+  if (/dwangsom/i.test(ruw)) return `De vergoeding bij ${orgaan} opeisen`;
+  if (/termijn/i.test(ruw)) return `Wachten tot de termijn van ${orgaan} afloopt`;
+  return ruw || 'Beoordelen door een behandelaar';
 }
 
 /** De zaak zoals wij die nu kennen, met zoveel woorden voorgelegd. */
@@ -725,7 +800,7 @@ function rendereJouwZaak() {
     ['Procedure', zaaktype ? zaaktype.label : 'Aanvraag'],
     ['Beslistermijn volgens brief', einde ? toonDatum(einde) : 'niet uit de brief te halen'],
     ['Beslissing ontvangen', zaak.invoer.besluitGenomen ? 'Ja' : 'Nee'],
-    ['Volgende stap', vervolg.actieLabel || 'Beoordelen door een behandelaar'],
+    ['Volgende stap', volgendeStapInGewoneTaal(vervolg, orgaan)],
   ];
   const lijst = el('dl', {});
   for (const [naam, waarde] of rijen) {
@@ -735,24 +810,21 @@ function rendereJouwZaak() {
 }
 
 /**
- * Wat het kost, vlak voordat iemand tekent.
+ * De financiële afspraak, vlak voordat iemand tekent.
  *
- * Bewust hier en niet alleen in de voorwaarden: "geen vergoeding, geen kosten"
- * roept juist de vraag op wat je dán betaalt. Die vraag onbeantwoord laten op
- * het scherm waar je je handtekening zet, kost meer vertrouwen dan het getal
- * zelf ooit kan kosten.
- */
-/**
- * Wat de klant ons betaalt, vlak voordat hij tekent.
+ * Dit blok heette "Wat het je kost" en rekende het bedrag van deze zaak voor:
+ * dwangsom, min onze vergoeding, is wat jij overhoudt. Dat leek behulpzaam en
+ * werkte averechts.
  *
- * Hier stond een lijst met uitkomsten en bedragen door elkaar: "Geen dwangsom
- * toegekend - € 0". Een scherm eerder staat "mogelijk recht op € 1.442", dus
- * dat las als "jij krijgt nul". Elke regel gaat nu onmiskenbaar over onze
- * rekening, en erboven staat dat het dwangsombedrag zelf altijd naar de klant
- * gaat.
+ * Wie hier komt, heeft al besloten dat wij het regelen. Hij wil geen
+ * kostenopgave meer maar een afspraak. En die aftreksom - "€ 1.442, daarvan
+ * gaat € 288 af" - zet vlak voor de handtekening een verliesanker neer bij
+ * een bedrag dat hij op dat moment nog helemaal niet heeft. Het percentage
+ * staat er onverkort; er wordt niets verzwegen, alleen niet meer uitvergroot
+ * wat hij kwijtraakt.
  *
- * En het rekent door met het bedrag van déze zaak. Een percentage zegt mensen
- * weinig; "van € 1.442 houd jij € 1.081 over" zegt alles.
+ * Wat wél blijft: waarvoor hij betaalt, en dat het geld rechtstreeks naar hem
+ * gaat. Dat zijn de twee vragen die hij echt heeft.
  */
 function rendereKosten() {
   const vak = document.getElementById('kostenblok');
@@ -761,70 +833,57 @@ function rendereKosten() {
   const t = tarief(INSTELLINGEN);
 
   const lijst = el('ul', { class: 'kostenlijst' },
-    el('li', {}, el('span', { tekst: 'Voor de controle die je net deed' }),
-      el('strong', { tekst: 'je betaalt niets' })),
-    el('li', {}, el('span', { tekst: 'Als er géén dwangsom wordt toegekend' }),
-      el('strong', { tekst: 'je betaalt niets' })),
+    el('li', {}, el('span', { tekst: 'De controle die je zojuist deed' }),
+      el('strong', { tekst: 'gratis' })),
+    el('li', {}, el('span', { tekst: 'Geen vergoeding van de instantie?' }),
+      el('strong', { tekst: 'je betaalt ons niets' })),
     el('li', { class: 'kostenlijst__wel' },
-      el('span', { tekst: 'Als er wél een dwangsom wordt toegekend' }),
-      el('strong', { tekst: tariefKort(t) })));
+      el('span', { tekst: 'Wel een vergoeding?' }),
+      el('strong', { tekst: t.bekend ? tariefKort(t) : 'je hoort het vooraf' })));
 
   const blok = el('div', { class: 'kostenblok' },
-    el('h2', { tekst: 'Wat het je kost' }),
-    el('p', { class: 'kostenblok__kop' },
-      'Hieronder staat wat jij ',
-      el('em', {}, 'ons'),
-      ' betaalt. De dwangsom zelf wordt altijd rechtstreeks aan jou uitbetaald; '
-      + 'wij krijgen dat geld niet in handen.'),
+    el('h2', { tekst: 'Onze afspraak met jou' }),
     lijst);
 
-  if (!t.bekend) blok.append(el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
-
-  const som = kostenSom(t);
-  if (som) blok.append(som);
-  else {
-    const voorbeeld = tariefVoorbeeld(t);
-    if (voorbeeld) blok.append(el('p', { class: 'kostenblok__voorbeeld', tekst: voorbeeld }));
+  if (t.bekend) {
+    // Waarvoor betaal je. Zonder deze zin is het "een deel van mijn geld";
+    // mét deze zin is het een prijs voor werk dat hij net heeft zien staan.
+    blok.append(el('p', { class: 'kostenblok__kop' },
+      t.soort === 'percentage'
+        ? `Ontvang je een vergoeding, dan rekenen wij ${t.percentage}% daarvan voor het `
+          + 'behandelen van je zaak.'
+        : `Ontvang je een vergoeding, dan rekenen wij ${tariefKort(t)} voor het behandelen van je zaak.`));
+  } else {
+    blok.append(el('p', { class: 'kostenblok__zin', tekst: tariefZin(t) }));
   }
+
+  blok.append(el('p', { class: 'kostenblok__kop' },
+    `${metHoofdletter(instantieInEenZin(zaak.invoer.bestuursorgaan))} betaalt een eventuele `
+    + 'vergoeding rechtstreeks aan jou. Wij ontvangen jouw vergoeding niet.'));
+
   vak.append(blok);
+
+  // De regel onder het vinkje herhaalt de afspraak in zakelijke vorm. Daar
+  // bevestigt de klant hem juridisch, dus daar telt ondubbelzinnigheid.
+  const bijAkkoord = document.getElementById('akkoord-tarief');
+  if (bijAkkoord) {
+    // Niet tariefKort() gebruiken: dat geeft "20% van de vergoeding", en dan
+    // staat er twee keer "vergoeding" in één zin.
+    const wat = t.soort === 'percentage' ? `${t.percentage}% daarvan` : tariefKort(t);
+    bijAkkoord.textContent = t.bekend
+      ? `Geen vergoeding is € 0. Bij een vergoeding betaal ik ${wat} voor de behandeling van mijn zaak.`
+      : 'Geen vergoeding is € 0. Wat onze hulp bij een vergoeding kost, hoor ik vooraf.';
+  }
 }
 
-/**
- * De som met het bedrag van deze zaak erin.
- *
- * Welk bedrag dat is, hangt ervan af waar de zaak staat. Loopt er al een
- * dwangsom, dan is dat het opgebouwde bedrag. Moet de melding nog de deur uit,
- * dan is er nog geen bedrag en rekenen wij met het wettelijk maximum - met
- * zoveel woorden erbij dat dat het maximum is, want anders belooft dit iets.
- */
-function kostenSom(t) {
-  const r = zaak.rapport || {};
-  const berekening = r.berekening || {};
-  const lopend = Number(berekening.totaal) > 0 ? Number(berekening.totaal) : 0;
-  const bedrag = lopend || WET_TARIEF.maxBedrag;
-  const split = tariefSplitsing(t, bedrag);
-  if (!split) return null;
-
-  const uitleg = lopend
-    ? (berekening.doorlopend
-      ? `Er staat nu ${euroTekst(bedrag)} open, en dat loopt nog op. Bij dit bedrag:`
-      : `Er staat ${euroTekst(bedrag)} open. Daarvan:`)
-    : `Er is nog geen bedrag: dat ontstaat pas als ${instantieInEenZin(zaak.invoer.bestuursorgaan)} `
-      + `ook na onze melding niet beslist. Loopt het op tot het wettelijk maximum van `
-      + `${euroTekst(bedrag)}, dan:`;
-
-  return el('div', { class: 'kostensom' },
-    el('p', { class: 'kostensom__uitleg', tekst: uitleg }),
-    el('div', { class: 'kostensom__rij' },
-      el('span', { tekst: 'Toegekende dwangsom' }),
-      el('strong', { tekst: euroTekst(split.bedrag) })),
-    el('div', { class: 'kostensom__rij kostensom__rij--af' },
-      el('span', { tekst: t.soort === 'percentage' ? `Onze vergoeding (${t.percentage}%)` : 'Onze vergoeding' }),
-      el('strong', { tekst: `\u2212 ${euroTekst(split.vergoeding)}` })),
-    el('div', { class: 'kostensom__rij kostensom__rij--uit' },
-      el('span', { tekst: 'Jij houdt over' }),
-      el('strong', { tekst: euroTekst(split.overhoudt) })));
+/** 'de instantie' -> 'De instantie'. */
+function metHoofdletter(tekst) {
+  return String(tekst).charAt(0).toUpperCase() + String(tekst).slice(1);
 }
+
+// kostenSom() is hier weggehaald: de aftreksom met het bedrag van deze zaak
+// stond vlak voor de handtekening en werkte als verliesanker. De reden staat
+// uitgeschreven boven rendereKosten().
 
 function rendereMachtiging() {
   const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
@@ -832,6 +891,14 @@ function rendereMachtiging() {
   const naam = zaak.contact.naam || zaak.herkenning.naam || 'ondergetekende';
   const vak = document.getElementById('machtigingtekst');
   vak.textContent = '';
+
+  // Deze angst is op de landingspagina al beantwoord, maar erover lezen is
+  // iets anders dan je handtekening zetten. Hier komt hij terug.
+  vak.append(el('div', { class: 'melding melding--info', style: 'margin-bottom:16px' },
+    el('strong', {}, 'Dit gaat alleen over het wachten op je beslissing'),
+    el('p', {}, `Met deze stap vragen wij ${orgaan} om een beslissing te nemen. `
+      + 'Wij veranderen daarmee niets aan wat je hebt aangevraagd.')));
+
   vak.append(
     el('p', { class: 'machtiging__uitleg' },
       el('strong', {}, 'Waar geef je toestemming voor? '),
@@ -987,19 +1054,44 @@ async function verzend() {
       `Je aanmelding is mogelijk wel ontvangen. Neem contact op als je geen bevestiging krijgt. (${err && err.message ? err.message : err})`));
   } finally {
     knopVerder.disabled = false;
-    knopVerder.textContent = 'Machtigen en indienen →';
+    knopVerder.textContent = 'Ja, nubeslist.nl mag dit regelen →';
   }
+}
+
+/**
+ * Twee werkdagen vanaf vandaag, als datum.
+ *
+ * "Binnen twee werkdagen" laat de klant zelf rekenen, en op vrijdag rekent
+ * hij verkeerd. Dezelfde regel als bij de uitslag: wij vertalen naar de datum
+ * die voor hem geldt.
+ */
+function uiterlijkOp(werkdagen = 2, vanaf = new Date()) {
+  const d = new Date(vanaf.getTime());
+  let over = werkdagen;
+  while (over > 0) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) over--;
+  }
+  return toonDatum(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }
 
 function rendereKlaar(data) {
   const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan);
+  const uiterlijk = uiterlijkOp(2);
   document.getElementById('referentie').textContent = data.referentie;
   document.getElementById('klaar-titel').textContent = 'Gelukt. Vanaf hier regelen wij het.';
+  // Wij weten inmiddels om welke zaak het gaat; dat hoort de klant hier terug
+  // te lezen, met erbij dat hij zelf niets naar de instantie hoeft te sturen.
+  const kortKlaar = zaakInEenZin();
+  const overZaak = kortKlaar ? ` over ${kortKlaar}` : '';
   document.getElementById('klaar-tekst').textContent = {
-    [UITKOMST.TERMIJN_LOOPT]: `Wij bewaken de termijn bij ${orgaan} en komen in actie zodra die voorbij is.`,
-    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij bewaken de twee weken die ${orgaan} nog heeft en volgen de procedure.`,
-    [UITKOMST.RECHT]: `Wij eisen de dwangsom bij ${orgaan} op en volgen de procedure.`,
-    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wij melden bij ${orgaan} dat de termijn voorbij is en volgen de procedure.`,
+    [UITKOMST.TERMIJN_LOOPT]: `Wij bewaken de termijn bij ${orgaan}${overZaak} en komen in actie `
+      + 'zodra die voorbij is. Je hoeft zelf niets te sturen.',
+    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij nemen de procedure${overZaak} over en bewaken de twee weken `
+      + `die ${orgaan} nog heeft. Je hoeft zelf niets te sturen.`,
+    [UITKOMST.RECHT]: `Wij eisen de vergoeding${overZaak} bij ${orgaan} op. Je hoeft zelf niets te sturen.`,
+    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wij bereiden nu de melding voor${overZaak}. `
+      + `Je hoeft zelf niets naar ${orgaan} te sturen.`,
   }[(zaak.rapport || {}).uitkomst] || `Wij nemen je zaak bij ${orgaan} in behandeling en laten van ons horen.`;
 
   // De staat moet kloppen met wat er twee schermen terug is vastgesteld. Bij
@@ -1024,19 +1116,19 @@ function rendereKlaar(data) {
   } else if (uitkomst === UITKOMST.RECHT) {
     stappen.push(
       { tekst: 'Dwangsom opeisen', onder: `Wij stellen de vordering aan ${orgaan} nu op`, staat: 'bezig' },
-      { tekst: `Indienen bij ${orgaan}`, onder: 'Binnen twee werkdagen', staat: 'wacht' },
+      { tekst: `Indienen bij ${orgaan}`, onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
     );
   } else if (uitkomst === UITKOMST.INGEBREKESTELLING_NODIG) {
     // De termijn is al voorbij. Hier niet zeggen dat wij op die termijn
     // wachten: dat is precies wat twee schermen terug is weerlegd.
     stappen.push(
       { tekst: 'Melding voorbereiden', onder: `De termijn van ${orgaan} is voorbij; wij stellen de brief nu op`, staat: 'bezig' },
-      { tekst: `Indienen bij ${orgaan}`, onder: 'Binnen twee werkdagen', staat: 'wacht' },
+      { tekst: `Indienen bij ${orgaan}`, onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
     );
   } else {
     stappen.push(
       { tekst: 'Een behandelaar kijkt ernaar', onder: 'Wij zoeken uit wat er in jouw geval mogelijk is', staat: 'bezig' },
-      { tekst: 'Je hoort van ons', onder: 'Binnen twee werkdagen', staat: 'wacht' },
+      { tekst: 'Je hoort van ons', onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
     );
   }
   stappen.push(uitkomst === UITKOMST.RECHT
@@ -1054,6 +1146,14 @@ function rendereKlaar(data) {
   const knoppen = document.getElementById('klaar-knoppen');
   if (knoppen) {
     knoppen.textContent = '';
+    // "Vanaf hier regelen wij het" leidt tot de logische conclusie "dan hoef
+    // ik niets meer te doen". Dat klopt, op één ding na: post die rechtstreeks
+    // naar de klant gaat, zien wij niet. Zonder deze regel horen wij het pas
+    // als het te laat is.
+    knoppen.append(el('div', { class: 'melding melding--info', style: 'text-align:left;margin-bottom:18px' },
+      el('strong', {}, 'Wat moet jij nu doen? Niets.'),
+      el('p', {}, `Krijg je ondertussen een nieuwe brief, e-mail of beslissing van ${orgaan}? `
+        + 'Zet die dan in je dossier. Wij kijken wat dat voor jouw zaak betekent.')));
     knoppen.append(
       el('a', { class: 'knop knop--primair knop--groot', href: '/mijn' }, 'Bekijk mijn dossier'),
       el('p', { class: 'fijndruk', style: 'margin:12px 0 0' },
@@ -1102,8 +1202,8 @@ function gaNaar(nummer) {
 
   navigatie.classList.toggle('verborgen', stap === 1 || stap === TOTAAL);
   knopTerug.classList.toggle('verborgen', stap <= 2);
-  if (stap === 3) knopVerder.textContent = 'Naar de machtiging →';
-  if (stap === 4) knopVerder.textContent = 'Machtigen en indienen →';
+  if (stap === 3) knopVerder.textContent = 'Verder naar akkoord →';
+  if (stap === 4) knopVerder.textContent = 'Ja, nubeslist.nl mag dit regelen →';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
