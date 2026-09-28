@@ -77,6 +77,21 @@ test('de pagina wordt meegebouwd, is bereikbaar en staat in de voetregels', () =
   }
 });
 
+test('contact staat in het menu, niet alleen onderaan de pagina', () => {
+  // Wie een vraag heeft, scrolt niet eerst naar de voetregel. De balk is waar
+  // iemand kijkt, en op een telefoon zit die balk achter de menuknop.
+  const paginas = ['index.html', 'uwv.html', 'uwv-wia.html', 'beslistermijn.html',
+    'hoe-werkt-het.html', 'contact.html', 'start.html', 'mijn.html', 'privacy.html',
+    'voorwaarden.html', 'aanvraag-klassiek.html'];
+  for (const bestand of paginas) {
+    const html = fs.readFileSync(path.join(PUBLIEK, bestand), 'utf8');
+    const balk = html.split('<nav id="balk-nav">')[1];
+    assert.ok(balk, `${bestand} heeft geen menu`);
+    const menu = balk.split('</nav>')[0];
+    assert.match(menu, /href="\/contact"/, `${bestand} heeft geen contactlink in het menu`);
+  }
+});
+
 test('de route staat in de server', async () => {
   const { PAGINAS } = await import('../server.js');
   assert.equal(PAGINAS[CONTACT_PAD], 'contact.html');

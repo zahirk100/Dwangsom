@@ -184,6 +184,7 @@ export function contactHtml(env = process.env) {
       <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
       <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
       <a class="nav-secundair" href="/mijn">Mijn dossier</a>
+      <a class="nav-secundair" href="/contact">Contact</a>
       <a class="knop knop--primair knop--klein" href="/aanvraag">Controleer mijn brief</a>
     </nav>
   </div>
