@@ -41,22 +41,20 @@ test('het percentage komt uit de omgeving, niet uit de tekst', () => {
   assert.match(zichtbaar({ TARIEF_PERCENTAGE: '25' }), /25%/);
 });
 
-test('het rekenvoorbeeld rekent mee met het tarief', () => {
-  // Bij 10% van € 1.000 hoort € 100 en € 900 - geen van drieën hardgecodeerd.
-  const tien = html({ TARIEF_PERCENTAGE: '10' });
-  assert.match(tien, /€ 100,00/);
-  assert.match(tien, /€ 900,00/);
-  const kwart = html({ TARIEF_PERCENTAGE: '25' });
-  assert.match(kwart, /€ 250,00/);
-  assert.match(kwart, /€ 750,00/);
+test('de prijsregel noemt het tarief en verder geen ander getal', () => {
+  // De pagina noemt onze prijs op precies één plek. Staat daar iets anders
+  // dan wat de funnel afrekent, dan is dat een onjuiste prijsvermelding.
+  const prijsregel = (env) => /<div class="price2">([^<]*)<\/div>/.exec(zichtbaar(env))[1];
+  assert.equal(prijsregel({ TARIEF_PERCENTAGE: '10' }), '10% van die vergoeding');
+  assert.equal(prijsregel({ TARIEF_VAST: '129' }), '€ 129');
 });
 
 test('bedragen boven de duizend krijgen een duizendtalpunt', () => {
-  // "€ 1081,50" leest niet; dat is precies het bedrag dat de bezoeker
-  // overhoudt en dus het bedrag dat je goed wilt hebben.
+  // "€ 1442" leest niet als een bedrag; dat is het getal waar de bezoeker
+  // naar kijkt en dus het getal dat je goed wilt hebben.
   const kwart = html({ TARIEF_PERCENTAGE: '25' });
-  assert.match(kwart, /€ 1\.081,50/);
-  assert.ok(!/€ \d{4},/.test(kwart), 'geen bedrag zonder duizendtalpunt');
+  assert.match(kwart, /€ 1\.442/);
+  assert.ok(!/€ \d{4}\b/.test(kwart), 'geen bedrag zonder duizendtalpunt');
 });
 
 test('een vast bedrag werkt ook, zonder dat er ergens een percentage blijft staan', () => {
@@ -71,8 +69,8 @@ test('zonder tarief noemt de pagina geen enkel bedrag voor onze hulp', () => {
   const leeg = zichtbaar({ TARIEF_PERCENTAGE: '0' });
   assert.match(leeg, /vooraf/i);
   assert.ok(!/\d+\s*%/.test(leeg), 'geen verzonnen percentage');
-  assert.ok(!/€ \d/.test(leeg.split('id="kosten"')[1].split('</section>')[0]),
-    'in het kostenblok hoort dan geen bedrag te staan');
+  const prijsregel = /<div class="price2">([^<]*)<\/div>/.exec(leeg)[1];
+  assert.ok(!/[€\d]/.test(prijsregel), `de prijsregel noemt dan geen bedrag: ${prijsregel}`);
 });
 
 test('zonder omgeving valt de pagina terug op het gekozen tarief', () => {
@@ -84,6 +82,7 @@ test('zonder omgeving valt de pagina terug op het gekozen tarief', () => {
 test('de pagina belooft niet dat UWV sneller gaat beslissen', () => {
   const h = html();
   assert.match(h, /kunnen wij niet garanderen/i);
+  assert.match(h, /sneller/i, 'de belofte die niet gedaan wordt, wordt wel benoemd');
   assert.ok(!/UWV beslist (dan )?sneller/i.test(h));
   assert.ok(!/zorgt ervoor dat UWV sneller/i.test(h));
 });
@@ -92,13 +91,14 @@ test('de pagina belooft niet dat er nooit gevolgen zijn voor de uitkering', () =
   const h = html();
   assert.ok(!/nooit gevolgen/i.test(h), 'dat is een belofte die niemand kan waarmaken');
   assert.ok(!/geen enkel risico/i.test(h));
-  assert.match(h, /uitblijven van een beslissing/i, 'wel uitleggen waar de melding over gaat');
+  assert.match(h, /alleen over het feit dat je nog op een beslissing wacht/i,
+    'wel uitleggen waar de melding over gaat');
 });
 
 test('de pagina suggereert niet dat iedereen het maximumbedrag krijgt', () => {
   const h = html();
-  assert.match(h, /tot € 1\.442/);
-  assert.match(h, /hangt af van jouw situatie/i);
+  assert.match(h, /Maximaal/);
+  assert.match(h, /voor jouw situatie/i, 'het bedrag hoort aan de eigen situatie te hangen');
   assert.ok(!/je krijgt € 1\.442/i.test(h));
 });
 
@@ -115,25 +115,25 @@ test('er staan geen verzonnen ervaringen van klanten op', () => {
   }
 });
 
-test('de voorbeeldkaarten zijn als voorbeeld gemerkt', () => {
-  // Een kaart met datums erin mag niet te lezen zijn als een echt dossier.
-  const h = html();
-  const kaarten = h.match(/class="voorbeeldkaart__merkje"/g) || [];
-  assert.equal(kaarten.length, 2, 'beide kaarten horen een merkje te dragen');
-  assert.match(h, /Voorbeeld</);
+test('de kaart met datums erin is als voorbeeld gemerkt', () => {
+  // Een kaart met een datum en een aantal dagen erin mag niet te lezen zijn
+  // als de eigen uitslag van de bezoeker.
+  const kaart = html().split('class="result"')[1].split('</section>')[0];
+  assert.match(kaart, /Voorbeeld van je uitslag/);
+  assert.match(kaart, /Dit is een voorbeeld/);
 });
 
 // ----------------------------------------------------------- de uitgangen ---
 
-test('de balk heeft geen navigatie, alleen een weg naar de funnel', () => {
-  // De regel is niet "geen links" maar "geen uitgangen". Een knop naar de
-  // funnel is de bestemming van deze pagina, geen afleiding ervan.
+test('de balk heeft geen uitgangen, alleen plekken op deze pagina', () => {
+  // De regel is niet "geen links" maar "geen uitgangen". Een menu dat naar
+  // stukken van deze pagina springt houdt de bezoeker hier; een link naar de
+  // site is betaald verkeer dat wegloopt.
   const balk = html().split('<header')[1].split('</header>')[0];
-  assert.ok(!balk.includes('<nav'), 'geen menu');
   const links = [...balk.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
   assert.ok(links.length > 0, 'de knop rechtsboven hoort ergens heen te gaan');
   for (const link of links) {
-    assert.match(link, /^\/aanvraag\?/, `${link} is een uitgang en hoort hier niet`);
+    assert.match(link, /^#/, `${link} is een uitgang en hoort hier niet`);
   }
 });
 
@@ -144,13 +144,21 @@ test('er staat niets in de balk dat op een knop lijkt maar er geen is', () => {
   assert.ok(!balk.includes('balk__rust'), 'het oude niet-klikbare label hoort weg');
 });
 
-test('alle knoppen gaan naar de funnel, met deze pagina erachter', () => {
+test('de knoppen brengen de bezoeker naar het uploadvak', () => {
+  // Elke knop op de pagina doet hetzelfde: naar het vak waar de brief in
+  // gaat. Niet naar de site, en niet naar een tweede beslismoment.
+  const knoppen = [...html().matchAll(/class="btn[^"]*" [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(knoppen.length >= 3, `verwacht meerdere knoppen, kreeg ${knoppen.length}`);
+  for (const knop of knoppen) assert.equal(knop, '#upload');
+});
+
+test('de weg naar de funnel draagt deze pagina mee', () => {
   // `van` en niet `bron`: `bron` is het kanaal waar de bezoeker vandaan komt
   // en `van` is de pagina waarop hij klikte. Stond hier eerst een paginanaam
   // in `bron`, en toen viel elke advertentieklik onder "overig".
   const h = html();
   const knoppen = [...h.matchAll(/href="(\/aanvraag[^"]*)"/g)].map((m) => m[1]);
-  assert.ok(knoppen.length >= 4, `verwacht meerdere knoppen, kreeg ${knoppen.length}`);
+  assert.ok(knoppen.length >= 1, 'er hoort een weg naar de funnel te zijn');
   for (const k of knoppen) {
     assert.match(k, /instantie=uwv/, 'de instantie hoort al gekozen te zijn');
     assert.match(k, /van=uwv-te-laat/, 'zonder markering is niet te meten wat deze pagina doet');
@@ -177,10 +185,31 @@ test('titel, omschrijving en canonical staan in de bron', () => {
   assert.match(h, /og:image/);
 });
 
-test('de voetregel zegt dat wij geen overheidsinstantie zijn', () => {
+test('de pagina zegt op meer dan één plek dat wij niet van UWV zijn', () => {
+  // Wie op een advertentie klikt die over zijn UWV-brief gaat, moet nergens
+  // kunnen denken dat hij bij UWV zelf is.
   const h = html();
-  assert.match(h, /geen\s+overheidsinstantie/);
-  assert.match(h, /niet verbonden aan UWV/);
+  assert.match(h, /onafhankelijk van UWV/);
+  assert.match(h, /geen onderdeel van UWV of de overheid/);
+});
+
+test('het uploadvak stuurt zelf niets, maar geeft de brief door aan de funnel', () => {
+  // De pagina belooft dat er nog niets naar UWV gaat. Dat klopt alleen als
+  // hier ook echt geen verzending zit: het bestand reist mee naar de funnel.
+  const h = html();
+  assert.ok(!h.includes('/api/'), 'de landing praat zelf niet met de server');
+  assert.match(h, /id="verder"/, 'de bestemming hoort als link in de pagina te staan');
+  assert.match(h, /assets\/campagne\.js/);
+});
+
+test('contactknoppen staan er alleen als er ook een adres achter zit', () => {
+  const zonder = html({});
+  assert.ok(!/WhatsApp/.test(zonder), 'geen whatsappknop zonder nummer');
+  assert.ok(!/mailto:/.test(zonder), 'geen mailknop zonder adres');
+
+  const met = html({ WHATSAPP_NUMMER: '+31 6 12345678', BEDRIJF_EMAIL: 'info@nubeslist.nl' });
+  assert.match(met, /https:\/\/wa\.me\/31612345678/);
+  assert.match(met, /mailto:info@nubeslist\.nl/);
 });
 
 test('de pagina wordt meegebouwd en is als pad bereikbaar', async () => {

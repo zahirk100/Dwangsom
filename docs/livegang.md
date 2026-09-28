@@ -305,8 +305,16 @@ echte klant.
 | `BEDRIJF_NAAM` · `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` · `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | **ja** | Komen op de machtiging. Wat leeg blijft wordt een stippellijn. |
 | `TARIEF_PERCENTAGE` *of* `TARIEF_VAST` | **ja** | Onze vergoeding: `25` (procent van de toegekende dwangsom) of `129` (vast bedrag). Staat er niets, dan noemt de site nergens een bedrag en zegt hij dat je het vooraf hoort. Dat is eerlijk, maar het kost conversie: zet het erin. |
 | `OCR_API_SLEUTEL` (of `ANTHROPIC_API_KEY`) | aanbevolen | Tekstherkenning voor foto's en gescande brieven. Staat hij er niet, dan zegt de applicatie netjes dat zij nog geen foto kan lezen. Zet je hem erin, dan gaat het geüploade bestand naar een dienst buiten de applicatie: dat staat in de privacyverklaring en hoort langs dezelfde jurist als het burgerservicenummer. Met `OCR_MODEL` kies je een ander model. |
+| `WHATSAPP_NUMMER` | aanbevolen | Het nummer achter de WhatsApp-knoppen op de campagnelanding, bijvoorbeeld `31612345678`. Staat hij er niet, dan staan die knoppen er ook niet: liever geen knop dan een knop naar een nummer dat geen WhatsApp heeft. |
 | `CRON_GEHEIM` | **ja** | Het wachtwoord van de dagelijkse bewaking (zie hieronder). Staat hij er niet, dan gaat er nooit een automatisch bericht uit. |
 | `BEHEER_OPEN` | **moet weg** | Zet de beheeromgeving wagenwijd open. Alleen voor proefdraaien. |
+
+De campagnelanding (`/uwv-te-laat`) is gezet in Figtree. Die bestanden zitten
+niet in de repository; zet ze als `public/assets/figtree-400.woff2`,
+`figtree-600.woff2`, `figtree-700.woff2` en `figtree-800.woff2` neer en de
+pagina pakt ze bij de volgende bouw vanzelf op. Staan ze er niet, dan wordt er
+ook geen `@font-face` geschreven en valt de pagina terug op het lettertype van
+het systeem: dat scheelt vier verzoeken die anders 404 opleveren.
 
 Een geheim maak je zo:
 

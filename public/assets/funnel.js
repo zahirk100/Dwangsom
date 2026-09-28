@@ -208,15 +208,33 @@ async function stuurBrief(payload, { tweede = false } = {}) {
 
 async function verwerkBestand(bestand) {
   if (!bestand) return;
-  const foto = /^image\//i.test(bestand.type);
+  const kleiner = await verkleindeFoto(bestand);
+  await verwerkLading({
+    bestandsnaam: bestand.name,
+    mediaType: kleiner ? kleiner.mediaType : bestand.type,
+    data: kleiner ? kleiner.data : await alsBase64(bestand),
+  });
+}
+
+/**
+ * Eén brief lezen en doorspringen naar de uitslag.
+ *
+ * `extra` zijn verdere brieven over dezelfde zaak. Die gaan als verlengbrief
+ * mee: ze kunnen een nieuwe beslisdatum bevatten, en dan rekenen wij met die
+ * datum in plaats van met de oude. Gaat er bij zo'n vervolgbrief iets mis,
+ * dan houden we de eerste brief gewoon aan; anders levert een extra bestand
+ * een lege uitslag op.
+ */
+async function verwerkLading(lading, extra = []) {
+  const foto = /^image\//i.test(lading.mediaType || '');
   toonBezig(foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…');
   try {
-    const kleiner = await verkleindeFoto(bestand);
-    const data = await stuurBrief({
-      bestandsnaam: bestand.name,
-      mediaType: kleiner ? kleiner.mediaType : bestand.type,
-      data: kleiner ? kleiner.data : await alsBase64(bestand),
-    });
+    const data = await stuurBrief(lading);
+    for (const volgende of extra) {
+      try {
+        pasVerlengbriefToe(await stuurBrief(volgende, { tweede: true }));
+      } catch { /* een tweede brief mag de eerste niet ongedaan maken */ }
+    }
     // Eerst laten zien wát wij eruit haalden, dan pas doorspringen. Die halve
     // seconde is het moment waarop iemand denkt: ze hebben mijn brief gelezen.
     toonGelezen(data.herkenning || {});
@@ -232,6 +250,37 @@ async function verwerkBestand(bestand) {
   }
 }
 
+/** Wat een tweede brief over dezelfde zaak verandert: de datum. */
+function pasVerlengbriefToe(data) {
+  zaak.verlengbrief = data.brief;
+  if (data.herkenning && data.herkenning.beslisdatum) {
+    zaak.invoer.termijnEinddatum = data.herkenning.beslisdatum;
+    zaak.invoer.verdagingEinddatum = data.herkenning.beslisdatum;
+    zaak.invoer.termijnBekend = true;
+  }
+  zaak.invoer.verdaagd = true;
+}
+
+/**
+ * De brief die op de campagnelanding al was gekozen.
+ *
+ * Daar kon hij nog niet worden verstuurd - die pagina praat niet met de
+ * server - dus staat hij in sessionStorage van hetzelfde tabblad. Hier halen
+ * wij hem eruit en behandelen hem alsof hij zojuist was gekozen. Eén keer:
+ * daarna is hij weg, zodat een pagina die terugveert niet opnieuw begint.
+ */
+function overgedragenBrieven() {
+  try {
+    const ruw = sessionStorage.getItem('nubeslist:brieven');
+    if (!ruw) return [];
+    sessionStorage.removeItem('nubeslist:brieven');
+    const ladingen = JSON.parse(ruw);
+    return Array.isArray(ladingen) ? ladingen.filter((l) => l && l.data) : [];
+  } catch {
+    return [];
+  }
+}
+
 dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('sleep'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('sleep'));
 dropzone.addEventListener('drop', (e) => {
@@ -240,6 +289,9 @@ dropzone.addEventListener('drop', (e) => {
   verwerkBestand(e.dataTransfer.files[0]);
 });
 bestandInvoer.addEventListener('change', () => verwerkBestand(bestandInvoer.files[0]));
+
+const meegekomen = overgedragenBrieven();
+if (meegekomen.length > 0) verwerkLading(meegekomen[0], meegekomen.slice(1));
 
 document.getElementById('knop-plak').addEventListener('click', async () => {
   const tekst = document.getElementById('plaktekst').value.trim();
@@ -547,22 +599,18 @@ function toonTweedeUpload(vak, direct = false) {
   const houder = el('div', { class: 'melding melding--info', style: 'margin-top:14px' },
     el('strong', {}, 'Upload ook die brief'),
     el('p', {}, 'Dan rekenen wij met de nieuwe datum in plaats van de oude.'));
-  const invoerveld = el('input', { type: 'file', accept: '.pdf,.txt,application/pdf,text/plain' });
+  const invoerveld = el('input', { type: 'file', accept: 'image/*,.pdf,.txt,application/pdf,text/plain' });
   invoerveld.addEventListener('change', async () => {
     const bestand = invoerveld.files[0];
     if (!bestand) return;
     houder.append(el('div', { class: 'bezig', style: 'margin-top:10px' }, el('div', { class: 'tolletje' }), el('span', {}, 'Bezig…')));
     try {
-      const data = await stuurBrief({
-        bestandsnaam: bestand.name, mediaType: bestand.type, data: await alsBase64(bestand),
-      }, { tweede: true });
-      zaak.verlengbrief = data.brief;
-      if (data.herkenning.beslisdatum) {
-        zaak.invoer.termijnEinddatum = data.herkenning.beslisdatum;
-        zaak.invoer.verdagingEinddatum = data.herkenning.beslisdatum;
-        zaak.invoer.termijnBekend = true;
-      }
-      zaak.invoer.verdaagd = true;
+      const kleiner = await verkleindeFoto(bestand);
+      pasVerlengbriefToe(await stuurBrief({
+        bestandsnaam: bestand.name,
+        mediaType: kleiner ? kleiner.mediaType : bestand.type,
+        data: kleiner ? kleiner.data : await alsBase64(bestand),
+      }, { tweede: true }));
       herbereken();
       rendereUitslag();
     } catch (err) {
