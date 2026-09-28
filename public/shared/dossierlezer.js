@@ -25,8 +25,6 @@
  * husselen.
  */
 
-import { naarInvoer } from './briefherkenning.js';
-
 /** Wat een brief in het dossier doet, in gewone taal. */
 const ROLLEN = {
   ontvangstbevestiging: 'Hierin staat wanneer je aanvraag binnenkwam',
@@ -111,8 +109,10 @@ export function leesDossier(ruweBrieven = [], { peildatum = '' } = {}) {
   const beslissing = nieuwsteEerst.find((b) => b.herkenning.soortBrief === 'beslissing') || null;
   const ingebreke = nieuwsteEerst.find((b) => b.herkenning.soortBrief === 'ingebrekestelling') || null;
 
+  // Alle velden die naarInvoer() uit één brief haalt, worden hieronder uit de
+  // hele stapel bepaald. Daarom staat hier geen spread van die ene brief: dat
+  // zou alleen maar waarden neerzetten die er direct weer af gaan.
   const invoer = {
-    ...naarInvoer(metBeslisdatum ? metBeslisdatum.herkenning : brieven[0].herkenning),
     bestuursorgaan: orgaan.waarde,
     zaaktype: zaak.waarde,
     organisatienaam: eerste(nieuwsteEerst, 'organisatienaam'),

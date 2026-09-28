@@ -887,7 +887,7 @@ ${vraag('Wat gebeurt er met mijn brief nadat ik hem upload?', [
 <a id="verder" href="${BESTEMMING}" hidden aria-hidden="true" tabindex="-1">Verder</a>
 
 <script type="module" src="/assets/meting.js"></script>
-<script src="/assets/campagne.js" defer></script>
+<script type="module" src="/assets/campagne.js"></script>
 
 </body>
 </html>

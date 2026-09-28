@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { herkenBrief } from '../src/briefherkenning.js';
-import { leesDossier } from '../src/dossierlezer.js';
+import { leesDossier } from '../public/shared/dossierlezer.js';
 import { berekenDwangsom, UITKOMST } from '../public/shared/dwangsom.js';
 
 const MAP = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'voorbeelden');

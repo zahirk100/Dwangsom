@@ -391,44 +391,46 @@ test('de versie is op te vragen, zodat duidelijk is wat er draait', async () => 
   assert.ok(data.tijd);
 });
 
-test('meerdere brieven in één keer leveren één uitslag op', async () => {
+test('een brief per verzoek: klein genoeg, en één kapot bestand blokkeert niets', async () => {
+  // De client leest brief voor brief en voegt ze zelf samen. Daarmee bestaat
+  // de grens waar vijf pdf's tegenaan liepen niet meer: elk verzoek draagt
+  // één brief.
   const lees = (naam) => readFileSync(new URL(`../voorbeelden/${naam}`, import.meta.url)).toString('base64');
-  const antwoord = await fetch(`${basisUrl}/api/brieven`, {
+  const stuur = (bestandsnaam, data) => fetch(`${basisUrl}/api/brief`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      brieven: [
-        { bestandsnaam: 'ontvangst.pdf', mediaType: 'application/pdf', data: lees('gemeente-bijstand-ontvangstbevestiging.pdf') },
-        { bestandsnaam: 'uitstel.pdf', mediaType: 'application/pdf', data: lees('gemeente-verlenging-beslistermijn.pdf') },
-        { bestandsnaam: 'mijn-melding.pdf', mediaType: 'application/pdf', data: lees('eigen-ingebrekestelling-gemeente.pdf') },
-      ],
-    }),
+    body: JSON.stringify({ bestandsnaam, mediaType: 'application/pdf', data }),
   });
-  assert.equal(antwoord.status, 200);
-  const data = await antwoord.json();
 
-  assert.equal(data.brieven.length, 3, 'elke brief hoort terug te komen in het overzicht');
-  assert.equal(data.invoer.termijnEinddatum, '2026-08-24', 'de verlenging bepaalt de datum');
-  assert.equal(data.invoer.ingebrekeGesteld, true, 'de eigen melding telt mee');
-  assert.equal(data.alleBrieven.length, 3, 'alle brieven gaan mee naar de aanvraag');
-  assert.ok(data.rapport, 'er hoort meteen gerekend te worden');
+  const goed = await stuur('ontvangst.pdf', lees('gemeente-bijstand-ontvangstbevestiging.pdf'));
+  assert.equal(goed.status, 200);
+  const data = await goed.json();
+  assert.equal(data.herkenning.soortBrief, 'ontvangstbevestiging');
+  assert.equal(data.herkenning.beslisdatum, '2026-06-29');
+
+  const kapot = await stuur('kapot.pdf', Buffer.from('%PDF-1.4 niets').toString('base64'));
+  assert.equal(kapot.status, 422, 'een onleesbaar bestand hoort netjes afgewezen te worden');
+  const fout = await kapot.json();
+  assert.ok(fout.fout, 'met uitleg erbij');
 });
 
-test('een onleesbaar bestand tussen de brieven houdt de rest niet tegen', async () => {
-  const lees = (naam) => readFileSync(new URL(`../voorbeelden/${naam}`, import.meta.url)).toString('base64');
-  const antwoord = await fetch(`${basisUrl}/api/brieven`, {
+test('een zware pdf past in één verzoek', async () => {
+  // Hier zat de fout die vijf brieven liet stranden: te veel in één verzoek.
+  // Nu draagt elk verzoek één brief, en die mag tot de bestandsgrens van 6 MB
+  // groot zijn. Deze toets bewaakt dat die grens ook echt gehaald wordt.
+  const bron = readFileSync(new URL('../voorbeelden/gemeente-bijstand-ontvangstbevestiging.pdf', import.meta.url));
+  const zwaar = Buffer.concat([bron, Buffer.from(`\n% ${'x'.repeat(5 * 1024 * 1024)}\n`)]);
+
+  const antwoord = await fetch(`${basisUrl}/api/brief`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      brieven: [
-        { bestandsnaam: 'kapot.pdf', mediaType: 'application/pdf', data: Buffer.from('%PDF-1.4 niets').toString('base64') },
-        { bestandsnaam: 'goed.pdf', mediaType: 'application/pdf', data: lees('uwv-wia-ontvangstbevestiging.pdf') },
-      ],
+      bestandsnaam: 'zwaar.pdf',
+      mediaType: 'application/pdf',
+      data: zwaar.toString('base64'),
     }),
   });
-  assert.equal(antwoord.status, 200);
+  assert.equal(antwoord.status, 200, 'een pdf van ruim 5 MB hoort gewoon gelezen te worden');
   const data = await antwoord.json();
-  assert.equal(data.brieven.length, 1);
-  assert.equal(data.mislukt.length, 1);
-  assert.equal(data.mislukt[0].bestandsnaam, 'kapot.pdf');
+  assert.equal(data.herkenning.beslisdatum, '2026-06-29');
 });

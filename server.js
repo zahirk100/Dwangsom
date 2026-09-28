@@ -35,7 +35,6 @@ import { parseDatum } from './public/shared/datum.js';
 import { bepaalDossiereisen, dossierStatus, stukkenVanKlant, magUploaden, NIEUWE_POST } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
-import { leesDossier } from './src/dossierlezer.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 import { campagnePaden } from './public/shared/campagnes.js';
@@ -60,8 +59,6 @@ const OP_VERCEL = Boolean(process.env.VERCEL);
  * meer is er niet voor nodig.
  */
 const BEHEER_OPEN = process.env.BEHEER_OPEN === '1';
-/** Hoeveel brieven iemand in één keer mag laten lezen. */
-const MAX_BRIEVEN = 5;
 
 /**
  * Welke funnel staat op /aanvraag? De nieuwe (brief uploaden) is standaard;
@@ -258,73 +255,6 @@ async function publiekeApi(req, res, url) {
         tekens: gelezen.tekst.length,
         tekst: gelezen.tekst,
       },
-    });
-  }
-
-  /**
-   * Meer dan één brief tegelijk.
-   *
-   * Iemand weet vaak niet welke van zijn brieven de goede is. Dat hoeft ook
-   * niet: hij stuurt ze alle drie en wij zoeken uit welke de beslisdatum
-   * bepaalt, of hij zelf al in gebreke heeft gesteld, en of er inmiddels is
-   * beslist. Zie src/dossierlezer.js voor de regels.
-   */
-  if (url.pathname === '/api/brieven' && req.method === 'POST') {
-    const limiet = briefBegrenzer.controleer(clientIp(req));
-    if (!limiet.toegestaan) {
-      return stuurFout(res, 429, 'Te veel brieven vanaf dit adres. Probeer het later opnieuw.');
-    }
-    const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
-    const ingestuurd = Array.isArray(body.brieven) ? body.brieven.slice(0, MAX_BRIEVEN) : [];
-    if (ingestuurd.length === 0) return stuurFout(res, 422, 'Er zijn geen brieven meegestuurd.');
-
-    const gelezen = [];
-    const mislukt = [];
-    for (const stuk of ingestuurd) {
-      const uit = await leesBrief(stuk);
-      const bestandsnaam = String(stuk.bestandsnaam || '').slice(0, 120);
-      if (!uit.gelukt) {
-        mislukt.push({ bestandsnaam, fout: uit.reden, soort: uit.soort, hint: uit.hint });
-        continue;
-      }
-      const herkenning = herkenBrief(uit.tekst);
-      if (!herkenning.leesbaar) {
-        mislukt.push({ bestandsnaam, fout: herkenning.reden });
-        continue;
-      }
-      gelezen.push({
-        bestandsnaam,
-        herkenning,
-        brief: { bron: uit.bron, bestandsnaam, tekens: uit.tekst.length, tekst: uit.tekst },
-      });
-    }
-
-    if (gelezen.length === 0) {
-      return stuurJson(res, 422, {
-        fout: mislukt[0] ? mislukt[0].fout : 'Wij konden deze brieven niet lezen.',
-        soort: mislukt[0] ? mislukt[0].soort : '',
-        hint: mislukt[0] ? mislukt[0].hint : '',
-        mislukt,
-      });
-    }
-
-    const dossier = leesDossier(gelezen);
-    const invoer = dossier.invoer;
-    const rapport = invoer.zaaktype && invoer.basisdatum ? berekenDwangsom(invoer) : null;
-    const hoofd = dossier.hoofdbrief || gelezen[0];
-    const verlenging = gelezen.find((b) => b.herkenning.soortBrief === 'verlenging') || null;
-
-    return stuurJson(res, 200, {
-      herkenning: hoofd.herkenning,
-      velden: herkendeVelden(hoofd.herkenning),
-      invoer,
-      rapport,
-      brieven: dossier.brieven,
-      opmerkingen: dossier.opmerkingen,
-      mislukt,
-      brief: hoofd.brief,
-      verlengbrief: verlenging ? verlenging.brief : null,
-      alleBrieven: gelezen.map((b) => b.brief),
     });
   }
 

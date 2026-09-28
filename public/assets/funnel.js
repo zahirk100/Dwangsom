@@ -14,6 +14,7 @@ import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/id
 import { teVragenVelden } from '/shared/funnelvragen.js';
 import { tarief, tariefZin, tariefKort } from '/shared/tarief.js';
 import { meet } from '/assets/meting.js';
+import { leesBrieven, combineer, alsLading, gekozenBestanden, MAX_BRIEVEN } from '/assets/brieven.js';
 
 /**
  * De fasen die de bezoeker ziet. Niet "stap 7 van 12", maar waar hij is in
@@ -177,62 +178,26 @@ function toonGelezen(herkenning, brieven = []) {
   uploadMelding.append(lijst);
 }
 
-function bytesNaarBase64(buffer) {
-  let binair = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.length; i += 1) binair += String.fromCharCode(bytes[i]);
-  return btoa(binair);
-}
-
-const MAX_ZIJDE = 2200;
-
 /**
- * Een foto van een telefoon is al gauw vier of vijf megabyte, terwijl de tekst
- * op de brief bij 2200 pixels ruim leesbaar blijft. Verkleinen in de browser
- * scheelt wachttijd en voorkomt dat een gewone kiekje tegen de bestandsgrens
- * aanloopt. Lukt het niet, dan gaat het origineel gewoon mee.
- */
-async function verkleindeFoto(bestand) {
-  if (!/^image\//i.test(bestand.type) || typeof createImageBitmap !== 'function') return null;
-  try {
-    const beeld = await createImageBitmap(bestand);
-    const factor = Math.min(1, MAX_ZIJDE / Math.max(beeld.width, beeld.height));
-    const doek = document.createElement('canvas');
-    doek.width = Math.round(beeld.width * factor);
-    doek.height = Math.round(beeld.height * factor);
-    doek.getContext('2d').drawImage(beeld, 0, 0, doek.width, doek.height);
-    const blob = await new Promise((klaar) => doek.toBlob(klaar, 'image/jpeg', 0.85));
-    if (!blob || blob.size >= bestand.size) return null;
-    return { mediaType: 'image/jpeg', data: bytesNaarBase64(await blob.arrayBuffer()) };
-  } catch {
-    return null;
-  }
-}
-
-async function alsBase64(bestand) {
-  return bytesNaarBase64(await bestand.arrayBuffer());
-}
-
-/**
- * De hele stapel in één keer.
+ * De hele stapel, brief voor brief.
  *
  * Iemand weet vaak niet welke brief de goede is - de ontvangstbevestiging, de
  * brief waarin de instantie meer tijd vraagt, of die hij zelf stuurde. Dat
- * hoeft hij ook niet te weten: hij stuurt ze alle drie en de server zoekt uit
- * welke de beslisdatum bepaalt. Zie src/dossierlezer.js.
+ * hoeft hij ook niet te weten: hij stuurt ze allemaal en wij zoeken uit welke
+ * de beslisdatum bepaalt. Zie shared/dossierlezer.js voor de regels.
  */
-async function stuurBrieven(ladingen) {
-  const antwoord = await fetch('/api/brieven', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brieven: ladingen }),
+async function verwerkStapel(ladingen) {
+  const data = await leesBrieven(ladingen, {
+    bijVoortgang: (klaar, totaal) => {
+      if (totaal > 1) toonBezig(`Wij lezen je brieven… (${Math.min(klaar + 1, totaal)} van ${totaal})`);
+    },
   });
-  const data = await antwoord.json().catch(() => ({}));
-  if (!antwoord.ok) {
-    const err = new Error(data.fout || 'Wij konden deze brieven niet lezen.');
-    err.hint = data.hint;
-    throw err;
-  }
+  pasDossierToe(data);
+  return data;
+}
+
+/** Wat een gelezen stapel met de zaak doet. */
+function pasDossierToe(data) {
   zaak.brief = data.brief;
   zaak.verlengbrief = data.verlengbrief || null;
   zaak.brieven = data.alleBrieven || [];
@@ -240,15 +205,14 @@ async function stuurBrieven(ladingen) {
   zaak.brievenOpmerkingen = data.opmerkingen || [];
   zaak.herkenning = data.herkenning;
   zaak.invoer = data.invoer;
-  zaak.rapport = data.rapport;
+  zaak.rapport = berekenDwangsom(data.invoer);
   // Wat uit de brieven zelf blijkt, hoeft straks niet meer gevraagd te
   // worden. Dat is de winst van alles tegelijk uploaden.
   zaak.uitBrieven = {
-    verdaagd: Boolean(data.invoer && data.invoer.verdaagd),
-    ingebrekeGesteld: Boolean(data.invoer && data.invoer.ingebrekeGesteld),
-    besluitGenomen: Boolean(data.invoer && data.invoer.besluitGenomen),
+    verdaagd: Boolean(data.invoer.verdaagd),
+    ingebrekeGesteld: Boolean(data.invoer.ingebrekeGesteld),
+    besluitGenomen: Boolean(data.invoer.besluitGenomen),
   };
-  return data;
 }
 
 async function stuurBrief(payload, { tweede = false } = {}) {
@@ -270,19 +234,8 @@ async function stuurBrief(payload, { tweede = false } = {}) {
   return data;
 }
 
-const MAX_BRIEVEN = 5;
-
-async function alsLading(bestand) {
-  const kleiner = await verkleindeFoto(bestand);
-  return {
-    bestandsnaam: bestand.name,
-    mediaType: kleiner ? kleiner.mediaType : bestand.type,
-    data: kleiner ? kleiner.data : await alsBase64(bestand),
-  };
-}
-
 async function verwerkBestanden(bestanden) {
-  const gekozen = [...(bestanden || [])].filter((b) => b && b.size > 0).slice(0, MAX_BRIEVEN);
+  const gekozen = gekozenBestanden(bestanden);
   if (gekozen.length === 0) return;
   const foto = gekozen.some((b) => /^image\//i.test(b.type || ''));
   toonBezig(bezigTekst(gekozen.length, foto));
@@ -291,15 +244,6 @@ async function verwerkBestanden(bestanden) {
   await verwerkLadingen(ladingen);
 }
 
-/**
- * Eén brief lezen en doorspringen naar de uitslag.
- *
- * `extra` zijn verdere brieven over dezelfde zaak. Die gaan als verlengbrief
- * mee: ze kunnen een nieuwe beslisdatum bevatten, en dan rekenen wij met die
- * datum in plaats van met de oude. Gaat er bij zo'n vervolgbrief iets mis,
- * dan houden we de eerste brief gewoon aan; anders levert een extra bestand
- * een lege uitslag op.
- */
 function bezigTekst(aantal, foto) {
   if (aantal > 1) return `Wij lezen je ${aantal} brieven…`;
   return foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…';
@@ -309,11 +253,11 @@ async function verwerkLadingen(ladingen) {
   const foto = ladingen.some((l) => /^image\//i.test(l.mediaType || ''));
   toonBezig(bezigTekst(ladingen.length, foto));
   try {
-    const data = await stuurBrieven(ladingen);
+    const data = await verwerkStapel(ladingen);
     // Eerst laten zien wát wij eruit haalden, dan pas doorspringen. Die halve
     // seconde is het moment waarop iemand denkt: ze hebben mijn brief gelezen.
     toonGelezen(data.herkenning || {}, data.brieven || []);
-    await new Promise((klaar) => setTimeout(klaar, data.brieven && data.brieven.length > 1 ? 1400 : 700));
+    await new Promise((klaar) => setTimeout(klaar, data.brieven.length > 1 ? 1400 : 700));
     uploadMelding.textContent = '';
     gaNaar(2);
   } catch (err) {
@@ -337,23 +281,32 @@ function pasVerlengbriefToe(data) {
 }
 
 /**
- * De brief die op de campagnelanding al was gekozen.
+ * De brieven die op de campagnelanding al zijn gelezen.
  *
- * Daar kon hij nog niet worden verstuurd - die pagina praat niet met de
- * server - dus staat hij in sessionStorage van hetzelfde tabblad. Hier halen
- * wij hem eruit en behandelen hem alsof hij zojuist was gekozen. Eén keer:
- * daarna is hij weg, zodat een pagina die terugveert niet opnieuw begint.
+ * Die pagina leest ze daar zelf en zet alleen het resultaat klaar - geen
+ * bestanden, want die passen niet in de opslag van een tabblad. Hier wordt
+ * dat resultaat opgepakt en getoond alsof het hier was gebeurd. Eén keer:
+ * daarna is het weg, zodat een pagina die terugveert niet opnieuw begint.
  */
 function overgedragenBrieven() {
   try {
     const ruw = sessionStorage.getItem('nubeslist:brieven');
     if (!ruw) return [];
     sessionStorage.removeItem('nubeslist:brieven');
-    const ladingen = JSON.parse(ruw);
-    return Array.isArray(ladingen) ? ladingen.filter((l) => l && l.data) : [];
+    const gelezen = JSON.parse(ruw);
+    return Array.isArray(gelezen) ? gelezen.filter((b) => b && b.herkenning && b.brief) : [];
   } catch {
     return [];
   }
+}
+
+async function toonOvergedragen(gelezen) {
+  const data = combineer(gelezen);
+  pasDossierToe(data);
+  toonGelezen(data.herkenning || {}, data.brieven || []);
+  await new Promise((klaar) => setTimeout(klaar, data.brieven.length > 1 ? 1400 : 700));
+  uploadMelding.textContent = '';
+  gaNaar(2);
 }
 
 dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('sleep'); });
@@ -366,7 +319,10 @@ dropzone.addEventListener('drop', (e) => {
 bestandInvoer.addEventListener('change', () => verwerkBestanden(bestandInvoer.files));
 
 const meegekomen = overgedragenBrieven();
-if (meegekomen.length > 0) verwerkLadingen(meegekomen.slice(0, MAX_BRIEVEN));
+if (meegekomen.length > 0) {
+  toonBezig(meegekomen.length > 1 ? 'Wij zetten je brieven op een rij…' : 'Wij lezen je brief…');
+  toonOvergedragen(meegekomen.slice(0, MAX_BRIEVEN));
+}
 
 document.getElementById('knop-plak').addEventListener('click', async () => {
   const tekst = document.getElementById('plaktekst').value.trim();
@@ -701,12 +657,7 @@ function toonTweedeUpload(vak, direct = false) {
     if (!bestand) return;
     houder.append(el('div', { class: 'bezig', style: 'margin-top:10px' }, el('div', { class: 'tolletje' }), el('span', {}, 'Bezig…')));
     try {
-      const kleiner = await verkleindeFoto(bestand);
-      pasVerlengbriefToe(await stuurBrief({
-        bestandsnaam: bestand.name,
-        mediaType: kleiner ? kleiner.mediaType : bestand.type,
-        data: kleiner ? kleiner.data : await alsBase64(bestand),
-      }, { tweede: true }));
+      pasVerlengbriefToe(await stuurBrief(await alsLading(bestand), { tweede: true }));
       herbereken();
       rendereUitslag();
     } catch (err) {

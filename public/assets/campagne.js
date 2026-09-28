@@ -4,21 +4,24 @@
  * Twee dingen gebeuren hier. Het eerste is vormgeving die javascript nodig
  * heeft: de balk die meekleurt, het menu op mobiel, welke sectie actief is.
  *
- * Het tweede is het uploadvak, en dat is het belangrijkste. Wie op deze
- * pagina zijn brief kiest, hoeft hem niet op de volgende pagina opnieuw te
- * zoeken: het bestand gaat mee naar de funnel. Dat gaat via sessionStorage,
- * omdat een bestand niet in een link past. Het blijft daarmee in het tabblad
- * van de bezoeker: er gaat hier nog niets naar de server, en dat is precies
- * wat de pagina belooft.
+ * Het tweede is het uploadvak, en dat is het belangrijkste. Wie hier op
+ * "Controleer mijn brief" drukt, laat zijn brieven ook hier lezen - één
+ * verzoek per brief, met de stand erbij. Naar de funnel gaat daarna alleen
+ * het resultaat: een paar kilobyte tekst in plaats van megabytes aan
+ * bestanden.
  *
- * Past het niet (een grote pdf), dan gaan we gewoon door naar de funnel en
- * kiest de bezoeker zijn bestand daar. Liever een stap extra dan een lege
- * pagina.
+ * Dat was een echte fout, geen verfraaiing. Eerder reisden de bestanden zelf
+ * mee via sessionStorage, en vanaf drie pdf's paste dat er niet meer in. De
+ * overdracht mislukte dan stil: je landde op de funnel, moest opnieuw
+ * beginnen, en het leek alsof de knop het niet deed.
+ *
+ * Er gaat hiermee nog steeds niets naar UWV. Wij lezen de brief, verder
+ * niemand.
  */
 
+import { leesBrieven, alsLading, gekozenBestanden } from '/assets/brieven.js';
+
 const OVERDRACHT = 'nubeslist:brieven';
-const MAX_OVERDRACHT = 3.5 * 1024 * 1024;
-const MAX_ZIJDE = 2200;
 
 // -------------------------------------------------------------- balk ----
 
@@ -113,7 +116,7 @@ function toonLijst() {
 }
 
 function voegToe(bestanden) {
-  const nieuwe = [...bestanden].filter((b) => b && b.size > 0);
+  const nieuwe = gekozenBestanden(bestanden);
   if (nieuwe.length === 0) return;
   gekozen = gekozen.concat(nieuwe).slice(0, 5);
   zegt('');
@@ -132,44 +135,6 @@ for (const gebeurtenis of ['dragleave', 'drop']) {
   vak.addEventListener(gebeurtenis, (e) => { e.preventDefault(); vak.classList.remove('over'); });
 }
 vak.addEventListener('drop', (e) => voegToe(e.dataTransfer.files));
-
-function base64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binair = '';
-  for (let i = 0; i < bytes.length; i += 1) binair += String.fromCharCode(bytes[i]);
-  return btoa(binair);
-}
-
-/**
- * Een telefoonfoto is al gauw vijf megabyte, terwijl de tekst op de brief bij
- * 2200 pixels ruim leesbaar blijft. Verkleinen scheelt wachttijd, en het is
- * het verschil tussen wel en niet meekunnen naar de funnel.
- */
-async function verkleind(bestand) {
-  if (!/^image\//i.test(bestand.type) || typeof createImageBitmap !== 'function') return null;
-  try {
-    const beeld = await createImageBitmap(bestand);
-    const factor = Math.min(1, MAX_ZIJDE / Math.max(beeld.width, beeld.height));
-    const doek = document.createElement('canvas');
-    doek.width = Math.round(beeld.width * factor);
-    doek.height = Math.round(beeld.height * factor);
-    doek.getContext('2d').drawImage(beeld, 0, 0, doek.width, doek.height);
-    const blob = await new Promise((klaar) => doek.toBlob(klaar, 'image/jpeg', 0.85));
-    if (!blob || blob.size >= bestand.size) return null;
-    return { mediaType: 'image/jpeg', data: base64(await blob.arrayBuffer()) };
-  } catch {
-    return null;
-  }
-}
-
-async function alsLading(bestand) {
-  const kleiner = await verkleind(bestand);
-  return {
-    bestandsnaam: bestand.name,
-    mediaType: kleiner ? kleiner.mediaType : (bestand.type || ''),
-    data: kleiner ? kleiner.data : base64(await bestand.arrayBuffer()),
-  };
-}
 
 /** Waar we heen gaan. meting.js heeft het kanaal er dan al aan geplakt. */
 function bestemming() {
@@ -200,15 +165,24 @@ for (const link of document.querySelectorAll('a[href="#upload"]')) {
 knop.addEventListener('click', async () => {
   if (gekozen.length === 0) return;
   knop.disabled = true;
-  zegt('Wij lezen je brief…', 'bezig');
   try {
     const ladingen = [];
     for (const bestand of gekozen) ladingen.push(await alsLading(bestand));
-    const pakket = JSON.stringify(ladingen);
-    if (pakket.length <= MAX_OVERDRACHT) sessionStorage.setItem(OVERDRACHT, pakket);
-  } catch {
-    // Geen ruimte of geen toestemming: dan kiest de bezoeker zijn bestand
-    // opnieuw op de volgende pagina. Dat is vervelend, maar niet stuk.
+    const data = await leesBrieven(ladingen, {
+      bijVoortgang: (klaar, totaal) => {
+        zegt(totaal > 1
+          ? `Wij lezen je brieven\u2026 (${Math.min(klaar + 1, totaal)} van ${totaal})`
+          : 'Wij lezen je brief\u2026', 'bezig');
+      },
+    });
+    // Alleen het resultaat reist mee naar de funnel: een paar kilobyte tekst
+    // in plaats van megabytes aan bestanden. Dat was precies wat eerder
+    // stukliep - vanaf drie pdf's paste de stapel niet meer in de opslag van
+    // het tabblad, en dan leek de knop niets te doen.
+    sessionStorage.setItem(OVERDRACHT, JSON.stringify(data.gelezen));
+    location.href = bestemming();
+  } catch (fout) {
+    zegt(`${fout.message}${fout.hint ? ` ${fout.hint}` : ''}`, 'fout');
+    knop.disabled = false;
   }
-  location.href = bestemming();
 });
