@@ -1,20 +1,41 @@
 /**
  * Neemt een geüploade brief aan en maakt er leesbare tekst van.
  *
- * Wat er binnenkomt is een pdf, een tekstbestand of geplakte tekst. Een foto
- * of scan gaat hier niet doorheen: daar is tekstherkenning voor nodig, en dat
- * zit er bewust niet in. In plaats van een leeg dossier te maken zegt de
- * applicatie dan wat de aanvrager wel kan doen.
+ * Wat er binnenkomt is een pdf, een tekstbestand, een foto of geplakte tekst.
+ * Voor een pdf met tekstlaag en voor tekst is er niets bijzonders nodig; die
+ * worden hier zelf gelezen, zonder bibliotheek.
+ *
+ * Een foto of een gescande pdf heeft tekstherkenning nodig. Dat gebeurt in
+ * `tekstherkenning.js` en alleen als daar een sleutel voor is ingesteld. Staat
+ * die er niet, dan zegt de applicatie net als voorheen eerlijk dat zij het
+ * niet kan, in plaats van een leeg dossier te maken.
+ *
+ * Wat de tekstherkenning teruggeeft is gewone tekst en gaat daarna door
+ * dezelfde regelgebaseerde herkenning als een pdf. De route na het lezen is
+ * dus voor alle bestanden gelijk.
  */
 
 import { pdfNaarTekst } from './pdftekst.js';
+import { herkenTekst } from './tekstherkenning.js';
 
 const MAX_BESTAND_BYTES = 6 * 1024 * 1024;
 const MAX_TEKST = 60000;
 
 const AFBEELDINGEN = /^image\//i;
+const BEELDNAAM = /\.(jpe?g|png|heic|heif|webp|gif|tiff?)$/;
 
-export function leesBrief({ bestandsnaam = '', mediaType = '', data = '', tekst = '' } = {}) {
+/** Het antwoord als wij een foto krijgen en er geen tekstherkenning is. */
+const GEEN_HERKENNING = {
+  gelukt: false,
+  soort: 'afbeelding',
+  reden: 'Dit is een foto. Wij kunnen tekst uit een pdf lezen, maar nog niet uit een foto.',
+  hint: 'Download de brief als pdf uit uw berichtenbox, of typ de belangrijkste regels over.',
+};
+
+export async function leesBrief(
+  { bestandsnaam = '', mediaType = '', data = '', tekst = '' } = {},
+  { env = process.env, haal = fetch } = {},
+) {
   if (tekst && String(tekst).trim().length > 0) {
     return { gelukt: true, tekst: String(tekst).slice(0, MAX_TEKST), bron: 'geplakt' };
   }
@@ -36,26 +57,41 @@ export function leesBrief({ bestandsnaam = '', mediaType = '', data = '', tekst 
 
   const naam = String(bestandsnaam).toLowerCase();
 
-  if (AFBEELDINGEN.test(mediaType) || /\.(jpe?g|png|heic|webp|gif|tiff?)$/.test(naam)) {
+  if (AFBEELDINGEN.test(mediaType) || BEELDNAAM.test(naam)) {
+    const gelezen = await herkenTekst(bytes, { mediaType, env, haal });
+    if (gelezen.gelukt) {
+      return { gelukt: true, tekst: gelezen.tekst.slice(0, MAX_TEKST), bron: gelezen.bron };
+    }
+    // Staat de herkenning uit, dan geldt het oude antwoord. Staat zij aan maar
+    // lukte het niet, dan hoort de aanvrager waaróm: een donkere foto vraagt
+    // om een andere oplossing dan een storing.
+    if (gelezen.soort === 'uit') return { ...GEEN_HERKENNING };
     return {
       gelukt: false,
-      soort: 'afbeelding',
-      reden: 'Dit is een foto. Wij kunnen tekst uit een pdf lezen, maar nog niet uit een foto.',
-      hint: 'Download de brief als pdf uit uw berichtenbox, of typ de belangrijkste regels over.',
+      soort: gelezen.soort,
+      reden: gelezen.reden,
+      hint: gelezen.hint || GEEN_HERKENNING.hint,
     };
   }
 
   if (bytes.subarray(0, 5).toString('latin1') === '%PDF-' || /\.pdf$/.test(naam)) {
     const resultaat = pdfNaarTekst(bytes);
-    if (!resultaat.gelukt) {
-      return {
-        gelukt: false,
-        soort: 'pdf-zonder-tekst',
-        reden: resultaat.reden,
-        hint: 'Is de brief gescand? Typ dan de belangrijkste regels over, of stuur hem ons toe.',
-      };
+    if (resultaat.gelukt) {
+      return { gelukt: true, tekst: resultaat.tekst.slice(0, MAX_TEKST), bron: 'pdf' };
     }
-    return { gelukt: true, tekst: resultaat.tekst.slice(0, MAX_TEKST), bron: 'pdf' };
+    // Een pdf zonder tekstlaag is een scan: beeld in een pdf-jasje. Dat is
+    // precies waar tekstherkenning voor is.
+    const gescand = await herkenTekst(bytes, { mediaType: 'application/pdf', env, haal });
+    if (gescand.gelukt) {
+      return { gelukt: true, tekst: gescand.tekst.slice(0, MAX_TEKST), bron: gescand.bron };
+    }
+    return {
+      gelukt: false,
+      soort: gescand.soort === 'uit' ? 'pdf-zonder-tekst' : gescand.soort,
+      reden: gescand.soort === 'uit' ? resultaat.reden : gescand.reden,
+      hint: gescand.hint
+        || 'Is de brief gescand? Typ dan de belangrijkste regels over, of stuur hem ons toe.',
+    };
   }
 
   const alsTekst = bytes.toString('utf8');

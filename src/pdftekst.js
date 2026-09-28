@@ -7,8 +7,9 @@
  * computer zijn gemaakt - precies wat UWV, DUO en gemeenten versturen.
  *
  * Wat dit niet kan: een foto of een gescande brief zonder tekstlaag. Daar is
- * OCR voor nodig, en dat zit hier bewust niet in. De applicatie zegt dat dan
- * ook eerlijk tegen de aanvrager in plaats van een lege brief te accepteren.
+ * tekstherkenning voor nodig; die zit in `tekstherkenning.js` en springt bij
+ * als dit bestand niets vindt. Staat de herkenning uit, dan zegt de applicatie
+ * dat eerlijk in plaats van een lege brief te accepteren.
  */
 
 import zlib from 'node:zlib';

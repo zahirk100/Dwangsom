@@ -98,28 +98,31 @@ test('de herkende brief rekent door tot een uitkomst', () => {
   assert.equal(rapport.beslistermijn.bron, 'opgave-bestuursorgaan');
 });
 
-test('een foto wordt geweigerd met uitleg in plaats van een leeg dossier', () => {
-  const resultaat = leesBrief({
+test('zonder tekstherkenning wordt een foto geweigerd met uitleg, niet met een leeg dossier', async () => {
+  const resultaat = await leesBrief({
     bestandsnaam: 'brief.jpg', mediaType: 'image/jpeg', data: Buffer.from('nep').toString('base64'),
-  });
+  }, { env: {} });
   assert.equal(resultaat.gelukt, false);
   assert.equal(resultaat.soort, 'afbeelding');
   assert.match(resultaat.hint, /pdf|overtypen|typ/i);
 });
 
-test('een pdf zonder tekstlaag wordt herkend als scan', () => {
+test('een pdf zonder tekstlaag wordt herkend als scan', async () => {
   const nep = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.from('geen streams hier')]);
-  const resultaat = leesBrief({ bestandsnaam: 'scan.pdf', mediaType: 'application/pdf', data: nep.toString('base64') });
+  const resultaat = await leesBrief(
+    { bestandsnaam: 'scan.pdf', mediaType: 'application/pdf', data: nep.toString('base64') },
+    { env: {} },
+  );
   assert.equal(resultaat.gelukt, false);
   assert.equal(resultaat.soort, 'pdf-zonder-tekst');
 });
 
-test('geplakte tekst en tekstbestanden komen er gewoon doorheen', () => {
-  const geplakt = leesBrief({ tekst: tekstVan('uwv-wia-ontvangstbevestiging.txt') });
+test('geplakte tekst en tekstbestanden komen er gewoon doorheen', async () => {
+  const geplakt = await leesBrief({ tekst: tekstVan('uwv-wia-ontvangstbevestiging.txt') });
   assert.equal(geplakt.gelukt, true);
   assert.equal(geplakt.bron, 'geplakt');
 
-  const bestand = leesBrief({
+  const bestand = await leesBrief({
     bestandsnaam: 'brief.txt', mediaType: 'text/plain',
     data: lees('uwv-wia-ontvangstbevestiging.txt').toString('base64'),
   });
@@ -137,9 +140,9 @@ test('de pdf-versies van alle voorbeeldbrieven leveren dezelfde herkenning op', 
   }
 });
 
-test('te weinig tekst levert geen gokwerk op', () => {
+test('te weinig tekst levert geen gokwerk op', async () => {
   assert.equal(herkenBrief('hallo').leesbaar, false);
-  assert.equal(leesBrief({}).gelukt, false);
+  assert.equal((await leesBrief({})).gelukt, false);
 });
 
 test('een brief met een lang verstreken termijn levert met een aanmaning het maximum op', () => {

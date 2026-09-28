@@ -151,12 +151,40 @@ function toonGelezen(herkenning) {
   uploadMelding.append(lijst);
 }
 
-async function alsBase64(bestand) {
-  const buffer = await bestand.arrayBuffer();
+function bytesNaarBase64(buffer) {
   let binair = '';
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.length; i += 1) binair += String.fromCharCode(bytes[i]);
   return btoa(binair);
+}
+
+const MAX_ZIJDE = 2200;
+
+/**
+ * Een foto van een telefoon is al gauw vier of vijf megabyte, terwijl de tekst
+ * op de brief bij 2200 pixels ruim leesbaar blijft. Verkleinen in de browser
+ * scheelt wachttijd en voorkomt dat een gewone kiekje tegen de bestandsgrens
+ * aanloopt. Lukt het niet, dan gaat het origineel gewoon mee.
+ */
+async function verkleindeFoto(bestand) {
+  if (!/^image\//i.test(bestand.type) || typeof createImageBitmap !== 'function') return null;
+  try {
+    const beeld = await createImageBitmap(bestand);
+    const factor = Math.min(1, MAX_ZIJDE / Math.max(beeld.width, beeld.height));
+    const doek = document.createElement('canvas');
+    doek.width = Math.round(beeld.width * factor);
+    doek.height = Math.round(beeld.height * factor);
+    doek.getContext('2d').drawImage(beeld, 0, 0, doek.width, doek.height);
+    const blob = await new Promise((klaar) => doek.toBlob(klaar, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= bestand.size) return null;
+    return { mediaType: 'image/jpeg', data: bytesNaarBase64(await blob.arrayBuffer()) };
+  } catch {
+    return null;
+  }
+}
+
+async function alsBase64(bestand) {
+  return bytesNaarBase64(await bestand.arrayBuffer());
 }
 
 async function stuurBrief(payload, { tweede = false } = {}) {
@@ -180,12 +208,14 @@ async function stuurBrief(payload, { tweede = false } = {}) {
 
 async function verwerkBestand(bestand) {
   if (!bestand) return;
-  toonBezig('Wij lezen je brief…');
+  const foto = /^image\//i.test(bestand.type);
+  toonBezig(foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…');
   try {
+    const kleiner = await verkleindeFoto(bestand);
     const data = await stuurBrief({
       bestandsnaam: bestand.name,
-      mediaType: bestand.type,
-      data: await alsBase64(bestand),
+      mediaType: kleiner ? kleiner.mediaType : bestand.type,
+      data: kleiner ? kleiner.data : await alsBase64(bestand),
     });
     // Eerst laten zien wát wij eruit haalden, dan pas doorspringen. Die halve
     // seconde is het moment waarop iemand denkt: ze hebben mijn brief gelezen.

@@ -229,7 +229,7 @@ async function publiekeApi(req, res, url) {
       return stuurFout(res, 429, 'Te veel brieven vanaf dit adres. Probeer het later opnieuw.');
     }
     const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
-    const gelezen = leesBrief(body);
+    const gelezen = await leesBrief(body);
     if (!gelezen.gelukt) {
       return stuurJson(res, 422, { fout: gelezen.reden, soort: gelezen.soort, hint: gelezen.hint });
     }
