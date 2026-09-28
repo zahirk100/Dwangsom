@@ -196,6 +196,7 @@ ${KENNISLINKS.filter((k) => k.pad !== pad).map((k) => `      <li><a href="${k.pa
       <li><a href="/">Startpagina</a></li>
       <li><a href="/aanvraag">Controle starten</a></li>
 ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li>`).join('\n')}
+      <li><a href="/contact">Contact</a></li>
       <li><a href="/privacy">Privacy</a></li>
       <li><a href="/voorwaarden">Voorwaarden</a></li>
     </ul>

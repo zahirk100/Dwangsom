@@ -177,6 +177,26 @@ function bestemming() {
   return anker ? anker.getAttribute('href') : '/aanvraag?instantie=uwv&van=uwv-te-laat';
 }
 
+/**
+ * Eén klik, niet twee.
+ *
+ * "Controleer mijn UWV-brief" bracht je eerst alleen naar het uploadvak; daar
+ * moest je nog een keer klikken om je bestand te kiezen. Dat is een extra stap
+ * op precies het moment dat iemand iets wíl. Nu springt de pagina naar het vak
+ * én gaat de bestandskiezer meteen open - op een telefoon is dat het menu met
+ * "Maak een foto".
+ *
+ * Heeft iemand al een brief gekozen, dan alleen springen: dan is de knop in
+ * het vak zelf de volgende stap, en een tweede keuzemenu is dan in de weg.
+ */
+for (const link of document.querySelectorAll('a[href="#upload"]')) {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (gekozen.length === 0) invoer.click();
+  });
+}
+
 knop.addEventListener('click', async () => {
   if (gekozen.length === 0) return;
   knop.disabled = true;

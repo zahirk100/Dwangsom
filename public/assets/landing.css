@@ -10,8 +10,8 @@
   /* Twee zachte blauwe gloeden op wit. Dat geeft de bovenkant lucht zonder
      dat er ook maar iets donker wordt. */
   background:
-    radial-gradient(760px 420px at 8% -18%, #dbe8fb 0%, rgba(219, 232, 251, 0) 70%),
-    radial-gradient(620px 380px at 92% -10%, #e8f1fd 0%, rgba(232, 241, 253, 0) 72%),
+    radial-gradient(760px 420px at 8% -18%, #e2ecfb 0%, rgba(226, 236, 251, 0) 70%),
+    radial-gradient(620px 380px at 92% -10%, #eaf1fc 0%, rgba(234, 241, 252, 0) 72%),
     var(--vlak);
   border-bottom: 1px solid var(--rand);
 }
@@ -48,7 +48,7 @@
   text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .1s;
 }
 .keuzekaart:hover, .keuzekaart:focus-visible {
-  border-color: var(--blauw-500); box-shadow: 0 6px 18px rgba(36, 80, 154, .12);
+  border-color: var(--actie); box-shadow: 0 6px 18px rgba(14, 148, 134, .14);
   transform: translateY(-1px);
 }
 .keuzekaart__naam { font-weight: 700; color: var(--blauw-800); font-size: 1rem; }
@@ -68,7 +68,7 @@
 .hero__beeld { display: flex; flex-direction: column; gap: 14px; }
 .proefkaart {
   border: 1px solid var(--rand); border-radius: 18px; background: var(--vlak);
-  box-shadow: 0 18px 44px rgba(20, 45, 90, .1); overflow: hidden;
+  box-shadow: 0 18px 44px rgba(11, 18, 80, .1); overflow: hidden;
 }
 .proefkaart__balk {
   display: flex; gap: 6px; padding: 12px 16px; background: var(--papier);
@@ -126,8 +126,8 @@
 .staaf { display: grid; grid-template-columns: repeat(42, 1fr); gap: 3px; margin: 20px 0 14px; }
 .staaf span { height: 30px; border-radius: 4px; }
 .staaf .t1 { background: var(--blauw-100); }
-.staaf .t2 { background: #9dc2f0; }
-.staaf .t3 { background: var(--blauw-500); }
+.staaf .t2 { background: #7fc9c0; }
+.staaf .t3 { background: var(--actie); }
 .tarieven { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; }
 .tarieven li {
   display: flex; align-items: baseline; gap: 10px;
@@ -196,7 +196,7 @@
 .tijdlijn__punt:last-child { padding-bottom: 0; }
 .tijdlijn__punt:last-child::after { display: none; }
 .tijdlijn__punt--klaar::before { background: var(--groen-600); border-color: var(--groen-600); }
-.tijdlijn__punt--bezig::before { background: var(--blauw-500); border-color: var(--blauw-500); }
+.tijdlijn__punt--bezig::before { background: var(--actie); border-color: var(--actie); }
 .tijdlijn__datum {
   font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   color: var(--tekst-zacht);
@@ -247,7 +247,7 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
 /* ----------------------------------------------------------------- slot --- */
 .oproep {
   margin-top: 56px; padding: 44px 40px; border-radius: 20px; text-align: center;
-  background: linear-gradient(160deg, var(--blauw-50), #dfebfd);
+  background: linear-gradient(160deg, var(--blauw-50), #e4edfb);
   border: 1px solid var(--blauw-100);
 }
 .oproep h2 { color: var(--blauw-900); text-wrap: balance; }
@@ -310,7 +310,7 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
   border: 1.5px solid var(--rand-sterk); color: var(--blauw-800);
   transition: border-color .15s, background .15s;
 }
-.keuzeknop:hover { border-color: var(--blauw-500); }
+.keuzeknop:hover { border-color: var(--actie); }
 .keuzeknop.gekozen { border-color: var(--blauw-600); background: var(--blauw-600); color: #fff; }
 
 /* Het leesproces in de voorbeeldkaart. */
@@ -364,7 +364,7 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
 .demo { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 26px; align-items: start; }
 .minischerm {
   border-radius: var(--radius); overflow: hidden; position: sticky; top: 84px;
-  border: 1px solid var(--blauw-100); box-shadow: 0 16px 40px rgba(20, 45, 90, .1);
+  border: 1px solid var(--blauw-100); box-shadow: 0 16px 40px rgba(11, 18, 80, .1);
   background: var(--vlak);
 }
 .minischerm__kop {
@@ -409,7 +409,7 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
 /* -------------------------------------------------------- dossiervoorbeeld -- */
 .dossierdemo {
   max-width: 640px; padding: 26px; border-radius: 18px; background: var(--vlak);
-  border: 1px solid var(--rand); box-shadow: 0 16px 40px rgba(20, 45, 90, .08);
+  border: 1px solid var(--rand); box-shadow: 0 16px 40px rgba(11, 18, 80, .08);
 }
 .dossierdemo__kop {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
@@ -541,8 +541,8 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
    telefoon leek een tik dan niets te doen. */
 .keuzeactie {
   margin-top: 18px; padding: 22px 24px; border-radius: var(--radius);
-  background: var(--blauw-600); color: #fff;
-  box-shadow: 0 10px 30px -12px rgba(20, 41, 77, .45);
+  background: var(--blauw-900); color: #fff;
+  box-shadow: 0 16px 36px -14px rgba(11, 18, 80, .5);
 }
 .keuzeactie__kop {
   margin: 0 0 6px; font-size: clamp(1.05rem, .98rem + .4vw, 1.22rem);
@@ -550,9 +550,9 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
 }
 .keuzeactie__onder { margin: 0 0 16px; font-size: .93rem; color: rgba(255, 255, 255, .88); }
 .keuzeactie__knop {
-  width: 100%; background: #fff; color: var(--blauw-700); border-color: #fff;
+  width: 100%; background: var(--actie); color: #fff; border-color: var(--actie);
 }
-.keuzeactie__knop:hover { background: var(--blauw-50); color: var(--blauw-800); }
+.keuzeactie__knop:hover { background: var(--actie-donker); color: #fff; border-color: var(--actie-donker); }
 .keuzeactie__fijn {
   margin: 12px 0 0; font-size: .82rem; color: rgba(255, 255, 255, .82); text-align: center;
 }

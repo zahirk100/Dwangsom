@@ -1245,6 +1245,7 @@ const PAGINAS = {
   '/cijfers': 'cijfers.html',
   '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
+  '/contact': 'contact.html',
   '/privacy': 'privacy.html',
   '/voorwaarden': 'voorwaarden.html',
   // Elke advertentie-ingang is een echt bestand, gemaakt door

@@ -761,6 +761,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
 ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li>`).join('\n')}
       <li><a href="#kosten">Kosten</a></li>
       <li><a href="#vertrouwen">Over ons</a></li>
+      <li><a href="/contact">Contact</a></li>
       <li><a href="/privacy">Privacy</a></li>
       <li><a href="/voorwaarden">Voorwaarden</a></li>
       <li><a href="/beheer">Beheeromgeving</a></li>
