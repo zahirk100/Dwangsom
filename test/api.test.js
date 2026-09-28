@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -388,4 +389,46 @@ test('de versie is op te vragen, zodat duidelijk is wat er draait', async () => 
   assert.equal(data.funnel, 'nieuw');
   assert.ok(data.commit, 'op Vercel staat hier de commit-hash');
   assert.ok(data.tijd);
+});
+
+test('meerdere brieven in één keer leveren één uitslag op', async () => {
+  const lees = (naam) => readFileSync(new URL(`../voorbeelden/${naam}`, import.meta.url)).toString('base64');
+  const antwoord = await fetch(`${basisUrl}/api/brieven`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      brieven: [
+        { bestandsnaam: 'ontvangst.pdf', mediaType: 'application/pdf', data: lees('gemeente-bijstand-ontvangstbevestiging.pdf') },
+        { bestandsnaam: 'uitstel.pdf', mediaType: 'application/pdf', data: lees('gemeente-verlenging-beslistermijn.pdf') },
+        { bestandsnaam: 'mijn-melding.pdf', mediaType: 'application/pdf', data: lees('eigen-ingebrekestelling-gemeente.pdf') },
+      ],
+    }),
+  });
+  assert.equal(antwoord.status, 200);
+  const data = await antwoord.json();
+
+  assert.equal(data.brieven.length, 3, 'elke brief hoort terug te komen in het overzicht');
+  assert.equal(data.invoer.termijnEinddatum, '2026-08-24', 'de verlenging bepaalt de datum');
+  assert.equal(data.invoer.ingebrekeGesteld, true, 'de eigen melding telt mee');
+  assert.equal(data.alleBrieven.length, 3, 'alle brieven gaan mee naar de aanvraag');
+  assert.ok(data.rapport, 'er hoort meteen gerekend te worden');
+});
+
+test('een onleesbaar bestand tussen de brieven houdt de rest niet tegen', async () => {
+  const lees = (naam) => readFileSync(new URL(`../voorbeelden/${naam}`, import.meta.url)).toString('base64');
+  const antwoord = await fetch(`${basisUrl}/api/brieven`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      brieven: [
+        { bestandsnaam: 'kapot.pdf', mediaType: 'application/pdf', data: Buffer.from('%PDF-1.4 niets').toString('base64') },
+        { bestandsnaam: 'goed.pdf', mediaType: 'application/pdf', data: lees('uwv-wia-ontvangstbevestiging.pdf') },
+      ],
+    }),
+  });
+  assert.equal(antwoord.status, 200);
+  const data = await antwoord.json();
+  assert.equal(data.brieven.length, 1);
+  assert.equal(data.mislukt.length, 1);
+  assert.equal(data.mislukt[0].bestandsnaam, 'kapot.pdf');
 });

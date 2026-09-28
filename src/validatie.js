@@ -122,16 +122,22 @@ export function valideerAanvraag(body) {
   // wizard stuurt ze niet mee en dat mag.
   const brief = normaliseerBrief(body && body.brief);
   const verlengbrief = normaliseerBrief(body && body.verlengbrief);
+  // Alle brieven die de aanvrager uploadde, ook die niet bepalend waren voor
+  // de berekening. Een eigen ingebrekestelling is geen bijzaak maar bewijs.
+  const brieven = Array.isArray(body && body.brieven)
+    ? body.brieven.slice(0, MAX_BRIEVEN).map(normaliseerBrief).filter(Boolean)
+    : [];
   const handtekening = normaliseerHandtekening(body && body.handtekening);
   const herkomst = tekst(body && body.herkomst, 40) || 'formulier';
 
   return {
     geldig: Object.keys(fouten).length === 0,
-    fouten, invoer, contact, stukken, rapport, brief, verlengbrief, handtekening, herkomst,
+    fouten, invoer, contact, stukken, rapport, brief, verlengbrief, brieven, handtekening, herkomst,
   };
 }
 
 const MAX_BRIEFTEKST = 60000;
+const MAX_BRIEVEN = 5;
 const MAX_HANDTEKENING = 400 * 1024;
 
 function normaliseerBrief(ruw) {

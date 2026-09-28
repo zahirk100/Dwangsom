@@ -177,6 +177,41 @@ const brieven = {
     'bezwaar maken.', '',
     'Met vriendelijke groet,', 'UWV',
   ],
+  'gemeente-verlenging-beslistermijn': [
+    'Gemeente Zwolle', 'Afdeling Werk en Inkomen', 'Postbus 10007', '8000 GA Zwolle', '',
+    'De heer M. el Amrani', 'Vechtstraat 45', '8022 CD Zwolle', '',
+    'Datum: 22 juni 2026',
+    'Zaaknummer: Z-2026-0098123',
+    'Onderwerp: verlenging beslistermijn aanvraag bijstandsuitkering', '',
+    'Geachte heer El Amrani,', '',
+    'Op 4 mei 2026 hebben wij uw aanvraag voor een bijstandsuitkering ontvangen.',
+    'Eerder berichtten wij u dat u uiterlijk 29 juni 2026 een besluit zou',
+    'ontvangen.', '',
+    'Wij hebben meer tijd nodig om uw aanvraag te beoordelen. Wij verlengen de',
+    'beslistermijn met acht weken. U ontvangt uiterlijk 24 augustus 2026 een',
+    'besluit van ons.', '',
+    'Met vriendelijke groet,',
+    'namens het college van burgemeester en wethouders van Zwolle',
+  ],
+  // De brief die de aanvrager zélf stuurt. Die telt mee: wie al in gebreke
+  // heeft gesteld, hoeft dat niet opnieuw en de termijn van twee weken loopt
+  // dan al vanaf deze datum.
+  'eigen-ingebrekestelling-gemeente': [
+    'M. el Amrani', 'Vechtstraat 45', '8022 CD Zwolle', '',
+    'Gemeente Zwolle', 'Afdeling Werk en Inkomen', 'Postbus 10007', '8000 GA Zwolle', '',
+    'Datum: 27 augustus 2026',
+    'Zaaknummer: Z-2026-0098123',
+    'Betreft: ingebrekestelling niet tijdig beslissen', '',
+    'Geacht college,', '',
+    'Op 4 mei 2026 heb ik een aanvraag voor een bijstandsuitkering ingediend.',
+    'U liet mij weten dat ik uiterlijk 24 augustus 2026 een besluit zou',
+    'ontvangen. Ik heb tot op heden geen besluit ontvangen.', '',
+    'Hierbij stel ik u in gebreke wegens het niet tijdig nemen van een besluit.',
+    'Ik verzoek u alsnog binnen twee weken na ontvangst van deze brief een',
+    'besluit te nemen. Blijft een besluit uit, dan maak ik aanspraak op de',
+    'dwangsom als bedoeld in artikel 4:17 van de Algemene wet bestuursrecht.', '',
+    'Met vriendelijke groet,', 'M. el Amrani',
+  ],
 };
 
 await fs.mkdir(HIER, { recursive: true });

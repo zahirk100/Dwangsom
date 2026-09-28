@@ -83,6 +83,15 @@ const ZAAKTYPEN = [
 
 /** Ontvangstbevestiging, verlenging of een genomen beslissing? */
 function bepaalSoort(tekst) {
+  // Eerst de eigen ingebrekestelling, want daar staan de woorden van de
+  // andere soorten ook in ("uw aanvraag ontvangen op", "beslissing"). Het
+  // onderscheid zit in wie hem schrijft: alleen de aanvrager stelt in
+  // gebreke. Een brief waarin een instantie een ontvangen ingebrekestelling
+  // bevestigt, valt hier dus bewust niet onder.
+  if (/(?:betreft|onderwerp)\s*:\s*ingebrekestelling/i.test(tekst)
+    || /stel\s+ik\s+u\b[^.]{0,40}in\s+gebreke|stel\s+u\s+hierbij\s+in\s+gebreke|hierbij\s+stel\s+ik\s+u\s+in\s+gebreke/i.test(tekst)) {
+    return 'ingebrekestelling';
+  }
   if (/meer tijd nodig|verleng(en|d|t)?\s+(wij\s+)?de\s+beslistermijn|beslistermijn\s+(is\s+)?verlengd|uitstel/i.test(tekst)) {
     return 'verlenging';
   }
@@ -232,8 +241,11 @@ export function herkenBrief(ruweTekst) {
 export function naarInvoer(herkenning = {}) {
   const verlengd = herkenning.soortBrief === 'verlenging';
   const beslist = herkenning.soortBrief === 'beslissing';
+  const ingebreke = herkenning.soortBrief === 'ingebrekestelling';
 
   return {
+    ingebrekeGesteld: ingebreke,
+    ingebrekestellingDatum: ingebreke ? (herkenning.briefdatum || '') : '',
     bestuursorgaan: herkenning.bestuursorgaan || '',
     organisatienaam: herkenning.organisatienaam || '',
     zaaktype: herkenning.zaaktype || '',

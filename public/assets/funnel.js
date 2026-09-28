@@ -70,6 +70,9 @@ let stap = 1;
 const zaak = {
   brief: null,
   verlengbrief: null,
+  brieven: [],
+  gelezenBrieven: [],
+  uitBrieven: {},
   herkenning: null,
   invoer: null,
   rapport: null,
@@ -129,7 +132,30 @@ function toonBezig(tekst) {
  * niets: de herkenning is al gedaan. Een spinner die verdwijnt laat dat niet
  * zien; deze regels wel.
  */
-function toonGelezen(herkenning) {
+const SOORTNAAM = {
+  ontvangstbevestiging: 'Ontvangstbevestiging',
+  verlenging: 'Meer tijd gevraagd',
+  beslissing: 'Beslissing',
+  ingebrekestelling: 'Jouw ingebrekestelling',
+  onbekend: 'Brief',
+};
+
+function toonGelezen(herkenning, brieven = []) {
+  // Meer dan één brief: dan is de belangrijkste vraag niet wát wij zagen,
+  // maar wélke brief telt. Dat is precies wat de aanvrager niet wist.
+  if (brieven.length > 1) {
+    uploadMelding.textContent = '';
+    const lijst = el('ul', { class: 'gelezen' });
+    for (const brief of brieven) {
+      lijst.append(el('li', {},
+        el('span', { class: 'gelezen__vink', tekst: brief.meegeteld ? '\u2713' : '\u00b7' }),
+        el('span', {}, el('strong', { tekst: `${SOORTNAAM[brief.soort] || SOORTNAAM.onbekend}: ` }),
+          brief.rol)));
+    }
+    uploadMelding.append(lijst);
+    return;
+  }
+
   const gevonden = [];
   if (herkenning.organisatienaam || herkenning.bestuursorgaan) {
     gevonden.push(`${herkenning.organisatienaam || labelBestuursorgaan(herkenning.bestuursorgaan)} herkend`);
@@ -187,6 +213,44 @@ async function alsBase64(bestand) {
   return bytesNaarBase64(await bestand.arrayBuffer());
 }
 
+/**
+ * De hele stapel in één keer.
+ *
+ * Iemand weet vaak niet welke brief de goede is - de ontvangstbevestiging, de
+ * brief waarin de instantie meer tijd vraagt, of die hij zelf stuurde. Dat
+ * hoeft hij ook niet te weten: hij stuurt ze alle drie en de server zoekt uit
+ * welke de beslisdatum bepaalt. Zie src/dossierlezer.js.
+ */
+async function stuurBrieven(ladingen) {
+  const antwoord = await fetch('/api/brieven', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ brieven: ladingen }),
+  });
+  const data = await antwoord.json().catch(() => ({}));
+  if (!antwoord.ok) {
+    const err = new Error(data.fout || 'Wij konden deze brieven niet lezen.');
+    err.hint = data.hint;
+    throw err;
+  }
+  zaak.brief = data.brief;
+  zaak.verlengbrief = data.verlengbrief || null;
+  zaak.brieven = data.alleBrieven || [];
+  zaak.gelezenBrieven = data.brieven || [];
+  zaak.brievenOpmerkingen = data.opmerkingen || [];
+  zaak.herkenning = data.herkenning;
+  zaak.invoer = data.invoer;
+  zaak.rapport = data.rapport;
+  // Wat uit de brieven zelf blijkt, hoeft straks niet meer gevraagd te
+  // worden. Dat is de winst van alles tegelijk uploaden.
+  zaak.uitBrieven = {
+    verdaagd: Boolean(data.invoer && data.invoer.verdaagd),
+    ingebrekeGesteld: Boolean(data.invoer && data.invoer.ingebrekeGesteld),
+    besluitGenomen: Boolean(data.invoer && data.invoer.besluitGenomen),
+  };
+  return data;
+}
+
 async function stuurBrief(payload, { tweede = false } = {}) {
   const antwoord = await fetch('/api/brief', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -206,14 +270,25 @@ async function stuurBrief(payload, { tweede = false } = {}) {
   return data;
 }
 
-async function verwerkBestand(bestand) {
-  if (!bestand) return;
+const MAX_BRIEVEN = 5;
+
+async function alsLading(bestand) {
   const kleiner = await verkleindeFoto(bestand);
-  await verwerkLading({
+  return {
     bestandsnaam: bestand.name,
     mediaType: kleiner ? kleiner.mediaType : bestand.type,
     data: kleiner ? kleiner.data : await alsBase64(bestand),
-  });
+  };
+}
+
+async function verwerkBestanden(bestanden) {
+  const gekozen = [...(bestanden || [])].filter((b) => b && b.size > 0).slice(0, MAX_BRIEVEN);
+  if (gekozen.length === 0) return;
+  const foto = gekozen.some((b) => /^image\//i.test(b.type || ''));
+  toonBezig(bezigTekst(gekozen.length, foto));
+  const ladingen = [];
+  for (const bestand of gekozen) ladingen.push(await alsLading(bestand));
+  await verwerkLadingen(ladingen);
 }
 
 /**
@@ -225,20 +300,20 @@ async function verwerkBestand(bestand) {
  * dan houden we de eerste brief gewoon aan; anders levert een extra bestand
  * een lege uitslag op.
  */
-async function verwerkLading(lading, extra = []) {
-  const foto = /^image\//i.test(lading.mediaType || '');
-  toonBezig(foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…');
+function bezigTekst(aantal, foto) {
+  if (aantal > 1) return `Wij lezen je ${aantal} brieven…`;
+  return foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…';
+}
+
+async function verwerkLadingen(ladingen) {
+  const foto = ladingen.some((l) => /^image\//i.test(l.mediaType || ''));
+  toonBezig(bezigTekst(ladingen.length, foto));
   try {
-    const data = await stuurBrief(lading);
-    for (const volgende of extra) {
-      try {
-        pasVerlengbriefToe(await stuurBrief(volgende, { tweede: true }));
-      } catch { /* een tweede brief mag de eerste niet ongedaan maken */ }
-    }
+    const data = await stuurBrieven(ladingen);
     // Eerst laten zien wát wij eruit haalden, dan pas doorspringen. Die halve
     // seconde is het moment waarop iemand denkt: ze hebben mijn brief gelezen.
-    toonGelezen(data.herkenning || {});
-    await new Promise((klaar) => setTimeout(klaar, 700));
+    toonGelezen(data.herkenning || {}, data.brieven || []);
+    await new Promise((klaar) => setTimeout(klaar, data.brieven && data.brieven.length > 1 ? 1400 : 700));
     uploadMelding.textContent = '';
     gaNaar(2);
   } catch (err) {
@@ -286,12 +361,12 @@ dropzone.addEventListener('dragleave', () => dropzone.classList.remove('sleep'))
 dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('sleep');
-  verwerkBestand(e.dataTransfer.files[0]);
+  verwerkBestanden(e.dataTransfer.files);
 });
-bestandInvoer.addEventListener('change', () => verwerkBestand(bestandInvoer.files[0]));
+bestandInvoer.addEventListener('change', () => verwerkBestanden(bestandInvoer.files));
 
 const meegekomen = overgedragenBrieven();
-if (meegekomen.length > 0) verwerkLading(meegekomen[0], meegekomen.slice(1));
+if (meegekomen.length > 0) verwerkLadingen(meegekomen.slice(0, MAX_BRIEVEN));
 
 document.getElementById('knop-plak').addEventListener('click', async () => {
   const tekst = document.getElementById('plaktekst').value.trim();
@@ -446,7 +521,12 @@ function rendereUitslag() {
       rendereUitslag();
     }));
 
-  if (!zaak.invoer.besluitGenomen) {
+  if (!zaak.invoer.besluitGenomen && zaak.uitBrieven.verdaagd) {
+    // Stond al in een van de brieven. Die vraag dan toch stellen is vragen
+    // naar iets wat de aanvrager net heeft aangeleverd.
+    vak.append(uitJeBrieven(`${orgaan} heeft de beslisdatum verzet naar `
+      + `${datumTekst(zaak.invoer.verdagingEinddatum || zaak.invoer.termijnEinddatum)}.`));
+  } else if (!zaak.invoer.besluitGenomen) {
     vak.append(vraag(`Heeft ${orgaan} daarna laten weten dat zij meer tijd nodig hebben?`, 'verlenging',
       zaak.invoer.verdaagd, (ja) => {
         zaak.invoer.verdaagd = ja;
@@ -467,7 +547,11 @@ function rendereUitslag() {
   // Wie zelf al heeft aangemaand, loopt al een dwangsom op. Dat is precies de
   // situatie waarin er nu geld te halen valt, dus die vraag hoort hier - maar
   // alleen als de termijn ook echt voorbij is, anders is hij verwarrend.
-  if (teLaat && !zaak.invoer.besluitGenomen) {
+  if (teLaat && !zaak.invoer.besluitGenomen && zaak.uitBrieven.ingebrekeGesteld) {
+    vak.append(uitJeBrieven('Je hebt zelf al gemeld dat je wacht'
+      + `${zaak.invoer.ingebrekestellingDatum ? `, op ${datumTekst(zaak.invoer.ingebrekestellingDatum)}` : ''}. `
+      + 'Dat hoef je dus niet nog een keer te doen.'));
+  } else if (teLaat && !zaak.invoer.besluitGenomen) {
     // Bewust niet "aangemaand": dat woord kent bijna niemand. En bewust een
     // derde antwoord: iemand kan best iets gestuurd hebben zonder te weten of
     // dat juridisch als melding telt. Dat laten wij beoordelen, niet hem.
@@ -579,6 +663,18 @@ function rendereUitslag() {
   }
 
   knopTerug.classList.remove('verborgen');
+}
+
+/**
+ * Wat al uit de brieven bleek.
+ *
+ * Geen vraag maar een bevestiging: de aanvrager ziet dat zijn upload iets
+ * heeft opgeleverd, en krijgt één vraag minder.
+ */
+function uitJeBrieven(tekst) {
+  return el('div', { class: 'melding melding--info', style: 'margin-top:14px' },
+    el('strong', {}, 'Dit weten wij al uit je brieven'),
+    el('p', { tekst }));
 }
 
 function vraag(tekst, naam, huidig, bijKeuze, uitleg, opties) {
@@ -1124,6 +1220,7 @@ async function verzend() {
         contact,
         brief: zaak.brief,
         verlengbrief: zaak.verlengbrief,
+        brieven: zaak.brieven,
         handtekening: zaak.handtekening,
         herkomst: 'briefupload',
       }),
