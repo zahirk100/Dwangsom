@@ -23,11 +23,11 @@ export const ALGEMEEN = {
   slug: '',
   instantie: '',
   zaak: '',
-  titel: 'nubeslist.nl, wacht je te lang op een beslissing?',
+  titel: 'NuBeslist, wacht je te lang op een beslissing?',
   // Boven ~160 tekens kapt Google de omschrijving af, en dan verdwijnt juist
   // de zin die tot klikken aanzet. Kort houden is hier geen stijlkeuze.
   omschrijving: 'Wacht je op een beslissing van UWV, DUO of je gemeente? Upload je brief: '
-    + 'nubeslist.nl controleert gratis of de beslistermijn is verstreken.',
+    + 'NuBeslist controleert gratis of de beslistermijn is verstreken.',
   kop: 'Wacht je te lang op een beslissing?',
   onder: 'Wij controleren of de beslistermijn is verstreken en regelen wat daarna nodig is.',
   lead: 'Wacht je op UWV, DUO of je gemeente? Upload je brief en krijg binnen een minuut '
@@ -54,7 +54,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn UWV-brief',
     titel: 'UWV te laat met je beslissing? Controleer de beslistermijn',
     omschrijving: 'Wacht je nog op een beslissing van UWV over je WIA, WW, Wajong of Ziektewet? '
-      + 'Upload je brief en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'Upload je brief en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'uwv-wia', instantie: 'uwv', zaak: 'uwv-wia',
@@ -62,11 +62,11 @@ export const CAMPAGNES = [
     kop: 'Wacht je te lang op je WIA-beslissing?',
     onder: 'Wij controleren of UWV over de beslistermijn heen is en regelen wat daarna nodig is.',
     lead: 'Upload de brief van UWV waarin staat wanneer je een beslissing kon verwachten. '
-      + 'nubeslist.nl controleert de datum voor je.',
+      + 'NuBeslist controleert de datum voor je.',
     knop: 'Upload mijn UWV-brief',
     titel: 'Wacht je nog steeds op je WIA-beslissing van UWV?',
     omschrijving: 'UWV moet binnen een bepaalde termijn op je WIA-aanvraag beslissen. Upload je '
-      + 'brief en nubeslist.nl controleert of die termijn voorbij is en wat je volgende stap is.',
+      + 'brief en NuBeslist controleert of die termijn voorbij is en wat je volgende stap is.',
   },
   {
     slug: 'uwv-ww', instantie: 'uwv', zaak: 'uwv-ww',
@@ -78,7 +78,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn UWV-brief',
     titel: 'Geen beslissing over je WW-aanvraag? Controleer de termijn',
     omschrijving: 'Wacht je al weken op een beslissing over je WW-uitkering? Upload je brief van '
-      + 'UWV en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'UWV en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'uwv-wajong', instantie: 'uwv', zaak: 'uwv-wajong',
@@ -90,7 +90,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn UWV-brief',
     titel: 'Wacht je nog op je Wajong-beslissing van UWV?',
     omschrijving: 'UWV moet binnen een bepaalde termijn op je Wajong-aanvraag beslissen. Upload '
-      + 'je brief en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'je brief en NuBeslist controleert of die termijn voorbij is.',
   },
   {
     slug: 'uwv-ziektewet', instantie: 'uwv', zaak: 'uwv-zw',
@@ -102,7 +102,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn UWV-brief',
     titel: 'Geen beslissing over je Ziektewet-uitkering?',
     omschrijving: 'Wacht je te lang op een beslissing van UWV over je Ziektewet-uitkering? '
-      + 'Upload je brief en nubeslist.nl controleert de beslistermijn.',
+      + 'Upload je brief en NuBeslist controleert de beslistermijn.',
   },
   {
     slug: 'uwv-bezwaar', instantie: 'uwv', zaak: 'uwv-bezwaar',
@@ -114,7 +114,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn UWV-brief',
     titel: 'UWV beslist niet op je bezwaar? Controleer de termijn',
     omschrijving: 'Op een bezwaarschrift moet UWV binnen zes weken beslissen, of twaalf weken met '
-      + 'een adviescommissie. Upload je brief en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'een adviescommissie. Upload je brief en NuBeslist controleert of die termijn voorbij is.',
   },
 
   // ------------------------------------------------------------- gemeente --
@@ -128,7 +128,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Gemeente te laat met je beslissing? Controleer de termijn',
     omschrijving: 'Wacht je op je gemeente voor bijstand, Wmo, jeugdhulp of een vergunning? '
-      + 'Upload je brief en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'Upload je brief en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'bijstand', instantie: 'gemeente', zaak: 'gem-bijstand',
@@ -140,7 +140,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Geen beslissing op je bijstandsaanvraag? Controleer de termijn',
     omschrijving: 'Op een aanvraag voor bijstand moet de gemeente binnen acht weken beslissen. '
-      + 'Upload je brief en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'Upload je brief en NuBeslist controleert of die termijn voorbij is.',
   },
   {
     slug: 'wmo', instantie: 'gemeente', zaak: 'gem-wmo',
@@ -152,7 +152,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Wacht je nog op je Wmo-beslissing van de gemeente?',
     omschrijving: 'Voor een Wmo-maatwerkvoorziening geldt zes weken onderzoek en daarna twee weken '
-      + 'om te beslissen. Upload je brief en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'om te beslissen. Upload je brief en NuBeslist controleert of die termijn voorbij is.',
   },
   {
     slug: 'jeugdhulp', instantie: 'gemeente', zaak: 'gem-jeugdwet',
@@ -164,7 +164,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Geen beslissing over jeugdhulp? Controleer de termijn',
     omschrijving: 'Wacht je te lang op een beslissing van je gemeente over jeugdhulp? Upload je '
-      + 'brief en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'brief en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'schuldhulp', instantie: 'gemeente', zaak: 'gem-schuldhulp',
@@ -176,7 +176,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Geen beslissing over je schuldhulpverlening?',
     omschrijving: 'De gemeente moet binnen acht weken beslissen op een aanvraag voor '
-      + 'schuldhulpverlening. Upload je brief en nubeslist.nl controleert die termijn.',
+      + 'schuldhulpverlening. Upload je brief en NuBeslist controleert die termijn.',
   },
   {
     slug: 'gemeente-bezwaar', instantie: 'gemeente', zaak: 'gem-bezwaar',
@@ -188,7 +188,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn gemeentebrief',
     titel: 'Gemeente beslist niet op je bezwaar? Controleer de termijn',
     omschrijving: 'Op een bezwaarschrift moet de gemeente binnen zes weken beslissen, of twaalf '
-      + 'weken met een adviescommissie. Upload je brief en nubeslist.nl controleert die termijn.',
+      + 'weken met een adviescommissie. Upload je brief en NuBeslist controleert die termijn.',
   },
 
   // ------------------------------------------------------------------ DUO --
@@ -202,7 +202,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn DUO-brief',
     titel: 'DUO te laat met je beslissing? Controleer de termijn',
     omschrijving: 'Wacht je op DUO voor je studiefinanciering of een beslissing op je bezwaar? '
-      + 'Upload je brief en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'Upload je brief en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'studiefinanciering', instantie: 'duo', zaak: 'duo-studiefinanciering',
@@ -214,7 +214,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn DUO-brief',
     titel: 'Geen beslissing over je studiefinanciering?',
     omschrijving: 'DUO moet binnen een bepaalde termijn op je aanvraag beslissen. Upload je brief '
-      + 'en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'en NuBeslist controleert of die termijn voorbij is.',
   },
 
   // ------------------------------------------------------------------ SVB --
@@ -228,7 +228,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn SVB-brief',
     titel: 'SVB te laat met je beslissing? Controleer de termijn',
     omschrijving: 'Wacht je op de SVB voor je AOW, kinderbijslag of nabestaandenuitkering? '
-      + 'Upload je brief en nubeslist.nl controleert of de beslistermijn is verstreken.',
+      + 'Upload je brief en NuBeslist controleert of de beslistermijn is verstreken.',
   },
   {
     slug: 'aow', instantie: 'svb', zaak: 'svb-aow',
@@ -240,7 +240,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn SVB-brief',
     titel: 'Geen beslissing over je AOW-aanvraag?',
     omschrijving: 'De SVB moet binnen een bepaalde termijn op je AOW-aanvraag beslissen. Upload '
-      + 'je brief en nubeslist.nl controleert of die termijn voorbij is.',
+      + 'je brief en NuBeslist controleert of die termijn voorbij is.',
   },
 
   // -------------------------------------------------------- belastingdienst --
@@ -254,7 +254,7 @@ export const CAMPAGNES = [
     knop: 'Upload mijn brief',
     titel: 'Geen beslissing over je toeslag? Controleer de termijn',
     omschrijving: 'Wacht je te lang op een beslissing over huurtoeslag, zorgtoeslag of '
-      + 'kinderopvangtoeslag? Upload je brief en nubeslist.nl controleert de beslistermijn.',
+      + 'kinderopvangtoeslag? Upload je brief en NuBeslist controleert de beslistermijn.',
   },
 
   // --------------------------------------------- termijn nog niet voorbij --
@@ -273,7 +273,7 @@ export const CAMPAGNES = [
     uploadtekst: 'Upload de brief waarin staat wanneer je een beslissing kunt verwachten. '
       + 'Wij zoeken de relevante datum voor je op.',
     titel: 'Beslissing duurt lang? Zo weet je wanneer de termijn voorbij is',
-    omschrijving: 'Duurt je beslissing lang? Upload je brief: nubeslist.nl zegt wanneer de '
+    omschrijving: 'Duurt je beslissing lang? Upload je brief: NuBeslist zegt wanneer de '
       + 'beslistermijn afloopt en komt in actie zodra die voorbij is.',
   },
 ];

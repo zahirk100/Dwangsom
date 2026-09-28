@@ -1015,10 +1015,10 @@ function rendereMachtiging() {
       `Met deze machtiging mogen wij alleen handelen in deze ene procedure over de te late `
       + `beslissing van ${orgaan}. Wij mogen daarmee geen andere zaken van je behandelen.`),
     el('p', { style: 'margin:0 0 10px' }, 'Ik, ', el('strong', { tekst: naam }),
-      ', machtig nubeslist.nl om mij te vertegenwoordigen bij ',
+      ', machtig NuBeslist om mij te vertegenwoordigen bij ',
       el('strong', { tekst: orgaan }), ' in de procedure over ',
       el('strong', { tekst: zaaktype ? zaaktype.label : 'mijn aanvraag' }), '.'),
-    el('p', { style: 'margin:0' }, 'nubeslist.nl mag namens mij de benodigde stukken indienen, de '
+    el('p', { style: 'margin:0' }, 'NuBeslist mag namens mij de benodigde stukken indienen, de '
       + 'procedure voeren en correspondentie ontvangen. Een toegekende vergoeding wordt '
       + 'rechtstreeks aan mij uitbetaald.'),
   );
@@ -1164,7 +1164,7 @@ async function verzend() {
       `Je aanmelding is mogelijk wel ontvangen. Neem contact op als je geen bevestiging krijgt. (${err && err.message ? err.message : err})`));
   } finally {
     knopVerder.disabled = false;
-    knopVerder.textContent = 'Ja, nubeslist.nl mag dit regelen →';
+    knopVerder.textContent = 'Ja, NuBeslist mag dit regelen →';
   }
 }
 
@@ -1270,7 +1270,7 @@ function rendereKlaar(data) {
         `Wij hebben een link gestuurd naar ${zaak.contact.email || 'je e-mailadres'}. `
         + 'Daarmee kom je er altijd weer in, zonder wachtwoord.'),
       el('p', { style: 'margin:14px 0 0' },
-        el('a', { class: 'nav-secundair', href: '/' }, 'Terug naar nubeslist.nl')),
+        el('a', { class: 'nav-secundair', href: '/' }, 'Terug naar NuBeslist')),
     );
   }
   navigatie.classList.add('verborgen');
@@ -1313,7 +1313,7 @@ function gaNaar(nummer) {
   navigatie.classList.toggle('verborgen', stap === 1 || stap === TOTAAL);
   knopTerug.classList.toggle('verborgen', stap <= 2);
   if (stap === 3) knopVerder.textContent = 'Verder naar akkoord →';
-  if (stap === 4) knopVerder.textContent = 'Ja, nubeslist.nl mag dit regelen →';
+  if (stap === 4) knopVerder.textContent = 'Ja, NuBeslist mag dit regelen →';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

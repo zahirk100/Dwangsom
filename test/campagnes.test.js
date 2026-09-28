@@ -181,7 +181,7 @@ test('de te brede belofte over "vrijwel elke aanvraag" staat er niet meer', () =
 
 test('elke pagina zegt wie erachter zit en dat het geld naar de klant gaat', () => {
   const html = landingHtml(ALGEMEEN);
-  assert.match(html, /Achter nubeslist\.nl/);
+  assert.match(html, /Achter NuBeslist/);
   assert.match(html, /KvK/);
   assert.match(html, /rechtstreeks op je eigen\s+rekening/);
   assert.match(html, /href="\/privacy"/);

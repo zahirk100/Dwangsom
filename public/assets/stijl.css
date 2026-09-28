@@ -97,12 +97,18 @@ a { color: var(--blauw-600); text-underline-offset: 3px; text-decoration-color: 
   }
 }
 .balk__inhoud { display: flex; align-items: center; gap: 16px; height: 64px; }
-.merk {
-  display: flex; align-items: center; gap: 10px; font-weight: 760; color: var(--tekst);
-  text-decoration: none; letter-spacing: -.025em; font-size: 1.06rem; white-space: nowrap;
+/* Het woordmerk is tekst: het laadt niets, blijft scherp en kleurt mee met de
+   pagina waar het in staat. Het puntje is het accent uit het logo. */
+.merk { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.merk__woord {
+  display: inline-flex; align-items: baseline; color: var(--tekst);
+  font-weight: 800; font-size: 1.2rem; letter-spacing: -.025em; line-height: 1; white-space: nowrap;
+}
+.merk__punt {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--blauw-500);
+  margin-left: 3px; align-self: flex-start; margin-top: 2px; flex: none;
 }
 .merk__teken { width: 32px; height: 32px; flex: none; }
-.merk__punt { color: var(--blauw-500); }
 .balk nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .balk nav a {
   color: var(--tekst-zacht); text-decoration: none; font-size: .93rem; font-weight: 560;
@@ -303,7 +309,7 @@ table.tabel tbody tr:hover { background: var(--blauw-50); }
 .voet a { color: var(--tekst-zacht); }
 .voet__merk { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .voet__merk svg { width: 26px; height: 26px; flex: none; }
-.voet__merk span { font-weight: 720; color: var(--tekst); letter-spacing: -.02em; }
+.voet__merk .merk__woord { font-size: 1.1rem; }
 /* Links onder elkaar op mobiel, naast elkaar zodra het past; geen scheidingstekens. */
 .voet__links { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .voet__links a { text-decoration: none; font-weight: 560; }

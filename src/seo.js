@@ -10,7 +10,7 @@
  *      een pagina beantwoordt. Dat laatste kan een zoekresultaat met
  *      uitklapbare vragen opleveren, wat merkbaar meer ruimte inneemt.
  *   3. **Kruimelpad.** Waar een pagina in de structuur hangt, zodat er in het
- *      zoekresultaat "nubeslist.nl > UWV > WIA" staat in plaats van een url.
+ *      zoekresultaat "NuBeslist > UWV > WIA" staat in plaats van een url.
  *
  * De FAQ-gegevens worden **uit de gerenderde pagina gehaald** en niet apart
  * bijgehouden. Dat is geen luiheid maar de enige manier om te garanderen wat
@@ -54,11 +54,11 @@ export function organisatieSchema(bedrijf = {}) {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': `${SITE}/#organisatie`,
-    name: bedrijf.naam && bedrijf.naam !== 'nog niet ingevuld' ? bedrijf.naam : 'nubeslist.nl',
+    name: bedrijf.naam && bedrijf.naam !== 'nog niet ingevuld' ? bedrijf.naam : 'NuBeslist',
     alternateName: 'nubeslist.nl',
     url: `${SITE}/`,
     logo: `${SITE}/icoon-512.png`,
-    description: 'nubeslist.nl controleert of een bestuursorgaan te laat is met beslissen en '
+    description: 'NuBeslist controleert of een bestuursorgaan te laat is met beslissen en '
       + 'regelt de ingebrekestelling en de dwangsom bij niet tijdig beslissen.',
     areaServed: { '@type': 'Country', name: 'Nederland' },
     knowsLanguage: 'nl-NL',
@@ -101,7 +101,7 @@ export function siteSchema() {
     '@type': 'WebSite',
     '@id': `${SITE}/#site`,
     url: `${SITE}/`,
-    name: 'nubeslist.nl',
+    name: 'NuBeslist',
     inLanguage: 'nl-NL',
     publisher: { '@id': `${SITE}/#organisatie` },
   };
@@ -201,7 +201,7 @@ export function metSchema(html, blokken) {
  */
 export function robotsTxt() {
   return [
-    '# nubeslist.nl',
+    '# NuBeslist',
     '',
     'User-agent: *',
     'Allow: /',

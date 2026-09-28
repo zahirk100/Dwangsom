@@ -14,6 +14,7 @@
  */
 
 import { organisatiegegevens } from './organisatie.js';
+import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, kruimelSchema, metSchema } from './seo.js';
 import { KENNISLINKS } from './kennispagina.js';
 
@@ -26,17 +27,6 @@ function veilig(tekst) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
-const MERKTEKEN = `<svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
-        </linearGradient></defs>
-        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
-        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
-              stroke-linecap="round" opacity=".48"/>
-        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
 
 const ICONEN = {
   praat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.5-4.3A8.5 8.5 0 1 1 20.5 11.6z"/><path d="M9 8.5c.3 2.6 2.4 5 5.5 6l1.3-1.3-2-1-.9.8a5 5 0 0 1-2.3-2.3l.8-.9-1-2z"/></svg>`,
@@ -67,7 +57,7 @@ function kanaal({ icoon, kop, regel, href, actie, extern = false }) {
 export function contactHtml(env = process.env) {
   const bedrijf = organisatiegegevens(env);
   const whatsapp = String(env.WHATSAPP_NUMMER || '').replace(/[^0-9]/g, '');
-  const titel = 'Contact opnemen met nubeslist.nl';
+  const titel = 'Contact opnemen met NuBeslist';
   const omschrijving = 'Een vraag over je brief, over een lopende zaak of over onze kosten? '
     + 'Zo bereik je ons, en dit zijn onze bedrijfsgegevens.';
 
@@ -132,7 +122,7 @@ export function contactHtml(env = process.env) {
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:site_name" content="NuBeslist">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="Contact">
@@ -189,10 +179,7 @@ export function contactHtml(env = process.env) {
 
 <header class="balk">
   <div class="omhulsel balk__inhoud">
-    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
-      ${MERKTEKEN}
-      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
-    </a>
+    ${merklink()}
     <nav id="balk-nav">
       <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
       <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
@@ -224,7 +211,7 @@ ${kanalen.join('\n')}
      inhoudelijke reactie; komen we er samen niet uit, dan kun je je wenden tot de rechter.</p>
 
   <h2>Wij zijn niet UWV, DUO, de SVB of je gemeente</h2>
-  <p>nubeslist.nl is een particuliere dienstverlener. Gaat je vraag over je aanvraag, je uitkering
+  <p>NuBeslist is een particuliere dienstverlener. Gaat je vraag over je aanvraag, je uitkering
      of je bezwaar zelf, dan moet je bij de instantie zijn die daarover gaat - wij kunnen daar niet
      in kijken. Gaat je vraag erover dat er <em>niet</em> wordt beslist, dan zijn wij aan zet.</p>
 
@@ -245,8 +232,8 @@ ${gegevens.map(([label, waarde]) => `    <tr><th scope="row">${veilig(label)}</t
 
 <footer class="voet">
   <div class="omhulsel">
-    <div class="voet__merk">${MERKTEKEN}<span>nubeslist.nl</span></div>
-    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+    <div class="voet__merk">${woordmerk()}</div>
+    <p>NuBeslist is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
        verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
     <ul class="voet__links">
       <li><a href="/">Startpagina</a></li>
@@ -269,7 +256,7 @@ ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li
     organisatieSchema(bedrijf),
     siteSchema(),
     kruimelSchema([
-      { naam: 'nubeslist.nl', pad: '/' },
+      { naam: 'NuBeslist', pad: '/' },
       { naam: 'Contact', pad: CONTACT_PAD },
     ]),
   ]);

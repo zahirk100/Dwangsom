@@ -1,5 +1,5 @@
 /**
- * Tekent het merkteken van nubeslist.nl als png, zonder enige afhankelijkheid.
+ * Tekent het merkteken van NuBeslist als png, zonder enige afhankelijkheid.
  *
  * Waarom niet gewoon de svg gebruiken? Een favicon en een linkvoorbeeld in
  * WhatsApp of LinkedIn willen een png. Er is geen rasterizer in Node, dus de
@@ -14,8 +14,8 @@ import path from 'node:path';
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIEK = path.join(HIER, '..', 'public');
 
-const BLAUW_LICHT = [59, 122, 212];
-const BLAUW_DONKER = [28, 58, 110];
+const NAVY = [11, 18, 80];
+const ACCENT = [79, 179, 246];
 const WIT = [255, 255, 255];
 
 // ------------------------------------------------------------- vormen ----
@@ -58,30 +58,38 @@ function afstandBoog(x, y, cx, cy, r, van, tot) {
 
 /**
  * De kleur van één punt in het merkteken, in een vierkant van 64 bij 64.
- * Hetzelfde beeld als public/merk.svg: een klokring die rechtsboven openbreekt,
- * met daarin het vinkje dat er doorheen naar buiten loopt.
+ *
+ * Hetzelfde beeld als public/merk.svg en als het woordmerk in de balk: de N
+ * van NuBeslist in wit op diepblauw, met rechtsboven het lichtblauwe punt.
+ * Het is een monogram en geen plaatje met tekst: op 32 pixels in een tabblad
+ * is een letter het enige dat nog leesbaar is.
+ *
  * @returns {{kleur: number[], dekking: number}}
  */
 function merkteken(x, y, { kader = true } = {}) {
-  let kleur = kader ? mengen(BLAUW_LICHT, BLAUW_DONKER, (x + y) / 128) : [0, 0, 0];
-  let dekking = kader ? Math.max(0, Math.min(1, 0.5 - afstandKader(x, y, 64, 64, 16))) : 0;
+  let kleur = kader ? NAVY : [0, 0, 0];
+  let dekking = kader ? Math.max(0, Math.min(1, 0.5 - afstandKader(x, y, 64, 64, 14))) : 0;
 
-  // De ring: er loopt een termijn. Rechtsboven zit de opening.
-  const ring = afstandBoog(x, y, 32, 32, 18, 5, 305) - 2.1;
-  const ringDekking = Math.max(0, Math.min(1, 0.5 - ring)) * 0.48;
-
-  // Het vinkje: de beslissing, die door de opening naar buiten loopt.
-  const vink = Math.min(
-    afstandLijn(x, y, 22.5, 33.2, 30.8, 41.5),
-    afstandLijn(x, y, 30.8, 41.5, 51, 18.5),
-  ) - 3.1;
-  const vinkDekking = Math.max(0, Math.min(1, 0.5 - vink));
-
-  const witDekking = Math.max(ringDekking, vinkDekking);
-  if (witDekking > 0) {
-    if (dekking === 0) { kleur = WIT; dekking = witDekking; }
-    else { kleur = mengen(kleur, WIT, witDekking / Math.max(dekking, witDekking)); dekking = Math.max(dekking, witDekking); }
+  // De N: twee stijlen en de schuine streep ertussen.
+  const n = Math.min(
+    afstandLijn(x, y, 20.5, 46, 20.5, 18),
+    afstandLijn(x, y, 20.5, 18, 43.5, 46),
+    afstandLijn(x, y, 43.5, 46, 43.5, 18),
+  ) - 3.6;
+  const nDekking = Math.max(0, Math.min(1, 0.5 - n));
+  if (nDekking > 0) {
+    if (dekking === 0) { kleur = WIT; dekking = nDekking; }
+    else { kleur = mengen(kleur, WIT, nDekking / Math.max(dekking, nDekking)); dekking = Math.max(dekking, nDekking); }
   }
+
+  // Het punt rechtsboven: het accent uit het woordmerk.
+  const punt = Math.hypot(x - 50.5, y - 17.5) - 3.4;
+  const puntDekking = Math.max(0, Math.min(1, 0.5 - punt));
+  if (puntDekking > 0) {
+    if (dekking === 0) { kleur = ACCENT; dekking = puntDekking; }
+    else { kleur = mengen(kleur, ACCENT, puntDekking / Math.max(dekking, puntDekking)); dekking = Math.max(dekking, puntDekking); }
+  }
+
   return { kleur, dekking };
 }
 
@@ -184,7 +192,7 @@ function deelkaart(breedte, hoogte) {
   return teken(breedte, hoogte, (x, y) => {
     // Zachtblauwe gloed vanuit linksboven op wit, net als de banner.
     const afstand = Math.hypot(x / breedte - 0.2, y / hoogte + 0.1);
-    const ondergrond = mengen([225, 237, 252], [255, 255, 255], Math.min(1, afstand * 1.25));
+    const ondergrond = mengen([234, 241, 252], [255, 255, 255], Math.min(1, afstand * 1.25));
     const binnen = x >= links && x < links + maat && y >= boven && y < boven + maat;
     if (!binnen) return { kleur: ondergrond, dekking: 1 };
     const punt = merkteken(((x - links) / maat) * 64, ((y - boven) / maat) * 64);

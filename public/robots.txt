@@ -1,4 +1,4 @@
-# nubeslist.nl
+# NuBeslist
 
 User-agent: *
 Allow: /

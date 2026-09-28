@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 import { tarief } from '../public/shared/tarief.js';
 import { TARIEF, HERSTELTERMIJN_DAGEN } from '../public/shared/dwangsom.js';
 import { organisatiegegevens } from './organisatie.js';
+import { MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
 
 const SITE = 'https://nubeslist.nl';
@@ -570,7 +571,7 @@ const ico = {
 };
 
 /** Het woordmerk. Tekst, geen plaatje: dan kleurt het mee en laadt het niets. */
-const MERK = '<span class="merk">NuBeslist<span class="merk__punt" aria-hidden="true"></span></span>';
+const MERK = `<span class="merk">${MERKNAAM}<span class="merk__punt" aria-hidden="true"></span></span>`;
 
 /** Eén uitklapbare vraag. De samenvatting is één zin, ook op mobiel: hij gaat
  *  als FAQ-vraag mee naar zoekmachines, en twee varianten achter elkaar
@@ -648,7 +649,7 @@ export function campagneHtml(env = process.env) {
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:site_name" content="NuBeslist">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="${SITE}${CAMPAGNE_PAD}">
 <meta property="og:title" content="Wacht je al lang op een beslissing van UWV?">
@@ -900,7 +901,7 @@ ${vraag('Wat gebeurt er met mijn brief nadat ik hem upload?', [
     // ook als FAQPage mee. Ze worden uit de pagina zelf gelezen.
     faqSchema(pagina, url),
     kruimelSchema([
-      { naam: 'nubeslist.nl', pad: '/' },
+      { naam: 'NuBeslist', pad: '/' },
       { naam: 'UWV te laat', pad: CAMPAGNE_PAD },
     ]),
     dienstSchema({

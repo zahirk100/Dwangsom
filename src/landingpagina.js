@@ -23,6 +23,7 @@ import { ALGEMEEN, CAMPAGNES } from '../public/shared/campagnes.js';
 import { labelBestuursorgaan, zoekZaaktype } from '../public/shared/catalogus.js';
 import { tarief, tariefZin, tariefVoorbeeld } from '../public/shared/tarief.js';
 import { organisatiegegevens } from './organisatie.js';
+import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
 import { KENNISLINKS } from './kennispagina.js';
 
@@ -42,17 +43,6 @@ function funnelPad(ingang) {
   if (ingang.zaak) delen.push(`zaak=${encodeURIComponent(ingang.zaak)}`);
   return delen.length ? `/aanvraag?${delen.join('&amp;')}` : '/aanvraag';
 }
-
-const MERKTEKEN = (klasse) => `<svg class="${klasse}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="verloop-${klasse}" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
-        </linearGradient></defs>
-        <rect width="64" height="64" rx="16" fill="url(#verloop-${klasse})"/>
-        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
-              stroke-linecap="round" opacity=".48"/>
-        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
 
 const VINK = (kleur = 'var(--groen-600)') => `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
         stroke="${kleur}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg>`;
@@ -170,7 +160,7 @@ export function landingHtml(ingang, env = process.env) {
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:site_name" content="NuBeslist">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${veilig(ingang.kop)}">
@@ -178,7 +168,7 @@ export function landingHtml(ingang, env = process.env) {
 <meta property="og:image" content="${SITE}/deelkaart.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Het merkteken van nubeslist.nl">
+<meta property="og:image:alt" content="Het merkteken van NuBeslist">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${veilig(ingang.kop)}">
 <meta name="twitter:description" content="${veilig(ingang.omschrijving)}">
@@ -193,10 +183,7 @@ export function landingHtml(ingang, env = process.env) {
 
 <header class="balk">
   <div class="omhulsel balk__inhoud">
-    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
-      ${MERKTEKEN('merk__teken')}
-      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
-    </a>
+    ${merklink()}
     <nav id="balk-nav">
       <a class="nav-secundair" href="#werkwijze">Hoe het werkt</a>
       <a class="nav-secundair" href="#kosten">Kosten</a>
@@ -286,7 +273,7 @@ ${heroKeuze(ingang)}
       </div>
       <div class="middenknop">
         <p class="middenknop__zin">Je hoeft dat niet zelf uit te zoeken.
-           <strong>nubeslist.nl controleert het voor je.</strong></p>
+           <strong>NuBeslist controleert het voor je.</strong></p>
         <a class="knop knop--primair knop--groot" href="${pad}" data-cta>
           <span data-cta-tekst>${veilig(ingang.knop)}</span></a>
       </div>
@@ -629,8 +616,8 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
       </div>
       <div class="vertrouwen">
         <article class="kaart vertrouwen__wie">
-          <h3>Achter nubeslist.nl</h3>
-          <p>nubeslist.nl is een Nederlandse particuliere dienstverlener die mensen helpt wanneer
+          <h3>Achter NuBeslist</h3>
+          <p>NuBeslist is een Nederlandse particuliere dienstverlener die mensen helpt wanneer
              een beslissing van een overheidsinstantie te lang uitblijft. Wij maken een procedure
              die normaal bestaat uit brieven, termijnen en opvolging eenvoudig en inzichtelijk.</p>
           <dl class="vertrouwen__gegevens">
@@ -747,11 +734,8 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
 
 <footer class="voet">
   <div class="omhulsel">
-    <div class="voet__merk">
-      ${MERKTEKEN('voet__teken')}
-      <span>nubeslist.nl</span>
-    </div>
-    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+    <div class="voet__merk">${woordmerk()}</div>
+    <p>NuBeslist is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
        verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
     <p>De uitslag op het scherm is een inschatting op basis van de gegevens die je aanlevert en is
        geen juridisch advies. Aan de uitkomst kunnen geen rechten worden ontleend.</p>
@@ -800,7 +784,7 @@ ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li
  * In het zoekresultaat staat dan een leesbaar pad in plaats van een url.
  */
 function kruimelpad(ingang) {
-  const kruimels = [{ naam: 'nubeslist.nl', pad: '/' }];
+  const kruimels = [{ naam: 'NuBeslist', pad: '/' }];
   if (!ingang.slug) return kruimels;
   const ouder = CAMPAGNES.find((c) => c.instantie === ingang.instantie && !c.zaak);
   if (ouder && ouder.slug !== ingang.slug) {

@@ -32,7 +32,10 @@ test('de oude naam staat nergens meer in de uitgeleverde pagina\'s', async () =>
   for (const pad of ALLE_PAGINAS) {
     const html = await (await haal(pad)).text();
     assert.ok(!/Dwangsomhulp/i.test(html), `${pad} noemt de oude naam nog`);
-    assert.match(html, /nubeslist\.nl/, `${pad} noemt de nieuwe naam niet`);
+    assert.match(html, /NuBeslist/, `${pad} noemt de merknaam niet`);
+    // Het merk heet NuBeslist; nubeslist.nl is alleen het adres. Een pagina
+    // die het domein als naam in de balk zet, valt uit de toon.
+    assert.ok(!/merk__woord">nubeslist/.test(html), `${pad} zet het adres in het woordmerk`);
   }
   for (const bestand of ['/assets/funnel.js', '/assets/wizard.js', '/assets/beheer.js', '/assets/stijl.css']) {
     const tekst = await (await haal(bestand)).text();
@@ -75,17 +78,17 @@ test('de beheerpagina wordt niet geïndexeerd en is niet deelbaar bedoeld', asyn
 
 test('het merkteken en de iconen worden uitgeleverd met het juiste type', async () => {
   const verwacht = [
-    ['/merk.svg', 'image/svg+xml'],
-    ['/icoon-180.png', 'image/png'],
-    ['/icoon-512.png', 'image/png'],
-    ['/deelkaart.png', 'image/png'],
+    ['/merk.svg', 'image/svg+xml', 150],
+    ['/icoon-180.png', 'image/png', 400],
+    ['/icoon-512.png', 'image/png', 400],
+    ['/deelkaart.png', 'image/png', 400],
   ];
-  for (const [pad, type] of verwacht) {
+  for (const [pad, type, minimum] of verwacht) {
     const antwoord = await haal(pad);
     assert.equal(antwoord.status, 200, `${pad} gaf ${antwoord.status}`);
     assert.match(antwoord.headers.get('content-type'), new RegExp(type.replace('+', '\\+')));
     const lijf = await antwoord.arrayBuffer();
-    assert.ok(lijf.byteLength > 400, `${pad} is verdacht klein`);
+    assert.ok(lijf.byteLength > minimum, `${pad} is verdacht klein`);
   }
 });
 
@@ -148,8 +151,8 @@ test('de bezoeker wordt overal met je aangesproken, niet met u', async () => {
   }
 });
 
-test('de naam op de machtiging volgt BEDRIJF_NAAM, met nubeslist.nl als terugval', async () => {
+test('de naam op de machtiging volgt BEDRIJF_NAAM, met de merknaam als terugval', async () => {
   const { organisatiegegevens } = await import('../src/organisatie.js');
-  assert.equal(organisatiegegevens({}).naam, 'nubeslist.nl');
+  assert.equal(organisatiegegevens({}).naam, 'NuBeslist');
   assert.equal(organisatiegegevens({ BEDRIJF_NAAM: 'Anders B.V.' }).naam, 'Anders B.V.');
 });

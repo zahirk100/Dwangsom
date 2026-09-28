@@ -132,7 +132,7 @@ function personaliseer(instantie, zaak = '') {
     vraagVerlenging.textContent = `Wat als ${zin} heeft laten weten dat het langer duurt?`;
   }
   const vraagUit = document.querySelector('[data-vraag-uitbetaling]');
-  if (vraagUit) vraagUit.textContent = `Betaalt ${zin} de vergoeding aan mij of aan nubeslist.nl?`;
+  if (vraagUit) vraagUit.textContent = `Betaalt ${zin} de vergoeding aan mij of aan NuBeslist?`;
 
   const slot = document.querySelector('[data-slotkop]');
   if (slot) {

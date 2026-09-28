@@ -23,6 +23,7 @@
 import { TARIEF, UITKOMST } from '../public/shared/dwangsom.js';
 import { ZAAKTYPEN, BESTUURSORGANEN, labelBestuursorgaan } from '../public/shared/catalogus.js';
 import { organisatiegegevens } from './organisatie.js';
+import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, metSchema } from './seo.js';
 
 const SITE = 'https://nubeslist.nl';
@@ -43,17 +44,6 @@ function inWeken(dagen) {
   if (Number.isInteger(weken) && weken < woorden.length) return `${woorden[weken]} weken`;
   return `${dagen} dagen`;
 }
-
-const MERKTEKEN = `<svg class="merk__teken" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <defs><linearGradient id="merkverloop" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#3b7ad4"/><stop offset="1" stop-color="#1c3a6e"/>
-        </linearGradient></defs>
-        <rect width="64" height="64" rx="16" fill="url(#merkverloop)"/>
-        <path d="M40.8 19.4A18 18 0 1 0 50 33.5" fill="none" stroke="#fff" stroke-width="4.2"
-              stroke-linecap="round" opacity=".48"/>
-        <path d="M22.5 33.2 30.8 41.5 51 18.5" fill="none" stroke="#fff" stroke-width="6.2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
 
 /**
  * De vaste voetregel met de kennislinks erin.
@@ -92,7 +82,7 @@ function schil({ pad, titel, omschrijving, h1, wetnoot, lijf, kruimels }) {
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="nubeslist.nl">
+<meta property="og:site_name" content="NuBeslist">
 <meta property="og:locale" content="nl_NL">
 <meta property="og:url" content="${url}">
 <meta property="og:title" content="${veilig(h1)}">
@@ -152,10 +142,7 @@ function schil({ pad, titel, omschrijving, h1, wetnoot, lijf, kruimels }) {
 
 <header class="balk">
   <div class="omhulsel balk__inhoud">
-    <a class="merk" href="/" aria-label="nubeslist.nl, naar de startpagina">
-      ${MERKTEKEN}
-      <span class="merk__naam">nubeslist<span class="merk__punt">.nl</span></span>
-    </a>
+    ${merklink()}
     <nav id="balk-nav">
       <a class="nav-secundair" href="/hoe-werkt-het">Hoe het werkt</a>
       <a class="nav-secundair" href="/beslistermijn">Beslistermijnen</a>
@@ -187,8 +174,8 @@ ${KENNISLINKS.filter((k) => k.pad !== pad).map((k) => `      <li><a href="${k.pa
 
 <footer class="voet">
   <div class="omhulsel">
-    <div class="voet__merk">${MERKTEKEN}<span>nubeslist.nl</span></div>
-    <p>nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
+    <div class="voet__merk">${woordmerk()}</div>
+    <p>NuBeslist is een particuliere dienstverlener en geen overheidsinstantie. Wij zijn niet
        verbonden aan UWV, DUO, de SVB, een gemeente of een ander bestuursorgaan.</p>
     <p>Deze pagina is algemene uitleg en geen juridisch advies. Aan de inhoud kunnen geen rechten
        worden ontleend.</p>
@@ -218,7 +205,7 @@ function maak(opties, env) {
     organisatieSchema(organisatiegegevens(env)),
     siteSchema(),
     faqSchema(html, url),
-    kruimelSchema([{ naam: 'nubeslist.nl', pad: '/' }, { naam: opties.kruimel, pad: opties.pad }]),
+    kruimelSchema([{ naam: 'NuBeslist', pad: '/' }, { naam: opties.kruimel, pad: opties.pad }]),
     {
       '@context': 'https://schema.org',
       '@type': 'Article',

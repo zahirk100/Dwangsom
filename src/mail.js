@@ -15,7 +15,7 @@
  * E-mail is geen beveiligd kanaal; wie de inhoud wil zien, logt in.
  */
 
-const AFZENDER = () => process.env.MAIL_AFZENDER || 'nubeslist.nl <geen-antwoord@nubeslist.nl>';
+const AFZENDER = () => process.env.MAIL_AFZENDER || 'NuBeslist <geen-antwoord@nubeslist.nl>';
 const ANTWOORD_AAN = () => process.env.MAIL_ANTWOORD_AAN || '';
 
 /** Welke verzender is er ingesteld? */
@@ -37,30 +37,29 @@ function veilig(tekst) {
  * het merkteken is hier een gekleurd vierkantje met een vinkje in tekst.
  */
 function omhulsel({ kop, regels, knop, slot }) {
-  const lijf = regels.map((r) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#57657f">${r}</p>`).join('');
+  const lijf = regels.map((r) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#56628f">${r}</p>`).join('');
   const knopHtml = knop
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0">
-         <tr><td style="border-radius:10px;background:#24509a">
+         <tr><td style="border-radius:10px;background:#0e9486">
            <a href="${veilig(knop.url)}" style="display:inline-block;padding:13px 24px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none">${veilig(knop.tekst)}</a>
          </td></tr>
        </table>`
     : '';
-  return `<!doctype html><html lang="nl"><body style="margin:0;padding:0;background:#f5f8fd">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f8fd;padding:28px 12px">
+  return `<!doctype html><html lang="nl"><body style="margin:0;padding:0;background:#f3f7fd">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f7fd;padding:28px 12px">
   <tr><td align="center">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e2e9f4;border-radius:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e3e9f5;border-radius:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif">
       <tr><td style="padding:26px 28px 0">
-        <span style="display:inline-block;width:30px;height:30px;line-height:30px;text-align:center;border-radius:9px;background:#24509a;color:#ffffff;font-size:16px;font-weight:700">&#10003;</span>
-        <span style="margin-left:9px;font-size:16px;font-weight:700;color:#14213a;vertical-align:middle">nubeslist<span style="color:#24509a">.nl</span></span>
+        <span style="font-size:19px;font-weight:800;letter-spacing:-.02em;color:#0b1250">NuBeslist<span style="color:#4fb3f6">&#8226;</span></span>
       </td></tr>
       <tr><td style="padding:18px 28px 28px">
-        <h1 style="margin:0 0 14px;font-size:21px;line-height:1.25;color:#14213a">${veilig(kop)}</h1>
+        <h1 style="margin:0 0 14px;font-size:21px;line-height:1.25;color:#0b1250">${veilig(kop)}</h1>
         ${lijf}${knopHtml}
-        ${slot ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#8a95a8">${slot}</p>` : ''}
+        ${slot ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#6b769f">${slot}</p>` : ''}
       </td></tr>
     </table>
-    <p style="max-width:520px;margin:16px auto 0;font-size:12px;line-height:1.6;color:#8a95a8;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif">
-      nubeslist.nl is een particuliere dienstverlener en geen overheidsinstantie.
+    <p style="max-width:520px;margin:16px auto 0;font-size:12px;line-height:1.6;color:#6b769f;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif">
+      NuBeslist is een particuliere dienstverlener en geen overheidsinstantie.
     </p>
   </td></tr>
 </table></body></html>`;
@@ -93,7 +92,7 @@ export const SJABLONEN = {
 
   /** Opnieuw inloggen zonder wachtwoord. */
   inloglink: ({ url }) => ({
-    onderwerp: 'Je inloglink voor nubeslist.nl',
+    onderwerp: 'Je inloglink voor NuBeslist',
     kop: 'Hier is je inloglink',
     regels: ['Klik op de knop hieronder om je zaak te bekijken. Je hoeft geen wachtwoord te onthouden.'],
     knop: { tekst: 'Naar mijn zaak', url },
@@ -102,7 +101,7 @@ export const SJABLONEN = {
 
   /** Een medewerker is uitgenodigd en moet zijn account instellen. */
   uitnodiging: ({ naam, rol, url, door }) => ({
-    onderwerp: 'Je account voor de beheeromgeving van nubeslist.nl',
+    onderwerp: 'Je account voor de beheeromgeving van NuBeslist',
     kop: 'Stel je account in',
     regels: [
       `Hallo${naam ? ` ${veilig(naam)}` : ''}, ${veilig(door || 'een beheerder')} heeft een account voor je aangemaakt als <strong>${veilig(rol)}</strong>.`,

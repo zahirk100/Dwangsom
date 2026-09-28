@@ -306,7 +306,13 @@ echte klant.
 | `MAIL_AFZENDER` | **ja** | Bijvoorbeeld `nubeslist.nl <geen-antwoord@nubeslist.nl>`. |
 | `MAIL_ANTWOORD_AAN` | aanbevolen | Waar een antwoord van een klant heen gaat. |
 | `KANTOOR_EMAIL` | aanbevolen | Krijgt een melding bij elk nieuw dossier. |
-| `BEDRIJF_NAAM` · `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` · `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | **ja** | Komen op de machtiging. Wat leeg blijft wordt een stippellijn. |
+| `BEDRIJF_NAAM` · `BEDRIJF_ADRES` · `BEDRIJF_POSTCODE_PLAATS` · `BEDRIJF_KVK` · `BEDRIJF_EMAIL` · `BEDRIJF_TELEFOON` | **ja** | Komen op de machtiging en op de contactpagina. Wat leeg blijft wordt een stippellijn, of staat er helemaal niet. `BEDRIJF_NAAM` is de naam zoals die bij de KvK staat — dat is iets anders dan het merk, zie hieronder. |
+
+**Het merk heet NuBeslist, het adres is nubeslist.nl.** Die twee staan in
+`public/shared/merk.js` en worden overal daaruit gehaald: de balk, de
+voetregel, de e-mail, de gestructureerde gegevens. De naam op de machtiging en
+op een factuur is een derde ding: dat is de naam bij de Kamer van Koophandel,
+en die komt uit `BEDRIJF_NAAM`.
 | `TARIEF_PERCENTAGE` *of* `TARIEF_VAST` | **ja** | Onze vergoeding: `20` (procent van de toegekende dwangsom) of `129` (vast bedrag). Staat er niets, dan noemt de site nergens een bedrag en zegt hij dat je het vooraf hoort. Dat is eerlijk, maar het kost conversie: zet het erin. |
 | `OCR_API_SLEUTEL` (of `ANTHROPIC_API_KEY`) | aanbevolen | Tekstherkenning voor foto's en gescande brieven. Staat hij er niet, dan zegt de applicatie netjes dat zij nog geen foto kan lezen. Zet je hem erin, dan gaat het geüploade bestand naar een dienst buiten de applicatie: dat staat in de privacyverklaring en hoort langs dezelfde jurist als het burgerservicenummer. Met `OCR_MODEL` kies je een ander model. |
 | `WHATSAPP_NUMMER` | aanbevolen | Het nummer achter de WhatsApp-knoppen op de campagnelanding, bijvoorbeeld `31612345678`. Staat hij er niet, dan staan die knoppen er ook niet: liever geen knop dan een knop naar een nummer dat geen WhatsApp heeft. |

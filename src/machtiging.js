@@ -59,7 +59,7 @@ export function machtigingContext(aanvraag = {}, organisatie = {}) {
       iban: contact.iban ? toonIban(contact.iban) : null,
     },
     gemachtigde: {
-      naam: organisatie.naam || 'nubeslist.nl',
+      naam: organisatie.naam || 'NuBeslist',
       adres: organisatie.adres || null,
       postcodePlaats: organisatie.postcodePlaats || null,
       kvk: organisatie.kvk || null,
