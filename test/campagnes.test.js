@@ -150,9 +150,9 @@ test('het bedrag staat al in het eerste scherm, niet pas verderop', () => {
   assert.match(hero, /1\.442/, 'de belangrijkste trigger hoort boven de vouw');
 });
 
-test('zonder omgevingsvariabele staat het gekozen tarief van 25% op de pagina', () => {
+test('zonder omgevingsvariabele staat het gekozen tarief van 20% op de pagina', () => {
   const kosten = kostensectie(landingHtml(ALGEMEEN, {}));
-  assert.match(kosten, /25%/);
+  assert.match(kosten, /20%/);
 });
 
 test('een uitdrukkelijk leeggezet tarief levert geen verzonnen getal op', () => {

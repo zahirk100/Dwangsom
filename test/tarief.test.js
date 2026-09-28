@@ -15,12 +15,12 @@ import {
   tariefSplitsing, STANDAARD_PERCENTAGE,
 } from '../public/shared/tarief.js';
 
-test('zonder omgevingsvariabele geldt het gekozen tarief van 25%', () => {
+test('zonder omgevingsvariabele geldt het gekozen tarief van 20%', () => {
   const t = tarief({});
   assert.equal(t.bekend, true);
   assert.equal(t.soort, 'percentage');
   assert.equal(t.percentage, STANDAARD_PERCENTAGE);
-  assert.match(tariefZin(t), /25%/);
+  assert.match(tariefZin(t), /20%/);
   assert.equal(ontbrekendTarief({}), '');
 });
 
@@ -47,8 +47,8 @@ test('uitdrukkelijk leeggezet betekent: noem geen getal', () => {
 test('de splitsing laat zien wat de aanvrager overhoudt', () => {
   // Een percentage zegt mensen weinig; dit is het getal waar het om gaat.
   const split = tariefSplitsing(tarief({}), 1442);
-  assert.equal(split.vergoeding, 360.5);
-  assert.equal(split.overhoudt, 1081.5);
+  assert.equal(split.vergoeding, 288.4);
+  assert.equal(split.overhoudt, 1153.6);
 
   const vast = tariefSplitsing(tarief({ TARIEF_VAST: '129' }), 1442);
   assert.equal(vast.vergoeding, 129);

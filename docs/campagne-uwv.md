@@ -5,7 +5,7 @@
 > handmatige wijzigingen hier gaan bij de volgende ronde verloren.
 
 Landingspagina: **https://nubeslist.nl/uwv-te-laat**  
-Tarief in deze teksten: **Alleen bij een vergoeding: 25%**
+Tarief in deze teksten: **Alleen bij een vergoeding: 20%**
 
 ---
 
@@ -34,7 +34,7 @@ Tarief in deze teksten: **Alleen bij een vergoeding: 25%**
 - Upload je UWV-brief. Wij zoeken gratis uit of UWV al had moeten beslissen. *(74)*
 - Blijft een beslissing uit, dan kan je wettelijke vergoeding oplopen tot € 1.442. *(80)*
 - Wij melden het bij UWV, houden de datums bij en laten je weten wat er gebeurt. *(78)*
-- Geen vergoeding is € 0. Wel een vergoeding: 25%. De controle is altijd gratis. *(78)*
+- Geen vergoeding is € 0. Wel een vergoeding: 20%. De controle is altijd gratis. *(78)*
 
 ### Weergegeven pad (max 15 tekens)
 

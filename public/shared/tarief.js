@@ -6,7 +6,7 @@
  * te veel plekken om het te kopiëren (homepage, funnel, machtiging,
  * voorwaarden).
  *
- * Het gekozen tarief is **25% van de toegekende dwangsom**, en dat staat
+ * Het gekozen tarief is **20% van de toegekende dwangsom**, en dat staat
  * hieronder als standaard. De afweging waarom een percentage en geen vast
  * bedrag staat in docs/livegang.md: de dwangsom loopt van € 23 tot € 1.442,
  * dus een vast bedrag is bij een kleine zaak hoger dan de hele vergoeding.
@@ -16,7 +16,7 @@
  * je het kunt wijzigen zonder de code aan te raken.
  *
  * Instellen met één van deze twee:
- *   TARIEF_PERCENTAGE=25      een deel van de toegekende dwangsom
+ *   TARIEF_PERCENTAGE=20      een deel van de toegekende dwangsom
  *   TARIEF_VAST=129           een vast bedrag per toegekende zaak
  *
  * Zet je ze allebei op leeg (TARIEF_PERCENTAGE=0), dan noemt de site géén
@@ -26,7 +26,7 @@
  */
 
 /** Het gekozen tarief, als er niets in de omgeving staat. */
-export const STANDAARD_PERCENTAGE = 25;
+export const STANDAARD_PERCENTAGE = 20;
 
 /** @typedef {{soort: string, percentage: number, bedrag: number, bekend: boolean}} Tarief */
 
