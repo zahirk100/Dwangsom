@@ -190,7 +190,6 @@ export function landingHtml(ingang, env = process.env) {
       <a class="nav-secundair" href="#vragen">Vragen</a>
       <a class="nav-secundair" href="/mijn">Mijn dossier</a>
       <a class="nav-secundair" href="/contact">Contact</a>
-      <a class="knop knop--zacht knop--klein" href="/beheer">Beheer</a>
       <a class="knop knop--primair knop--klein" href="${pad}" data-cta>
         <span class="nav-lang" data-cta-tekst>${veilig(ingang.knop)}</span><span class="nav-kort">Starten</span>
       </a>
@@ -749,7 +748,6 @@ ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li
       <li><a href="/contact">Contact</a></li>
       <li><a href="/privacy">Privacy</a></li>
       <li><a href="/voorwaarden">Voorwaarden</a></li>
-      <li><a href="/beheer">Beheeromgeving</a></li>
     </ul>
   </div>
 </footer>

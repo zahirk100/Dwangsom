@@ -92,3 +92,15 @@ test('de buildstap kan ook echt draaien op de hosting', () => {
   assert.ok(!genegeerd.includes(`${map}/`) && !genegeerd.includes(map),
     `${map}/ staat in .vercelignore, dan kan de build het script niet vinden`);
 });
+
+test('de beheeringang staat niet in de balk van een bezoekerspagina', () => {
+  // De beheeromgeving is onze eigen ingang, geen menu-item voor iemand die
+  // wacht op een beslissing. Hij is bereikbaar door /beheer in te typen; in
+  // de balk en de voetregel van een bezoekerspagina hoort hij niet.
+  const bezoekerspaginas = ['index.html', 'uwv.html', 'uwv-wia.html', 'beslistermijn.html',
+    'contact.html', 'hoe-werkt-het.html', 'start.html', 'mijn.html', 'privacy.html',
+    'voorwaarden.html', 'aanvraag-klassiek.html', 'uwv-te-laat.html'];
+  for (const naam of bezoekerspaginas) {
+    assert.ok(!lees(naam).includes('href="/beheer"'), `${naam} verwijst naar de beheeromgeving`);
+  }
+});
