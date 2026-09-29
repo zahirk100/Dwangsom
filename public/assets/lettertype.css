@@ -1,1 +1,4 @@
-/* Figtree niet gevonden in public/assets/; de site gebruikt het systeemlettertype. */
+@font-face{font-family:Figtree;font-weight:400;font-display:swap;src:url(/assets/figtree-400.woff2) format('woff2')}
+@font-face{font-family:Figtree;font-weight:600;font-display:swap;src:url(/assets/figtree-600.woff2) format('woff2')}
+@font-face{font-family:Figtree;font-weight:700;font-display:swap;src:url(/assets/figtree-700.woff2) format('woff2')}
+@font-face{font-family:Figtree;font-weight:800;font-display:swap;src:url(/assets/figtree-800.woff2) format('woff2')}

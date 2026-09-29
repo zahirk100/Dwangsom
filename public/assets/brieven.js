@@ -57,9 +57,16 @@ export async function alsLading(bestand) {
   };
 }
 
-/** Uit een keuze van de bezoeker: hooguit vijf bestanden met inhoud. */
-export function gekozenBestanden(bestanden) {
-  return [...(bestanden || [])].filter((b) => b && b.size > 0).slice(0, MAX_BRIEVEN);
+/**
+ * Uit een keuze van de bezoeker: de bestanden die inhoud hebben.
+ *
+ * Standaard hooguit vijf. De campagnelanding laat iemand in meerdere rondes
+ * kiezen en telt zelf hoeveel er al liggen; die geeft daarom een eigen grens
+ * mee, anders zou elke ronde opnieuw vijf bestanden mogen opleveren.
+ */
+export function gekozenBestanden(bestanden, grens = MAX_BRIEVEN) {
+  const met = [...(bestanden || [])].filter((b) => b && b.size > 0);
+  return Number.isFinite(grens) ? met.slice(0, grens) : met;
 }
 
 async function leesEen(lading) {

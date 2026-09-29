@@ -41,12 +41,35 @@ test('het percentage komt uit de omgeving, niet uit de tekst', () => {
   assert.match(zichtbaar({ TARIEF_PERCENTAGE: '25' }), /25%/);
 });
 
+/**
+ * Onze prijs, zoals de bezoeker hem ziet.
+ *
+ * Hij staat op twee plekken die hetzelfde moeten zeggen: in de ring (een
+ * tekening) en in de regel ernaast (voor wie de tekening niet ziet). Beide
+ * komen uit dezelfde bron; deze helper leest de regel, de toets hieronder
+ * kijkt of de ring hetzelfde zegt.
+ */
+const prijsregel = (env) => /<span class="prijs sr-only">([^<]*)<\/span>/.exec(zichtbaar(env))[1];
+
 test('de prijsregel noemt het tarief en verder geen ander getal', () => {
-  // De pagina noemt onze prijs op precies één plek. Staat daar iets anders
+  // De pagina noemt onze prijs op precies één waarde. Staat daar iets anders
   // dan wat de funnel afrekent, dan is dat een onjuiste prijsvermelding.
-  const prijsregel = (env) => /<div class="price2">([^<]*)<\/div>/.exec(zichtbaar(env))[1];
-  assert.equal(prijsregel({ TARIEF_PERCENTAGE: '10' }), '10% van die vergoeding');
+  assert.equal(prijsregel({ TARIEF_PERCENTAGE: '10' }), '10%');
   assert.equal(prijsregel({ TARIEF_VAST: '129' }), '€ 129');
+});
+
+test('de ring bij de prijs zegt hetzelfde als de regel ernaast', () => {
+  // De ring is een tekening met een getal erin. Loopt die uit de pas met de
+  // tekst, dan leest de bezoeker de tekening - en die stond er dan met de
+  // hand in getypt. Elk percentage op de pagina hoort het ingestelde te zijn.
+  const zichtbaarTien = zichtbaar({ TARIEF_PERCENTAGE: '10' });
+  const percentages = new Set(zichtbaarTien.match(/\d+\s*%/g) || []);
+  assert.deepEqual([...percentages], ['10%'], 'er hoort maar één percentage op de pagina te staan');
+  // En de ring vult 10% van zijn omtrek, niet een willekeurig mooi stuk.
+  const streep = /stroke-dasharray="([\d.]+) ([\d.]+)"/.exec(zichtbaarTien);
+  assert.ok(streep, 'de ring hoort een gevuld deel te hebben');
+  const deel = Number(streep[1]) / (Number(streep[1]) + Number(streep[2]));
+  assert.ok(Math.abs(deel - 0.10) < 0.005, `de ring vult ${Math.round(deel * 100)}% in plaats van 10%`);
 });
 
 test('bedragen boven de duizend krijgen een duizendtalpunt', () => {
@@ -69,8 +92,10 @@ test('zonder tarief noemt de pagina geen enkel bedrag voor onze hulp', () => {
   const leeg = zichtbaar({ TARIEF_PERCENTAGE: '0' });
   assert.match(leeg, /vooraf/i);
   assert.ok(!/\d+\s*%/.test(leeg), 'geen verzonnen percentage');
-  const prijsregel = /<div class="price2">([^<]*)<\/div>/.exec(leeg)[1];
-  assert.ok(!/[€\d]/.test(prijsregel), `de prijsregel noemt dan geen bedrag: ${prijsregel}`);
+  const regel = prijsregel({ TARIEF_PERCENTAGE: '0' });
+  assert.ok(!/[€\d]/.test(regel), `de prijsregel noemt dan geen bedrag: ${regel}`);
+  // En er staat dan ook geen ring met een getal erin.
+  assert.ok(!leeg.includes('fee-ring'), 'zonder tarief hoort er ook geen prijsring te staan');
 });
 
 test('zonder omgeving valt de pagina terug op het gekozen tarief', () => {
@@ -120,7 +145,8 @@ test('de kaart met datums erin is als voorbeeld gemerkt', () => {
   // als de eigen uitslag van de bezoeker.
   const kaart = html().split('class="result"')[1].split('</section>')[0];
   assert.match(kaart, /Voorbeeld van je uitslag/);
-  assert.match(kaart, /Dit is een voorbeeld/);
+  assert.match(kaart, /voorbeeldbrief/i, 'ook het citaat hoort als voorbeeld gemerkt te zijn');
+  assert.match(kaart, /in dit voorbeeld/i, 'en de situatie eronder net zo goed');
 });
 
 // ----------------------------------------------------------- de uitgangen ---
@@ -193,11 +219,13 @@ test('de pagina zegt op meer dan één plek dat wij niet van UWV zijn', () => {
   assert.match(h, /geen onderdeel van UWV of de overheid/);
 });
 
-test('het uploadvak stuurt zelf niets, maar geeft de brief door aan de funnel', () => {
-  // De pagina belooft dat er nog niets naar UWV gaat. Dat klopt alleen als
-  // hier ook echt geen verzending zit: het bestand reist mee naar de funnel.
+test('het uploadvak stuurt niets naar UWV en geeft de uitkomst door aan de funnel', () => {
+  // De pagina belooft dat er nog niets naar UWV gaat. De brief wordt hier
+  // gelezen - door ons, in assets/campagne.js - en naar de funnel reist
+  // alleen de uitkomst. In de pagina zelf staat daarom geen adres: wat er
+  // wordt aangeroepen hoort in één bestand te staan en niet in de opmaak.
   const h = html();
-  assert.ok(!h.includes('/api/'), 'de landing praat zelf niet met de server');
+  assert.ok(!h.includes('/api/'), 'de landing heeft zelf geen adressen in de opmaak staan');
   assert.match(h, /id="verder"/, 'de bestemming hoort als link in de pagina te staan');
   assert.match(h, /assets\/campagne\.js/);
 });
