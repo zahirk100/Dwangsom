@@ -25,7 +25,7 @@ import { verstuur } from './src/mail.js';
 import { loopBewakingAf, bewaakDossier } from './src/bewaker.js';
 import {
   MAX_UPLOAD_BYTES, Snelheidsbegrenzer, clientIp, leesJsonBody, parseCookies,
-  serveerBestand, stuurFout, stuurHtml, stuurJson, stuurTekst,
+  serveerBestand, stuurFout, stuurHtml, stuurJson, stuurLeeg, stuurTekst,
 } from './src/http-util.js';
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
@@ -272,7 +272,7 @@ async function publiekeApi(req, res, url) {
    */
   if (url.pathname === '/api/controle' && req.method === 'POST') {
     const limiet = briefBegrenzer.controleer(clientIp(req));
-    if (!limiet.toegestaan) return klaar();
+    if (!limiet.toegestaan) return stuurLeeg(res);
     const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
     try {
       await store.bewaarControle(body);
@@ -280,7 +280,7 @@ async function publiekeApi(req, res, url) {
       // Meten mag nooit een reden zijn dat de bezoeker iets merkt.
       console.error('[controle] bewaren mislukt:', err.message);
     }
-    return klaar();
+    return stuurLeeg(res);
   }
 
   if (url.pathname === '/api/aanvragen' && req.method === 'POST') {
@@ -382,12 +382,11 @@ async function publiekeApi(req, res, url) {
     // Altijd 204, ook bij onzin. Een meetroute hoort nooit een reden te zijn
     // dat er iets op het scherm misgaat, en een foutmelding zou verklappen
     // welke gebeurtenissen wel bestaan.
-    const klaar = () => { res.writeHead(204, { 'Cache-Control': 'no-store' }); res.end(); return true; };
-    if (!meetBegrenzer.controleer(clientIp(req)).toegestaan) return klaar();
+    if (!meetBegrenzer.controleer(clientIp(req)).toegestaan) return stuurLeeg(res);
     let body;
-    try { body = await leesJsonBody(req); } catch { return klaar(); }
+    try { body = await leesJsonBody(req); } catch { return stuurLeeg(res); }
     const gebeurtenis = String((body && body.g) || '');
-    if (!geldigeGebeurtenis(gebeurtenis)) return klaar();
+    if (!geldigeGebeurtenis(gebeurtenis)) return stuurLeeg(res);
     const bron = normaliseerBron(body.b, body.v);
     const pagina = gebeurtenis === 'bezoek'
       ? normaliseerPagina(body.p, Object.keys(PAGINAS))
@@ -398,7 +397,7 @@ async function publiekeApi(req, res, url) {
       // Een mislukte telling mag nooit iets kosten aan de bezoeker.
       console.error('[meting] tellen mislukt:', err.message);
     }
-    return klaar();
+    return stuurLeeg(res);
   }
 
   /**
@@ -970,7 +969,7 @@ async function beheerApi(req, res, url) {
     const sleutel = url.searchParams.get('sleutel');
     if (!sleutel) return stuurFout(res, 400, 'Geen controle opgegeven.');
     await store.verwijderControle(sleutel);
-    return klaar();
+    return stuurLeeg(res);
   }
 
   if (url.pathname === '/api/beheer/export.csv' && req.method === 'GET') {

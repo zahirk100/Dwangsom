@@ -434,3 +434,55 @@ test('een zware pdf past in één verzoek', async () => {
   const data = await antwoord.json();
   assert.equal(data.herkenning.beslisdatum, '2026-06-29');
 });
+
+// ------------------------------------------------ de controles als route ---
+
+/**
+ * De routes eromheen, niet alleen de module.
+ *
+ * `test/controles.test.js` toetst wat er bewaard wordt. Dat er ook echt een
+ * antwoord teruggaat, werd nergens gecontroleerd - en juist daar zat een
+ * fout: beide routes riepen een functie aan die in hun eigen bereik niet
+ * bestond, dus liepen ze na het opslaan alsnog vast met een 500. De browser
+ * verstuurt dit met `sendBeacon` en kijkt niet naar het antwoord, dus was er
+ * op het scherm niets van te merken.
+ */
+test('een controle vastleggen geeft 204 en verder niets terug', async () => {
+  const antwoord = await haal('/api/controle', {
+    method: 'POST',
+    body: JSON.stringify({
+      sleutel: 'route-proef-1',
+      stap: 'uitslag',
+      van: 'uwv-te-laat',
+      invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', termijnEinddatum: '2026-09-14' },
+      rapport: { uitkomst: 'recht', berekening: { totaal: 462 } },
+    }),
+  });
+  assert.equal(antwoord.status, 204, 'een beacon hoort geen fout terug te krijgen');
+  assert.equal(await antwoord.text(), '', '204 heeft geen body');
+  assert.equal(antwoord.headers.get('cache-control'), 'no-store');
+});
+
+test('de vastgelegde controle staat daarna in het beheeroverzicht', async () => {
+  const overzicht = await (await haal('/api/beheer/controles', { headers: { cookie: beheer.cookie } })).json();
+  const van = overzicht.controles.find((c) => c.sleutel === 'route-proef-1');
+  assert.ok(van, 'de zojuist vastgelegde controle hoort in het overzicht te staan');
+  assert.equal(van.stap, 'uitslag');
+});
+
+test('een controle verwijderen geeft 204 en haalt hem echt weg', async () => {
+  const weg = await haal('/api/beheer/controles?sleutel=route-proef-1', {
+    method: 'DELETE', headers: { cookie: beheer.cookie },
+  });
+  assert.equal(weg.status, 204);
+  const overzicht = await (await haal('/api/beheer/controles', { headers: { cookie: beheer.cookie } })).json();
+  assert.ok(!overzicht.controles.some((c) => c.sleutel === 'route-proef-1'), 'hij hoort weg te zijn');
+});
+
+test('zonder inloggen komt er niemand bij de controles', async () => {
+  for (const opties of [{}, { method: 'DELETE' }]) {
+    const antwoord = await haal('/api/beheer/controles?sleutel=route-proef-1', opties);
+    assert.ok(antwoord.status === 401 || antwoord.status === 403,
+      `verwacht 401 of 403, kreeg ${antwoord.status}`);
+  }
+});

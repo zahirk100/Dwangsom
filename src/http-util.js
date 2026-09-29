@@ -63,6 +63,19 @@ export function stuurHtml(res, statuscode, html, extraHeaders = {}) {
   return true;
 }
 
+/**
+ * Klaar, en verder niets terug.
+ *
+ * Voor meldingen die de bezoeker niet ziet: een meting, een vastgelegde
+ * controle, een verwijdering die al gebeurd is. 204 heeft geen body, dus er
+ * valt ook niets te lezen dat er niet hoort te staan.
+ */
+export function stuurLeeg(res, extraHeaders = {}) {
+  res.writeHead(204, { 'Cache-Control': 'no-store', ...extraHeaders });
+  res.end();
+  return true;
+}
+
 export function stuurFout(res, statuscode, melding, details) {
   return stuurJson(res, statuscode, { fout: melding, details: details || undefined });
 }

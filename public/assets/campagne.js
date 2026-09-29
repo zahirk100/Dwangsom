@@ -350,10 +350,35 @@ function voegToe(bestanden) {
   if (naschrift) zeg(`${stand.textContent} ${naschrift}`.trim());
 }
 
+/**
+ * Wie via een knop bovenaan de pagina kiest, wil dat het vak daarna in beeld
+ * staat; wie op "Kies een foto of pdf" in het vak zelf drukt, staat er al.
+ * Deze vlag onthoudt welke van de twee het was.
+ */
+let kwamVanKnop = false;
+
+/** Het uploadvak in beeld brengen. Zachtjes, zodat je ziet waar je heen gaat. */
+function naarVak() {
+  vak.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 kiesknop.addEventListener('click', () => invoer.click());
 invoer.addEventListener('change', () => {
   voegToe(invoer.files);
   invoer.value = '';
+  if (kwamVanKnop) {
+    kwamVanKnop = false;
+    naarVak();
+  }
+});
+// Sluit iemand het keuzevenster zonder iets te kiezen, dan is de knop toch
+// ergens heen gegaan. Zonder dit lijkt hij niets te doen. Niet elke browser
+// kent deze gebeurtenis; waar hij ontbreekt blijft de bezoeker staan waar hij
+// stond, en dat is nog altijd beter dan een sprong die hij niet vroeg.
+invoer.addEventListener('cancel', () => {
+  if (!kwamVanKnop) return;
+  kwamVanKnop = false;
+  naarVak();
 });
 
 let sleepdiepte = 0;
@@ -385,23 +410,38 @@ function bestemming() {
 }
 
 /**
- * Eén klik, niet twee.
+ * De knop opent de kiezer. Verder niets.
  *
- * "Controleer mijn UWV-brief" bracht je eerst alleen naar het uploadvak; daar
- * moest je nog een keer klikken om je bestand te kiezen. Dat is een extra stap
- * op precies het moment dat iemand iets wíl. Nu springt de pagina naar het vak
- * én gaat de bestandskiezer meteen open - op een telefoon is dat het menu met
- * "Maak een foto".
+ * Dit is twee keer eerder misgegaan, allebei op dezelfde manier: de knop deed
+ * iets anders dan hij belooft.
  *
- * Heeft iemand al een brief gekozen, dan alleen springen: dan is de knop in
- * het vak zelf de volgende stap, en een tweede keuzemenu is dan in de weg.
+ * Eerst bracht "Controleer mijn UWV-brief" je alleen naar het uploadvak, en
+ * moest je daar nóg een keer klikken om een bestand te kiezen. Dat is een
+ * extra stap op precies het moment dat iemand iets wíl.
+ *
+ * Daarna sprong de pagina naar het vak én ging de kiezer open. Ook dat klopt
+ * niet: je drukt op een knop bovenin en de pagina rent vijfduizend pixels naar
+ * beneden terwijl er een keuzevenster over heen komt. Sluit je dat venster,
+ * dan sta je ergens waar je niet om gevraagd hebt.
+ *
+ * Dus: klikken opent de kiezer, en de pagina blijft staan. Het vak komt pas in
+ * beeld als er ook echt iets te zien is - zodra een bestand gekozen is, of als
+ * de kiezer zonder keuze dichtgaat.
+ *
+ * Heeft iemand al een brief gekozen, dan gaat de kiezer niet open maar
+ * verplaatst de pagina wel: dan is de knop in het vak zelf de volgende stap,
+ * en een tweede keuzemenu is in de weg.
  */
 for (const link of document.querySelectorAll('a[href="#upload"]')) {
   link.addEventListener('click', (e) => {
     e.preventDefault();
     if (menu.open) sluitDialoog(menu, false);
-    bij('upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (gekozen.length === 0) invoer.click();
+    if (gekozen.length > 0) {
+      naarVak();
+      return;
+    }
+    kwamVanKnop = true;
+    invoer.click();
   });
 }
 
