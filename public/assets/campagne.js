@@ -473,6 +473,25 @@ for (const link of document.querySelectorAll('a[href="#upload"]')) {
   });
 }
 
+/**
+ * Een foto duurt langer dan een pdf, en dat hoort de bezoeker te merken.
+ *
+ * Een pdf met tekstlaag is er meteen; een foto moet door tekstherkenning heen
+ * en dat kan tientallen seconden duren. Blijft er al die tijd één zin staan,
+ * dan lijkt het scherm dood en klikt iemand weg. Daarom komt er na een paar
+ * seconden een regel bij die zegt waaróm het duurt - alleen als er ook echt
+ * een foto tussen zit.
+ */
+let traagTimer = null;
+
+function meldLangDuren() {
+  clearTimeout(traagTimer);
+  if (!gekozen.some((regel) => regel.soort !== 'pdf')) return;
+  traagTimer = setTimeout(() => {
+    zeg(`${stand.textContent} Een foto duurt wat langer dan een pdf.`.trim());
+  }, 6000);
+}
+
 startknop.addEventListener('click', async () => {
   if (gekozen.length === 0) return;
   startknop.disabled = true;
@@ -485,6 +504,7 @@ startknop.addEventListener('click', async () => {
         zeg(totaal > 1
           ? `Wij lezen je brieven… (${Math.min(klaar + 1, totaal)} van ${totaal})`
           : 'Wij lezen je brief…');
+        meldLangDuren();
       },
     });
     // Alleen het resultaat reist mee naar de funnel: een paar kilobyte tekst
@@ -494,8 +514,14 @@ startknop.addEventListener('click', async () => {
     sessionStorage.setItem(OVERDRACHT, JSON.stringify(data.gelezen));
     location.href = bestemming();
   } catch (fout) {
-    zeg('');
     meldFouten([`${fout.message}${fout.hint ? ` ${fout.hint}` : ''}`]);
+    zeg(gekozen.length ? keuzeZin() : '');
+  } finally {
+    // Wat er ook misgaat: de teller stopt en de knop gaat weer aan. Een
+    // uitgeschakelde knop onder een zin die blijft staan is precies waar de
+    // bezoeker eerder voorgoed in bleef hangen. Lukte het wél, dan is de
+    // pagina al onderweg naar de funnel en ziet niemand dit nog.
+    clearTimeout(traagTimer);
     startknop.disabled = false;
   }
 });

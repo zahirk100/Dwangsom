@@ -69,12 +69,55 @@ export function gekozenBestanden(bestanden, grens = MAX_BRIEVEN) {
   return Number.isFinite(grens) ? met.slice(0, grens) : met;
 }
 
-async function leesEen(lading) {
-  const antwoord = await fetch('/api/brief', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(lading),
-  });
+/**
+ * Hoe lang wij op één brief wachten.
+ *
+ * Een pdf met tekstlaag is er in een oogwenk; een foto moet door
+ * tekstherkenning heen en dat duurt seconden tot tientallen seconden. Daar
+ * hoort een grens bij, en die stond er niet: bleef het antwoord uit, dan bleef
+ * het verzoek eeuwig openstaan. Op het scherm zag je dan "Wij lezen je
+ * brief..." met een knop die uit bleef, voorgoed. Dat is de ergste soort
+ * storing, want er is niets te doen - zelfs niet opnieuw proberen.
+ *
+ * Deze grens ligt met opzet boven die van de tekstherkenning zelf (zie
+ * `src/tekstherkenning.js`), zodat de server normaal gesproken eerst met een
+ * echte reden komt en de bezoeker niet met "het duurde te lang" wordt
+ * afgescheept terwijl wij weten wat er mis was.
+ */
+export const WACHTTIJD_MS = 40000;
+
+/** Niet elke browser kent AbortSignal.timeout; daar geldt dan de oude situatie. */
+function afbreeksein(ms) {
+  try {
+    return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+      ? AbortSignal.timeout(ms)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function leesEen(lading, { wachttijd = WACHTTIJD_MS } = {}) {
+  let antwoord;
+  try {
+    antwoord = await fetch('/api/brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lading),
+      signal: afbreeksein(wachttijd),
+    });
+  } catch (oorzaak) {
+    // Hier komen we bij een verbroken verbinding en bij onze eigen grens. In
+    // beide gevallen weten wij niet wat er mis ging, dus zeggen we dat ook.
+    const verlopen = oorzaak && oorzaak.name === 'TimeoutError';
+    const fout = new Error(verlopen
+      ? 'Het lezen van deze brief duurde te lang.'
+      : 'Wij konden deze brief niet versturen.');
+    fout.hint = verlopen
+      ? 'Probeer het nog een keer. Lukt het weer niet, stuur de brief dan als pdf.'
+      : 'Controleer je internetverbinding en probeer het nog een keer.';
+    throw fout;
+  }
   const data = await antwoord.json().catch(() => ({}));
   if (!antwoord.ok) {
     const fout = new Error(data.fout || 'Wij konden deze brief niet lezen.');

@@ -24,7 +24,16 @@
 const STANDAARD_MODEL = 'claude-opus-5';
 const ADRES = 'https://api.anthropic.com/v1/messages';
 const VERSIE = '2023-06-01';
-const WACHTTIJD_MS = 45000;
+/**
+ * Hoe lang wij op de tekstherkenning wachten.
+ *
+ * Bewust korter dan de grens in de browser (zie `assets/brieven.js`), zodat
+ * wij eerst met een echte reden terugkomen in plaats van dat de bezoeker
+ * afknapt op zijn eigen klok. En bewust korter dan de tijd die het platform
+ * een functie gunt: wordt de functie halverwege afgebroken, dan krijgt de
+ * bezoeker helemaal geen antwoord.
+ */
+const WACHTTIJD_MS = 30000;
 const MAX_TEKENS = 4000;
 
 /**
@@ -163,4 +172,4 @@ export async function herkenTekst(bytes, { mediaType = '', env = process.env, ha
   return { gelukt: true, tekst, bron: soort === 'application/pdf' ? 'scan' : 'foto' };
 }
 
-export { BEELDSOORTEN, STANDAARD_MODEL };
+export { BEELDSOORTEN, STANDAARD_MODEL, WACHTTIJD_MS };
