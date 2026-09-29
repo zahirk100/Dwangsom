@@ -319,9 +319,21 @@ function meldFouten(fouten) {
   foutvak.hidden = fouten.length === 0;
 }
 
+/**
+ * Gekozen bestanden opnemen in de lijst.
+ *
+ * Geeft terug of er iets in het vak is veranderd dat de bezoeker zou moeten
+ * zien: een brief erbij, of een melding over een bestand dat niet kan. Dat is
+ * wat bepaalt of de pagina naar het vak toe mag; zonder dat onderscheid
+ * verplaatst een weggeklikt keuzevenster de pagina net zo goed, want dat
+ * levert ook een change op - met nul bestanden.
+ *
+ * @returns {boolean} of er iets nieuws in het vak staat
+ */
 function voegToe(bestanden) {
   const fouten = [];
   const sleutels = new Set(gekozen.map((r) => r.sleutel));
+  const had = gekozen.length;
   let dubbel = 0;
   let teveel = 0;
 
@@ -348,6 +360,7 @@ function voegToe(bestanden) {
     teveel ? `Er passen ${MAX_BRIEVEN} brieven in één controle; de rest is niet toegevoegd.` : '',
   ].filter(Boolean).join(' ');
   if (naschrift) zeg(`${stand.textContent} ${naschrift}`.trim());
+  return gekozen.length > had || fouten.length > 0 || dubbel > 0 || teveel > 0;
 }
 
 /**
@@ -363,23 +376,38 @@ function naarVak() {
 }
 
 kiesknop.addEventListener('click', () => invoer.click());
+
+/**
+ * De pagina verplaatst alleen als er in het vak ook echt iets te zien is.
+ *
+ * Let op de voorwaarde: niet "er is een keuze gemaakt" maar "er staat nu iets
+ * nieuws". Wie het keuzevenster wegklikt krijgt óók een change, met nul
+ * bestanden - dat is precies de sprong die hier eerder zat. Kiest iemand wél
+ * iets, maar een bestand dat wij niet kunnen lezen, dan moet de pagina juist
+ * wél mee: die melding staat in het vak, en daar kijkt hij anders niet naar.
+ */
 invoer.addEventListener('change', () => {
-  voegToe(invoer.files);
+  const ietsTeZien = voegToe(invoer.files);
   invoer.value = '';
-  if (kwamVanKnop) {
+  if (kwamVanKnop && ietsTeZien) {
     kwamVanKnop = false;
     naarVak();
   }
 });
-// Sluit iemand het keuzevenster zonder iets te kiezen, dan is de knop toch
-// ergens heen gegaan. Zonder dit lijkt hij niets te doen. Niet elke browser
-// kent deze gebeurtenis; waar hij ontbreekt blijft de bezoeker staan waar hij
-// stond, en dat is nog altijd beter dan een sprong die hij niet vroeg.
-invoer.addEventListener('cancel', () => {
-  if (!kwamVanKnop) return;
-  kwamVanKnop = false;
-  naarVak();
-});
+
+/**
+ * Het venster weggeklikt zonder iets te kiezen: niets doen.
+ *
+ * Hier stond eerst een sprong naar het uploadvak, met als gedachte dat de
+ * knop anders niets lijkt te doen. Dat was de verkeerde afweging. Wie het
+ * keuzevenster wegklikt heeft zich bedacht, en die zet je niet ongevraagd
+ * vijfduizend pixels verderop. De knop staat nog gewoon in beeld; wie hem
+ * alsnog wil, klikt opnieuw.
+ *
+ * De vlag gaat wel uit, anders zou een volgende keuze - bijvoorbeeld via de
+ * knop in het vak zelf - alsnog die sprong maken.
+ */
+invoer.addEventListener('cancel', () => { kwamVanKnop = false; });
 
 let sleepdiepte = 0;
 vak.addEventListener('dragenter', (e) => {

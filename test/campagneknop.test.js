@@ -53,7 +53,7 @@ test('de knop verplaatst de pagina niet voordat er iets gekozen is', () => {
     'er mag niet gescrold worden voordat de kiezer opengaat');
 });
 
-test('het vak komt in beeld zodra er een bestand gekozen is', () => {
+test('het vak komt in beeld zodra er iets te zien is', () => {
   // Anders kiest iemand vanaf de hero een foto en blijft de pagina daar
   // staan; hij ziet dan niet dat zijn brief is aangekomen.
   const verandert = /invoer\.addEventListener\('change'[\s\S]*?\n\}\);/.exec(bron);
@@ -61,10 +61,28 @@ test('het vak komt in beeld zodra er een bestand gekozen is', () => {
   assert.match(verandert[0], /naarVak\(\)/);
 });
 
-test('een afgebroken keuze laat de knop toch ergens heen gaan', () => {
-  // Sluit iemand het keuzevenster zonder iets te kiezen, dan lijkt de knop
-  // anders niets te doen.
-  const afgebroken = /invoer\.addEventListener\('cancel'[\s\S]*?\n\}\);/.exec(bron);
+test('het vak komt alleen in beeld als er iets veranderd is', () => {
+  // De valkuil: een weggeklikt keuzevenster levert óók een change op, met nul
+  // bestanden. Verplaatst de pagina op elke change, dan springt hij dus juist
+  // bij iemand die zich bedacht heeft. Daarom hangt de sprong aan het
+  // antwoord van voegToe() - "er staat nu iets nieuws in het vak" - en niet
+  // aan de gebeurtenis zelf.
+  const verandert = /invoer\.addEventListener\('change'[\s\S]*?\n\}\);/.exec(bron)[0];
+  assert.match(verandert, /if \(kwamVanKnop && \w+\)/,
+    'de sprong hoort aan een voorwaarde te hangen, niet aan de change zelf');
+  assert.match(verandert, /=\s*voegToe\(invoer\.files\)/,
+    'en die voorwaarde hoort uit voegToe te komen');
+  assert.match(bron, /return gekozen\.length > had \|\| fouten\.length > 0/,
+    'voegToe hoort te melden of er een brief bij kwam of een melding te lezen valt');
+});
+
+test('een weggeklikt keuzevenster verplaatst de pagina niet', () => {
+  // Wie het venster wegklikt heeft zich bedacht. Die zet je niet ongevraagd
+  // vijfduizend pixels verderop; de knop staat nog gewoon in beeld.
+  const afgebroken = /invoer\.addEventListener\('cancel'[\s\S]*?\n?\}\);/.exec(bron);
   assert.ok(afgebroken, 'een afgebroken keuze hoort opgevangen te worden');
-  assert.match(afgebroken[0], /naarVak\(\)/);
+  assert.ok(!/naarVak\(\)/.test(afgebroken[0]),
+    'afbreken hoort de pagina te laten staan waar hij staat');
+  assert.match(afgebroken[0], /kwamVanKnop = false/,
+    'de vlag hoort wel uit te gaan, anders springt een volgende keuze alsnog');
 });
