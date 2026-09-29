@@ -112,6 +112,75 @@ function rendereDagen(data) {
       el('td', { tekst: getal(d.aanvraag) }))))));
 }
 
+const UITKOMSTNAAM = {
+  recht: 'Recht op een vergoeding',
+  'ingebrekestelling-nodig': 'Eerst in gebreke stellen',
+  'hersteltermijn-loopt': 'Hersteltermijn loopt',
+  'termijn-loopt': 'Nog niet te laat',
+  'geen-recht': 'Geen recht',
+  onbekend: 'Onbekend',
+};
+
+const euro = (n) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+
+/**
+ * De controles die geen aanvraag werden.
+ *
+ * De trechter hierboven zegt hoevéél mensen afhaken. Dit zegt met wat voor
+ * zaak, en dat is het verschil tussen "niets aan te doen" en "hier lekt geld
+ * weg": iemand die afhaakt zonder recht is geen probleem, iemand die afhaakt
+ * met duizend euro op tafel wel.
+ */
+function rendereControles(data) {
+  const { overzicht, controles, stappen } = data;
+  if (!controles || controles.length === 0) {
+    return el('p', { class: 'stil', tekst: 'Nog geen controles vastgelegd.' });
+  }
+
+  const stapnaam = Object.fromEntries(stappen.map((s) => [s.id, s.label]));
+  const perStap = stappen.map((stap) => el('tr', {},
+    el('td', { tekst: stap.label }),
+    balkcel(overzicht.perStap[stap.id] || 0, overzicht.totaal)));
+
+  const perUitkomst = Object.entries(overzicht.perUitkomst)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, aantal]) => el('tr', {},
+      el('td', { tekst: UITKOMSTNAAM[id] || id }),
+      balkcel(aantal, overzicht.zonderAanvraag)));
+
+  const lijst = controles.slice(0, 40).map((c) => el('tr', {},
+    el('td', { tekst: (c.bijgewerktOp || '').slice(0, 10) }),
+    el('td', { tekst: c.zaak.organisatienaam || c.zaak.bestuursorgaan || '—' }),
+    el('td', { tekst: UITKOMSTNAAM[c.uitkomst] || c.uitkomst || '—' }),
+    el('td', { tekst: c.bedrag ? euro(c.bedrag) : '—' }),
+    el('td', { tekst: stapnaam[c.stap] || c.stap }),
+    el('td', { tekst: String(c.aantalBrieven || 0) }),
+    el('td', { class: c.aanvraagId ? '' : 'stil', tekst: c.aanvraagId ? 'ja' : 'nee' })));
+
+  return el('div', {},
+    el('div', { class: 'tegels' },
+      tegel(getal(overzicht.totaal), 'Controles uitgevoerd'),
+      tegel(getal(overzicht.zonderAanvraag), 'Zonder aanvraag'),
+      tegel(euro(overzicht.gemistBedrag), 'Blijven liggen bij recht'),
+      tegel(`${data.bewaardagen} dagen`, 'Bewaartermijn')),
+    el('h3', { tekst: 'Hoever kwamen ze?' }),
+    rol(el('table', {},
+      el('thead', {}, el('tr', {}, el('th', { tekst: 'Laatste stap' }), el('th', { tekst: 'Aantal' }))),
+      el('tbody', {}, perStap))),
+    el('h3', { tekst: 'Wat voor zaak haakte af?' }),
+    rol(el('table', {},
+      el('thead', {}, el('tr', {}, el('th', { tekst: 'Uitkomst' }), el('th', { tekst: 'Aantal' }))),
+      el('tbody', {}, perUitkomst))),
+    el('h3', { tekst: 'De laatste controles' }),
+    rol(el('table', {},
+      el('thead', {}, el('tr', {},
+        el('th', { tekst: 'Datum' }), el('th', { tekst: 'Instantie' }),
+        el('th', { tekst: 'Uitkomst' }), el('th', { tekst: 'Bedrag' }),
+        el('th', { tekst: 'Tot waar' }), el('th', { tekst: 'Brieven' }),
+        el('th', { tekst: 'Aanvraag' }))),
+      el('tbody', {}, lijst))));
+}
+
 async function laad() {
   inhoud.textContent = '';
   inhoud.append(el('p', { class: 'stil', tekst: 'Bezig met laden…' }));
@@ -132,6 +201,12 @@ async function laad() {
     return;
   }
 
+  let controles = null;
+  try {
+    const antwoord = await fetch('/api/beheer/controles', { headers: { Accept: 'application/json' } });
+    if (antwoord.ok) controles = await antwoord.json();
+  } catch { /* de rest van het scherm werkt ook zonder */ }
+
   const t = data.totalen;
   const omzetting = t.bezoek ? Math.round(((t.aanvraag || 0) / t.bezoek) * 1000) / 10 : null;
 
@@ -150,6 +225,10 @@ async function laad() {
     rendereDagen(data),
     el('h2', { tekst: 'Meest bezochte pagina’s' }),
     renderePaginas(data),
+    el('h2', { tekst: 'Controles zonder aanvraag' }),
+    el('p', { class: 'stil' }, 'Wat er is uitgezocht zonder dat er een aanvraag van kwam. '
+      + 'Hier staat de zaak, niet de persoon: geen naam, e-mailadres of rekeningnummer.'),
+    controles ? rendereControles(controles) : el('p', { class: 'stil', tekst: 'Kon de controles niet laden.' }),
   );
 }
 

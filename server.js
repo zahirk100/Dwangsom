@@ -35,6 +35,7 @@ import { parseDatum } from './public/shared/datum.js';
 import { bepaalDossiereisen, dossierStatus, stukkenVanKlant, magUploaden, NIEUWE_POST } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
+import { controleOverzicht, bewaardagen, STAPPEN as CONTROLESTAPPEN } from './src/controles.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
 import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
 import { campagnePaden } from './public/shared/campagnes.js';
@@ -258,6 +259,30 @@ async function publiekeApi(req, res, url) {
     });
   }
 
+  /**
+   * Een uitgevoerde controle vastleggen, ook als er geen aanvraag van komt.
+   *
+   * Hier is nog geen klant en dus niets om mee in te loggen: de route staat
+   * open. Daarom gaat alles door de whitelist in src/controles.js, geldt
+   * dezelfde snelheidsgrens als voor het lezen van brieven, en loopt de
+   * verzameling niet vol (zie snoeiControles).
+   *
+   * Wat hier wordt bewaard is de zaak, niet de persoon. Naam, e-mailadres en
+   * rekeningnummer komen hier niet binnen en worden ook niet gevraagd.
+   */
+  if (url.pathname === '/api/controle' && req.method === 'POST') {
+    const limiet = briefBegrenzer.controleer(clientIp(req));
+    if (!limiet.toegestaan) return klaar();
+    const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+    try {
+      await store.bewaarControle(body);
+    } catch (err) {
+      // Meten mag nooit een reden zijn dat de bezoeker iets merkt.
+      console.error('[controle] bewaren mislukt:', err.message);
+    }
+    return klaar();
+  }
+
   if (url.pathname === '/api/aanvragen' && req.method === 'POST') {
     const limiet = indienBegrenzer.controleer(clientIp(req));
     if (!limiet.toegestaan) {
@@ -296,6 +321,13 @@ async function publiekeApi(req, res, url) {
         userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
       },
     });
+
+    // De controle die hieraan voorafging is nu een aanvraag geworden.
+    try {
+      await store.koppelControleAanAanvraag(String(body.controleSleutel || ''), aanvraag.id);
+    } catch (err) {
+      console.error('[controle] koppelen mislukt:', err.message);
+    }
 
     if (klant) {
       const token = await gebruikers.maakKoppeling(klant.id, 'magic');
@@ -387,6 +419,12 @@ async function publiekeApi(req, res, url) {
     if (a.length !== b.length || !timingSafeEqual(a, b)) return stuurFout(res, 401, 'Geen toegang.');
     const uitslag = await loopBewakingAf({
       store, gebruikers, verstuur, siteUrl: siteUrl(req),
+    });
+    // Dezelfde ronde ruimt de onvoltooide controles op die te oud zijn
+    // geworden. Bewaren zonder einddatum is geen bewaren maar verzamelen.
+    uitslag.controlesOpgeruimd = await store.snoeiControles().catch((err) => {
+      console.error('[controle] opruimen mislukt:', err.message);
+      return 0;
     });
     console.log('[bewaker]', JSON.stringify(uitslag));
     return stuurJson(res, 200, uitslag);
@@ -900,6 +938,39 @@ async function beheerApi(req, res, url) {
       gebeurtenissen: GEBEURTENISSEN,
       ...overzicht(ruw),
     });
+  }
+
+  /**
+   * De controles die geen aanvraag werden.
+   *
+   * De tellers in /api/beheer/metingen zeggen hoevéél er afhaken; dit zegt
+   * met wat voor zaak. Alleen voor ingelogde medewerkers, en de brieftekst
+   * gaat er pas mee als er om één controle wordt gevraagd.
+   */
+  if (url.pathname === '/api/beheer/controles' && req.method === 'GET') {
+    const alle = await store.controles();
+    const sleutel = url.searchParams.get('sleutel');
+    if (sleutel) {
+      const een = alle.find((rij) => rij.sleutel === sleutel);
+      if (!een) return stuurFout(res, 404, 'Deze controle bestaat niet (meer).');
+      return stuurJson(res, 200, { controle: een });
+    }
+    return stuurJson(res, 200, {
+      overzicht: controleOverzicht(alle),
+      bewaardagen: bewaardagen(),
+      stappen: CONTROLESTAPPEN,
+      controles: alle.slice(0, 200).map(({ brieven, ...rest }) => ({
+        ...rest,
+        brieftekens: (brieven || []).reduce((som, b) => som + (b.tekst || '').length, 0),
+      })),
+    });
+  }
+
+  if (url.pathname === '/api/beheer/controles' && req.method === 'DELETE') {
+    const sleutel = url.searchParams.get('sleutel');
+    if (!sleutel) return stuurFout(res, 400, 'Geen controle opgegeven.');
+    await store.verwijderControle(sleutel);
+    return klaar();
   }
 
   if (url.pathname === '/api/beheer/export.csv' && req.method === 'GET') {

@@ -26,7 +26,7 @@
 export const GEBEURTENISSEN = {
   bezoek: 'Bezoek aan een pagina',
   'funnel-start': 'Funnel geopend',
-  'funnel-brief': 'Brief geüpload of gegevens ingevuld',
+  'funnel-brief': 'Brief geüpload',
   'funnel-uitslag': 'Uitslag getoond',
   'funnel-gegevens': 'Gegevens ingevuld',
   'funnel-akkoord': 'Machtiging getekend',
@@ -130,7 +130,8 @@ export function overzicht(ruw) {
   }
 
   // De trechter: van bezoek tot ingediende aanvraag, met het verlies per stap.
-  const volgorde = ['bezoek', 'funnel-start', 'funnel-uitslag', 'funnel-gegevens', 'aanvraag'];
+  const volgorde = ['bezoek', 'funnel-start', 'funnel-brief', 'funnel-uitslag',
+    'funnel-gegevens', 'funnel-akkoord', 'aanvraag'];
   let vorige = null;
   const trechter = volgorde.map((stap) => {
     const aantal = totalen[stap] || 0;

@@ -147,13 +147,17 @@ test('het cijferscherm staat op noindex', async () => {
 
 test('de trechter rekent de percentages per stap uit', () => {
   const o = overzicht([{ dag: '2026-09-23', tellingen: {
-    'bezoek|meta|uwv-te-laat': 200, 'funnel-start|meta': 50,
-    'funnel-uitslag|meta': 25, 'funnel-gegevens|meta': 10, 'aanvraag|meta': 4,
+    'bezoek|meta|uwv-te-laat': 200, 'funnel-start|meta': 50, 'funnel-brief|meta': 30,
+    'funnel-uitslag|meta': 25, 'funnel-gegevens|meta': 10, 'funnel-akkoord|meta': 6,
+    'aanvraag|meta': 4,
   } }]);
   const per = Object.fromEntries(o.trechter.map((r) => [r.stap, r]));
   assert.equal(per.bezoek.aantal, 200);
   assert.equal(per['funnel-start'].vanVorige, 25);
-  assert.equal(per['funnel-uitslag'].vanVorige, 50);
+  // Het uploaden van de brief staat in de trechter: dat is het getal waar het
+  // om gaat bij de vraag hoeveel mensen echt iets aanleveren.
+  assert.equal(per['funnel-brief'].aantal, 30);
+  assert.equal(per['funnel-uitslag'].vanVorige, 83.3);
   assert.equal(per.aanvraag.vanBezoek, 2);
 });
 

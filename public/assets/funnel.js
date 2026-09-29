@@ -35,6 +35,12 @@ const TOTAAL = FASEN.length;
  * tarief. Eén keer ophalen bij het opstarten; stap 4 komt pas veel later, dus
  * hij is altijd binnen voordat hij nodig is.
  */
+/**
+ * Welke stappen al gemeld zijn. Staat hier bovenaan omdat de brieven die van
+ * de campagnelanding meekomen al tijdens het laden worden verwerkt.
+ */
+const gemeten = new Set();
+
 const INSTELLINGEN = {};
 fetch('/api/instellingen')
   .then((a) => a.json())
@@ -196,8 +202,67 @@ async function verwerkStapel(ladingen) {
   return data;
 }
 
+/**
+ * De controle vastleggen, ook als er geen aanvraag van komt.
+ *
+ * Verreweg de meeste mensen die hun brief laten lezen, dienen niets in. Wat
+ * er dan wegloopt willen wij kunnen zien: wat voor zaak het was en waar
+ * iemand stopte. De sleutel is een willekeurig nummer dat alleen in dit
+ * tabblad leeft - er wordt niets op het apparaat gezet en niets herkend bij
+ * een volgend bezoek.
+ *
+ * De brieven gaan één keer mee, bij de uitslag. Naam, e-mailadres, telefoon
+ * en rekeningnummer gaan nooit mee; die worden pas later ingevuld en horen
+ * niet bij iemand die niets van ons heeft gevraagd.
+ */
+const controleSleutel = (() => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+})();
+let brievenGemeld = false;
+
+function legControleVast(stap) {
+  if (!zaak.invoer || !zaak.rapport) return;
+  const params = new URLSearchParams(location.search);
+  const lading = {
+    sleutel: controleSleutel,
+    stap,
+    bron: params.get('bron') || params.get('utm_source') || '',
+    van: params.get('van') || '',
+    invoer: zaak.invoer,
+    rapport: zaak.rapport,
+  };
+  if (!brievenGemeld && zaak.brieven.length > 0) {
+    brievenGemeld = true;
+    lading.brieven = zaak.brieven.map((brief, i) => ({
+      bestandsnaam: brief.bestandsnaam,
+      bron: brief.bron,
+      soort: zaak.gelezenBrieven[i] ? zaak.gelezenBrieven[i].soort : '',
+      tekst: brief.tekst,
+    }));
+  }
+  try {
+    const blok = new Blob([JSON.stringify(lading)], { type: 'application/json' });
+    if (navigator.sendBeacon && blok.size < 60000) {
+      navigator.sendBeacon('/api/controle', blok);
+      return;
+    }
+    fetch('/api/controle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lading), keepalive: blok.size < 60000,
+    }).catch(() => {});
+  } catch { /* meten mag nooit in de weg zitten */ }
+}
+
 /** Wat een gelezen stapel met de zaak doet. */
 function pasDossierToe(data) {
+  if (!gemeten.has('funnel-brief')) {
+    gemeten.add('funnel-brief');
+    meet('funnel-brief');
+  }
   zaak.brief = data.brief;
   zaak.verlengbrief = data.verlengbrief || null;
   zaak.brieven = data.alleBrieven || [];
@@ -334,6 +399,10 @@ document.getElementById('knop-plak').addEventListener('click', async () => {
   toonBezig('Wij lezen je tekst…');
   try {
     await stuurBrief({ tekst });
+    if (!gemeten.has('funnel-brief')) {
+      gemeten.add('funnel-brief');
+      meet('funnel-brief');
+    }
     uploadMelding.textContent = '';
     gaNaar(2);
   } catch (err) {
@@ -1172,6 +1241,7 @@ async function verzend() {
         brief: zaak.brief,
         verlengbrief: zaak.verlengbrief,
         brieven: zaak.brieven,
+        controleSleutel,
         handtekening: zaak.handtekening,
         herkomst: 'briefupload',
       }),
@@ -1334,7 +1404,7 @@ function rendereKlaar(data) {
  * cijfers staan, en dan lijkt de trechter beter dan hij is.
  */
 const MEETSTAP = { 2: 'funnel-uitslag', 3: 'funnel-gegevens', 4: 'funnel-akkoord' };
-const gemeten = new Set();
+const CONTROLESTAP = { 2: 'uitslag', 3: 'gegevens', 4: 'akkoord' };
 
 function gaNaar(nummer) {
   stap = Math.max(1, Math.min(TOTAAL, nummer));
@@ -1342,6 +1412,7 @@ function gaNaar(nummer) {
   if (gebeurtenis && !gemeten.has(gebeurtenis)) {
     gemeten.add(gebeurtenis);
     meet(gebeurtenis);
+    if (CONTROLESTAP[stap]) legControleVast(CONTROLESTAP[stap]);
   }
   for (const sectie of form.querySelectorAll('.stap')) {
     sectie.classList.toggle('verborgen', Number(sectie.dataset.stap) !== stap);

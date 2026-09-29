@@ -6,6 +6,7 @@
 import { randomUUID } from 'node:crypto';
 import { kiesOpslag } from './opslag.js';
 import { DOSSIERSOORT } from '../public/shared/dwangsom.js';
+import { maakControle, werkControleBij, verlopen, bewaardagen, MAX_CONTROLES } from './controles.js';
 
 /**
  * Bakken die geen gevraagd stuk zijn en dus niets afvinken.
@@ -18,6 +19,7 @@ export const LOSSE_BAKKEN = ['nieuwe-post', 'correspondentie'];
 
 /** De verzameling waarin de inhoud van bijlagen staat, los van het dossier. */
 const VERZAMELING_BESTANDEN = 'bestanden';
+const VERZAMELING_CONTROLES = 'controles';
 
 export const SOORTEN = [
   { id: DOSSIERSOORT.AANVRAAG, label: 'Aanvragen', enkelvoud: 'Aanvraag',
@@ -596,5 +598,60 @@ export class Store {
       totaal: alle.length, open, perStatus, perSoort,
       totaalBedrag, metRecht, actieNodig, toegekendBedrag, toegekendAantal,
     };
+  }
+
+  // ---------------------------------------------------------- controles ----
+  // De uitgevoerde controles die (nog) geen aanvraag werden. Zie
+  // src/controles.js voor wat er wel en niet in staat.
+
+  async bewaarControle(ruw) {
+    const sleutel = String((ruw && ruw.sleutel) || '').slice(0, 40);
+    if (!sleutel) return null;
+    const bestaand = await this.opslag.rij(VERZAMELING_CONTROLES, sleutel);
+    const rij = bestaand ? werkControleBij(bestaand, ruw) : maakControle(ruw);
+    rij.sleutel = sleutel;
+    await this.opslag.zetRij(VERZAMELING_CONTROLES, sleutel, rij);
+    if (!bestaand) await this.snoeiControles();
+    return rij;
+  }
+
+  /** Markeert de controle als geworden tot aanvraag. */
+  async koppelControleAanAanvraag(sleutel, aanvraagId) {
+    const id = String(sleutel || '').slice(0, 40);
+    if (!id) return null;
+    const bestaand = await this.opslag.rij(VERZAMELING_CONTROLES, id);
+    if (!bestaand) return null;
+    const rij = {
+      ...bestaand,
+      stap: 'ingediend',
+      aanvraagId: String(aanvraagId || ''),
+      bijgewerktOp: new Date().toISOString(),
+    };
+    await this.opslag.zetRij(VERZAMELING_CONTROLES, id, rij);
+    return rij;
+  }
+
+  async controles() {
+    const alle = await this.opslag.rijen(VERZAMELING_CONTROLES);
+    return alle.sort((a, b) => String(b.bijgewerktOp || '').localeCompare(String(a.bijgewerktOp || '')));
+  }
+
+  async verwijderControle(sleutel) {
+    await this.opslag.wisRij(VERZAMELING_CONTROLES, String(sleutel || '').slice(0, 40));
+  }
+
+  /**
+   * Opruimen: wat te oud is gaat eruit, en er blijven er nooit meer dan
+   * MAX_CONTROLES staan. Zonder die tweede grens kan een open route de opslag
+   * laten vollopen.
+   */
+  async snoeiControles({ dagen = bewaardagen(), nu = new Date() } = {}) {
+    const alle = await this.controles();
+    const weg = alle.filter((rij) => verlopen(rij, { dagen, nu }));
+    for (const rij of alle.slice(MAX_CONTROLES)) {
+      if (!weg.includes(rij)) weg.push(rij);
+    }
+    for (const rij of weg) await this.opslag.wisRij(VERZAMELING_CONTROLES, rij.sleutel);
+    return weg.length;
   }
 }
