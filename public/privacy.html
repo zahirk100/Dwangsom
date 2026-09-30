@@ -82,6 +82,26 @@
         ons bekend is.</li>
   </ul>
 
+  <h2>Hoe wij bezoek tellen</h2>
+  <p>
+    Wij houden bij hoeveel mensen op de site komen en hoe ver zij in de aanvraag
+    komen. Dat doen wij door te tellen, niet door je te volgen. Er wordt geen
+    cookie geplaatst en er wordt niets op je apparaat gezet of gelezen, dus je
+    hoeft hier ook nergens toestemming voor te geven.
+  </p>
+  <p>
+    Wat wij bewaren is een getal per dag: hoeveel keer een pagina is geladen,
+    langs welk kanaal die bezoekers binnenkwamen (bijvoorbeeld een advertentie
+    of een zoekmachine) en hoeveel mensen een stap in de aanvraag hebben gezet.
+    Meer niet. Er wordt geen bezoekersnummer, ip-adres of browserkenmerk
+    opgeslagen, en er is dus ook geen manier om terug te zien wie iets deed.
+  </p>
+  <p>
+    Er staat op elke pagina een klein plaatje dat meetelt zonder dat daar een
+    script voor nodig is. Ook dat legt niets over jou vast; het zorgt er alleen
+    voor dat een bezoek ook wordt geteld als je scripts uitstaan.
+  </p>
+
   <h2>Leveranciers die wij inschakelen</h2>
   <p>Wij doen niet alles zelf. Deze partijen verwerken gegevens in onze opdracht, alleen voor het
      doel waarvoor wij ze inschakelen, en mogen ze niet voor zichzelf gebruiken.</p>
@@ -148,5 +168,7 @@
 </footer>
 <script type="module" src="/assets/menu.js"></script>
 <script type="module" src="/assets/meting.js"></script>
+<!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
+<img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 </body>
 </html>

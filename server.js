@@ -42,8 +42,8 @@ import { campagnePaden } from './public/shared/campagnes.js';
 import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 import { kennispaginas } from './src/kennispagina.js';
 import {
-  geldigeGebeurtenis, normaliseerBron, normaliseerPagina, veld, vandaagSleutel,
-  laatsteDagen, overzicht, GEBEURTENISSEN,
+  geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
+  laatsteDagen, overzicht, isBot, GEBEURTENISSEN,
 } from './src/meting.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -408,6 +408,67 @@ async function publiekeApi(req, res, url) {
       console.error('[meting] tellen mislukt:', err.message);
     }
     return stuurLeeg(res);
+  }
+
+  /**
+   * Hetzelfde bezoek, geteld zonder javascript.
+   *
+   * Elke pagina heeft een plaatje van één pixel dat hierheen wijst. Dat laadt
+   * altijd: het vraagt geen scripts, geen modules en geen sendBeacon. Het
+   * script blijft ernaast staan, want dat weet meer - het ziet de hele url en
+   * dus of er op een advertentie geklikt is. Maar het moet wel draaien, en als
+   * het dat niet doet is dat aan niets te zien behalve aan cijfers die wat
+   * lager uitvallen dan verwacht. Met twee tellers naast elkaar is dat wél te
+   * zien.
+   *
+   * De pagina en de herkomst komen uit de Referer van het plaatje. Dat is onze
+   * eigen pagina, met de queryreeks waarmee de bezoeker binnenkwam, dus staat
+   * daar ook de klik-parameter van de advertentie in. Wat de bezoeker daarvóór
+   * deed, blijft onzichtbaar: een plaatje krijgt de verwijzer van de site
+   * waar hij vandaan kwam niet mee. Zoekverkeer telt hier dus als "direct".
+   * Daarom is dit een controlegetal en niet de vervanger van het script.
+   *
+   * Er wordt niets opgeslagen dat naar een bezoeker terugleidt: de useragent
+   * wordt gelezen om bots eruit te laten en daarna weggegooid.
+   */
+  if (url.pathname === '/api/tel' && (req.method === 'GET' || req.method === 'HEAD')) {
+    // Een doorzichtige gif van 1 bij 1. Het kleinste wat een browser als
+    // plaatje accepteert, en het staat hier in plaats van in een bestand zodat
+    // er geen tweede verzoek en geen cache tussen zit.
+    const PUNTJE = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    const klaar = () => {
+      res.writeHead(200, {
+        'Content-Type': 'image/gif',
+        'Content-Length': PUNTJE.length,
+        // Zonder dit telt de tweede pagina van dezelfde bezoeker niet mee: de
+        // browser haalt het plaatje dan uit zijn eigen cache.
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        Pragma: 'no-cache',
+      });
+      return res.end(req.method === 'HEAD' ? undefined : PUNTJE);
+    };
+
+    if (!meetBegrenzer.controleer(clientIp(req)).toegestaan) return klaar();
+    if (isBot(req.headers['user-agent'])) return klaar();
+
+    let pad = '';
+    let zoek = '';
+    try {
+      const vandaan = new URL(String(req.headers.referer || ''));
+      pad = vandaan.pathname;
+      zoek = vandaan.search;
+    } catch { /* geen of een rare referer: dan tellen we hem zonder pagina */ }
+
+    try {
+      await opslag.tel(vandaagSleutel(), veld(
+        'paginaweergave',
+        kanaal({ zoek, verwijzer: '' }),
+        normaliseerPagina(pad, Object.keys(PAGINAS)),
+      ));
+    } catch (err) {
+      console.error('[meting] plaatje tellen mislukt:', err.message);
+    }
+    return klaar();
   }
 
   /**

@@ -639,6 +639,8 @@ ${contactRegel ? `   <p class="alt">Nog een vraag? ${contactRegel}.</p>` : ''}
 <a id="verder" href="${BESTEMMING}" hidden aria-hidden="true" tabindex="-1">Verder</a>
 
 <script type="module" src="/assets/meting.js"></script>
+<!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
+<img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/campagne.js"></script>
 
 </body>

@@ -316,6 +316,46 @@ function statusregel(naam, waarde, toon = 'goed', uitleg = '') {
     uitleg ? el('span', { class: 'status__uitleg', tekst: uitleg }) : null);
 }
 
+/**
+ * De twee manieren van tellen naast elkaar.
+ *
+ * Het script weet meer, het plaatje werkt altijd. Zolang ze in de buurt van
+ * elkaar liggen, is er niets aan de hand. Loopt het plaatje ver voor, dan
+ * draait het script bij een deel van de bezoekers niet en zijn alle cijfers
+ * eronder te laag - inclusief de trechter, want die hangt aan het script.
+ * Dat is het soort fout dat er niet uitziet als een fout.
+ */
+function tweeTellingen(data) {
+  const v = data.bezoekVergelijking || { script: 0, plaatje: 0 };
+  const waarde = `${getal(v.script)} via het script, ${getal(v.plaatje)} via het plaatje`;
+
+  if (v.script === 0 && v.plaatje === 0) {
+    return statusregel('Bezoek geteld', 'Nog niets geteld in deze periode', 'let-op');
+  }
+  if (v.plaatje === 0) {
+    return statusregel('Bezoek geteld', waarde, 'let-op',
+      'Het plaatje dat zonder javascript telt, komt niet aan. Dat is het vangnet '
+      + 'onder deze cijfers; zonder dat vangnet is niet te zien of het script wel draait.');
+  }
+  // Het script mist altijd een beetje: iemand die wegklikt voordat het geladen
+  // is, telt alleen als plaatje. Een vijfde schelen is normaal, de helft niet.
+  const deel = v.script / v.plaatje;
+  if (deel < 0.5) {
+    return statusregel('Bezoek geteld', waarde, 'fout',
+      'Het script telt minder dan de helft van wat er werkelijk geladen wordt. '
+      + 'Bij een groot deel van de bezoekers draait het dus niet, en dan zijn de '
+      + 'trechter en de cijfers per kanaal hieronder te laag. Kijk op /diagnose.');
+  }
+  if (deel < 0.8) {
+    return statusregel('Bezoek geteld', waarde, 'let-op',
+      'Het script telt merkbaar minder dan het plaatje. Een deel daarvan is normaal '
+      + '(wie meteen wegklikt, telt alleen als plaatje), maar hou het in de gaten.');
+  }
+  return statusregel('Bezoek geteld', waarde, 'goed',
+    'Beide manieren van tellen komen uit in dezelfde orde van grootte, dus het '
+    + 'script draait bij vrijwel iedereen.');
+}
+
 function statusblok(data) {
   const vak = el('section', { class: 'status' });
   const opslag = data.opslag || {};
@@ -343,6 +383,7 @@ function statusblok(data) {
       vandaag.bezoek > 0 ? '' : (laatste
         ? `Het laatste bezoek dat is geteld was op ${dagLabel(laatste.dag)}.`
         : 'In deze hele periode is nog geen enkel bezoek geteld.')),
+    tweeTellingen(data),
     statusregel('Draaiende versie', `${data.versie ? data.versie.commit : '?'} op ${data.versie ? data.versie.branch : '?'}`,
       'neutraal', 'Zie je hier een oudere commit dan je verwacht, dan staat je wijziging nog niet live.'),
     zelftest(data),

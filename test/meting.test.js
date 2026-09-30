@@ -156,6 +156,67 @@ test('verkeer van veel bezoekers tegelijk wordt helemaal geteld', async () => {
 });
 
 /**
+ * Het plaatje dat telt zonder javascript.
+ *
+ * Dit is het vangnet onder de bezoekcijfers. Het script kan om tien redenen
+ * niet draaien, en aan het scherm is daar niets van te zien; aan de cijfers
+ * ook niet, want die zijn dan gewoon wat lager. Twee tellers naast elkaar
+ * maken dat wel zichtbaar.
+ */
+const plaatje = (headers = {}) => fetch(`${basis}/api/tel`, {
+  headers: { 'user-agent': 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Safari/604.1', ...headers },
+});
+
+test('het plaatje is een echte gif en wordt niet bewaard in de cache', async () => {
+  const antwoord = await plaatje({ referer: `${basis}/uwv-te-laat` });
+  assert.equal(antwoord.status, 200);
+  assert.equal(antwoord.headers.get('content-type'), 'image/gif');
+  assert.match(antwoord.headers.get('cache-control'), /no-store/);
+  const lijf = Buffer.from(await antwoord.arrayBuffer());
+  assert.equal(lijf.subarray(0, 6).toString('latin1'), 'GIF89a',
+    'een browser laadt alleen iets dat echt een plaatje is');
+});
+
+test('het plaatje telt de pagina waar het in staat', async () => {
+  const voor = (await tel())[veld('paginaweergave', 'direct', 'uwv-wia')] || 0;
+  await plaatje({ referer: `${basis}/uwv-wia` });
+  const na = (await tel())[veld('paginaweergave', 'direct', 'uwv-wia')] || 0;
+  assert.equal(na - voor, 1);
+});
+
+test('het plaatje ziet aan de url dat er op een advertentie geklikt is', async () => {
+  // De referer van het plaatje is onze eigen pagina, inclusief de queryreeks
+  // waarmee de bezoeker binnenkwam. Daar staat de klik-parameter in.
+  const voor = (await tel())[veld('paginaweergave', 'google-ads', 'uwv-te-laat')] || 0;
+  await plaatje({ referer: `${basis}/uwv-te-laat?gclid=EAIaIQobChMI` });
+  const na = (await tel())[veld('paginaweergave', 'google-ads', 'uwv-te-laat')] || 0;
+  assert.equal(na - voor, 1);
+});
+
+test('bots tellen niet mee in de paginaweergaven', async () => {
+  // Een bot draait geen script maar laadt wel plaatjes. Zonder deze zeef zou
+  // het tweede getal structureel hoger uitvallen en zou het lijken alsof het
+  // script bezoekers mist.
+  const sleutel = veld('paginaweergave', 'direct', 'bijstand');
+  const voor = (await tel())[sleutel] || 0;
+  for (const ua of ['Googlebot/2.1 (+http://www.google.com/bot.html)',
+    'facebookexternalhit/1.1', 'curl/8.4.0', '']) {
+    await plaatje({ referer: `${basis}/bijstand`, 'user-agent': ua });
+  }
+  assert.equal((await tel())[sleutel] || 0, voor, 'er is een bot meegeteld');
+});
+
+test('het plaatje telt niet mee in de trechter', async () => {
+  // Anders zou elk bezoek dubbel geteld worden en klopt geen enkel percentage.
+  await plaatje({ referer: `${basis}/uwv-wia` });
+  const uit = overzicht([{ dag: vandaag, tellingen: await tel() }]);
+  assert.equal(uit.totalen.paginaweergave, undefined,
+    'de paginaweergave hoort niet bij de trechtertotalen');
+  assert.ok(uit.bezoekVergelijking.plaatje > 0, 'hij hoort wel apart geteld te worden');
+  assert.ok(uit.trechter.every((r) => r.stap !== 'paginaweergave'));
+});
+
+/**
  * De testknop van het cijferscherm.
  *
  * Telt wel, maar hoort nergens tussen de bezoekerscijfers te staan: één

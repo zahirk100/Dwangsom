@@ -222,10 +222,16 @@ test('de pagina zegt op meer dan één plek dat wij niet van UWV zijn', () => {
 test('het uploadvak stuurt niets naar UWV en geeft de uitkomst door aan de funnel', () => {
   // De pagina belooft dat er nog niets naar UWV gaat. De brief wordt hier
   // gelezen - door ons, in assets/campagne.js - en naar de funnel reist
-  // alleen de uitkomst. In de pagina zelf staat daarom geen adres: wat er
-  // wordt aangeroepen hoort in één bestand te staan en niet in de opmaak.
+  // alleen de uitkomst. Welk adres daarvoor wordt aangeroepen hoort in dat
+  // ene bestand te staan en niet in de opmaak.
+  //
+  // Eén adres hoort juist wél in de opmaak: /api/tel is het plaatje dat het
+  // bezoek telt zonder javascript. Dat kan niet anders, want het moet ook
+  // laden als er geen script draait. Het verstuurt niets en ontvangt niets.
   const h = html();
-  assert.ok(!h.includes('/api/'), 'de landing heeft zelf geen adressen in de opmaak staan');
+  const adressen = [...h.matchAll(/["'(](\/api\/[a-z-]+)/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(adressen)].filter((a) => a !== '/api/tel'), [],
+    'de landing heeft zelf adressen in de opmaak staan');
   assert.match(h, /id="verder"/, 'de bestemming hoort als link in de pagina te staan');
   assert.match(h, /assets\/campagne\.js/);
 });

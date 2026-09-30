@@ -25,6 +25,13 @@
 /** Wat we tellen. Alles wat hier niet in staat, wordt geweigerd. */
 export const GEBEURTENISSEN = {
   bezoek: 'Bezoek aan een pagina',
+  // Hetzelfde bezoek, maar geteld door een plaatje in de pagina in plaats van
+  // door een script. Waarom allebei: het script weet meer (het ziet de hele
+  // url, dus of er op een advertentie geklikt is), maar het moet wel draaien.
+  // Een plaatje laadt altijd. Staan deze twee getallen ver uit elkaar, dan is
+  // het script stuk en zijn de bezoekcijfers te laag - en dat is precies wat
+  // je niet kunt zien aan een cijfer dat gewoon wat lager is dan verwacht.
+  paginaweergave: 'Pagina geladen (zonder script geteld)',
   'funnel-start': 'Funnel geopend',
   'funnel-brief': 'Brief geüpload',
   'funnel-uitslag': 'Uitslag getoond',
@@ -51,8 +58,13 @@ export const GEBEURTENISSEN = {
   diagnose: 'Testmelding vanaf het cijferscherm',
 };
 
-/** Gebeurtenissen die wel geteld worden maar niet over bezoekers gaan. */
-export const BUITEN_DE_TRECHTER = ['diagnose'];
+/**
+ * Gebeurtenissen die wel geteld worden maar niet in de trechter horen.
+ *
+ * `paginaweergave` telt hetzelfde bezoek als `bezoek` en zou de trechter dus
+ * verdubbelen. Hij staat apart, als controlegetal.
+ */
+export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave'];
 
 /**
  * Waarom iemand niet verder kwam.
@@ -72,6 +84,27 @@ export const AFHAAKREDENEN = ['funnel-onleesbaar', 'funnel-op-tijd', 'funnel-sto
  * een advertentie achter zit.
  */
 export { BRONNEN, kanaal, normaliseerBron } from '../public/shared/herkomst.js';
+
+/**
+ * Is dit een bot en geen bezoeker?
+ *
+ * Alleen voor het plaatje dat zonder javascript telt: een script draaien doen
+ * de meeste bots niet, maar een plaatje laden wel. Zonder deze zeef zou dat
+ * tweede getal structureel hoger uitvallen dan het eerste, en dan lijkt het
+ * alsof het script bezoekers mist terwijl het zoekmachines zijn.
+ *
+ * De useragent wordt gelezen en meteen weggegooid; er wordt niets van
+ * opgeslagen. Volledig is deze lijst niet en dat hoeft ook niet: hij hoeft
+ * alleen de grote, eerlijke bots eruit te halen die zichzelf netjes melden.
+ */
+const BOTS = /(bot|crawl|spider|slurp|facebookexternalhit|preview|fetcher|monitor|headless|lighthouse|pagespeed|curl|wget|python-requests|axios|postman)/i;
+
+export function isBot(useragent) {
+  const waarde = String(useragent || '');
+  // Geen useragent is verdacht genoeg: elke echte browser stuurt er een.
+  if (!waarde) return true;
+  return BOTS.test(waarde);
+}
 
 /**
  * Een pagina terugbrengen tot iets wat je kunt tellen.
@@ -160,6 +193,8 @@ export function overzicht(ruw) {
   const perBron = {};
   const perPagina = {};
   const diagnoses = {};
+  const weergaven = {};
+  const weergavenPerPagina = {};
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
@@ -173,6 +208,11 @@ export function overzicht(ruw) {
       const [gebeurtenis, bron, pagina] = sleutel.split('|');
       if (!geldigeGebeurtenis(gebeurtenis)) continue;
       const n = Number(aantal) || 0;
+      if (gebeurtenis === 'paginaweergave') {
+        weergaven[dag] = (weergaven[dag] || 0) + n;
+        if (pagina) weergavenPerPagina[pagina] = (weergavenPerPagina[pagina] || 0) + n;
+        continue;
+      }
       if (BUITEN_DE_TRECHTER.includes(gebeurtenis)) {
         diagnoses[dag] = (diagnoses[dag] || 0) + n;
         continue;
@@ -205,6 +245,14 @@ export function overzicht(ruw) {
     perBron,
     perPagina,
     diagnoses,
+    weergaven,
+    weergavenPerPagina,
+    // Het totaal van beide manieren van tellen naast elkaar. Zie de toelichting
+    // bij GEBEURTENISSEN: uit elkaar lopen betekent dat het script niet draait.
+    bezoekVergelijking: {
+      script: totalen.bezoek || 0,
+      plaatje: Object.values(weergaven).reduce((som, n) => som + n, 0),
+    },
     trechter: trechterVan(totalen),
     redenen: AFHAAKREDENEN.map((id) => ({
       id, label: GEBEURTENISSEN[id], aantal: totalen[id] || 0,

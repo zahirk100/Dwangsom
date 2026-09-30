@@ -192,6 +192,8 @@ ${KENNISLINKS.map((k) => `      <li><a href="${k.pad}">${veilig(k.naam)}</a></li
 </footer>
 
 <script type="module" src="/assets/meting.js"></script>
+<!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
+<img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/menu.js"></script>
 </body>
 </html>
