@@ -53,11 +53,56 @@ test('de funnelschakelaar wijst naar bestaande pagina\'s', () => {
 });
 
 test('de gedeelde modules staan waar de browser ze verwacht', () => {
-  for (const naam of ['dwangsom.js', 'datum.js', 'catalogus.js', 'dossier.js', 'identiteit.js', 'brief.js']) {
+  for (const naam of ['dwangsom.js', 'datum.js', 'catalogus.js', 'dossier.js', 'identiteit.js',
+    'brief.js', 'herkomst.js']) {
     assert.ok(
       fs.existsSync(path.join(WORTEL, 'public', 'shared', naam)),
       `public/shared/${naam} ontbreekt; de browser importeert die rechtstreeks`,
     );
+  }
+});
+
+/**
+ * Elk script dat iets importeert, valt om als dat bestand er niet is.
+ *
+ * Bij assets/meting.js weegt dat zwaarder dan elders: mislukt die import, dan
+ * meet de hele site niets meer, en juist daar merk je het niet aan het scherm.
+ */
+test('de scripts importeren alleen gedeelde modules die bestaan', () => {
+  const map = path.join(WORTEL, 'public', 'assets');
+  for (const bestand of fs.readdirSync(map).filter((n) => n.endsWith('.js'))) {
+    const bron = fs.readFileSync(path.join(map, bestand), 'utf8');
+    for (const [, pad] of bron.matchAll(/from\s+'(\/shared\/[^']+)'/g)) {
+      assert.ok(
+        fs.existsSync(path.join(WORTEL, 'public', pad.replace(/^\//, ''))),
+        `assets/${bestand} importeert ${pad}, maar dat bestand bestaat niet`,
+      );
+    }
+  }
+});
+
+/**
+ * Elke pagina waar een bezoeker kan landen, moet geteld worden.
+ *
+ * Een pagina zonder meetscript is een blinde vlek die je niet ziet: de cijfers
+ * zien er normaal uit, ze zijn alleen niet compleet. /hoe-werkt-het stond zo
+ * een tijd buiten beeld terwijl het wel in de sitemap staat.
+ *
+ * Andersom net zo belangrijk: de beheeromgeving en het klantportaal tellen
+ * juist níét mee. Een middag in de dossiers zou anders als bezoek in de
+ * trechter belanden en elke verhouding vertroebelen.
+ */
+test('bezoekerspagina\'s worden geteld, beheerpagina\'s niet', () => {
+  const heeft = (bestand) => fs.readFileSync(path.join(WORTEL, 'public', bestand), 'utf8')
+    .includes('/assets/meting.js');
+
+  for (const pad of ['/', '/hoe-werkt-het', '/contact', '/privacy', '/voorwaarden',
+    '/uwv-wia', '/bijstand', '/aanvraag', '/uwv-te-laat']) {
+    assert.ok(heeft(PAGINAS[pad]), `${pad} laadt geen meting.js en telt dus niet mee`);
+  }
+
+  for (const pad of ['/beheer', '/cijfers', '/mijn']) {
+    assert.ok(!heeft(PAGINAS[pad]), `${pad} telt mee als bezoek; dat vertroebelt de cijfers`);
   }
 });
 

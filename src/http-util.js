@@ -197,6 +197,42 @@ export class Snelheidsbegrenzer {
   }
 }
 
-export function clientIp(req) {
-  return req.socket.remoteAddress || 'onbekend';
+/**
+ * Draaien we achter een proxy die het adres van de bezoeker doorgeeft?
+ *
+ * Alleen dan mag een doorgegeven adres worden geloofd. Een header kan door
+ * iedereen worden meegestuurd, dus op een server die rechtstreeks aan het
+ * internet hangt zou vertrouwen erin betekenen dat een aanvaller zijn eigen
+ * snelheidsgrens kiest. Vercel en Lambda overschrijven de header met het echte
+ * adres, dus daar kan het wel. `VERTROUW_PROXY` is voor een eigen server met
+ * nginx of Cloudflare ervoor.
+ */
+export function achterProxy(env = process.env) {
+  return Boolean(env.VERCEL || env.AWS_LAMBDA_FUNCTION_NAME || env.VERTROUW_PROXY);
+}
+
+/**
+ * Het adres van de bezoeker.
+ *
+ * Achter een proxy is `remoteAddress` het adres van de proxy en niet van de
+ * bezoeker. Dat is niet alleen onnauwkeurig, het breekt alles wat erop
+ * gebouwd is: alle snelheidsgrenzen delen dan één teller voor de hele site.
+ * Dat is precies wat er gebeurde. Met een advertentie aan was de meetgrens
+ * binnen enkele minuten vol en werd elke volgende melding weggegooid, dus
+ * liepen de kliks in de advertentiebeheerder op terwijl de cijfers hier stil
+ * bleven staan. Dezelfde teller gold voor het uploaden van een brief en voor
+ * het indienen van een aanvraag, dus daar liepen bezoekers ook tegen een
+ * grens aan die voor hen niet bedoeld was.
+ */
+export function clientIp(req, { proxy = achterProxy() } = {}) {
+  if (proxy) {
+    const doorgegeven = String(
+      req.headers['x-vercel-forwarded-for']
+      || req.headers['x-forwarded-for']
+      || req.headers['x-real-ip']
+      || '',
+    ).split(',')[0].trim();
+    if (doorgegeven) return doorgegeven;
+  }
+  return (req.socket && req.socket.remoteAddress) || 'onbekend';
 }

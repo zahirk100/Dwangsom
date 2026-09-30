@@ -31,34 +31,26 @@ export const GEBEURTENISSEN = {
   'funnel-gegevens': 'Gegevens ingevuld',
   'funnel-akkoord': 'Machtiging getekend',
   aanvraag: 'Aanvraag ingediend',
+  // Geen bezoekersgedrag maar een testknop, en daarom apart gehouden: deze
+  // telt niet mee in de trechter, in de bronnen of in de pagina's. Hij
+  // beantwoordt één vraag, namelijk of een melding vanuit een browser de
+  // opslag haalt. Zonder die vraag te kunnen stellen is "ik zie geen verkeer"
+  // niet te onderscheiden van "er is geen verkeer", en dat verschil was hier
+  // twee weken lang niet te zien.
+  diagnose: 'Testmelding vanaf het cijferscherm',
 };
 
-/** De bronnen die we uit elkaar willen houden. */
-export const BRONNEN = ['meta', 'google', 'organisch', 'direct', 'overig'];
-
-const MAX_BRON = 24;
+/** Gebeurtenissen die wel geteld worden maar niet over bezoekers gaan. */
+export const BUITEN_DE_TRECHTER = ['diagnose'];
 
 /**
- * Van een ruwe herkomst naar een van de vaste bronnen.
+ * De bronnen, en hoe je uit een bezoek bepaalt welke het is.
  *
- * Vrije tekst uit een url zou hier zó in de tellers belanden, en dan heb je
- * honderd varianten van "facebook". Alles wat niet herkend wordt, is `overig`.
+ * Staat in public/shared/ omdat de browser hem ook nodig heeft: alleen daar
+ * is de hele url bekend waarop iemand binnenkomt, en dus of er een klik op
+ * een advertentie achter zit.
  */
-export function normaliseerBron(ruw, verwijzer = '') {
-  const waarde = String(ruw || '').toLowerCase().trim().slice(0, MAX_BRON);
-  if (waarde) {
-    if (/(meta|facebook|fb|instagram|ig)/.test(waarde)) return 'meta';
-    if (/(google|adwords|gads|youtube)/.test(waarde)) return 'google';
-    if (BRONNEN.includes(waarde)) return waarde;
-    return 'overig';
-  }
-  const host = String(verwijzer || '').toLowerCase();
-  if (!host) return 'direct';
-  if (/(facebook|instagram)\./.test(host)) return 'meta';
-  if (/(google|bing|duckduckgo|ecosia)\./.test(host)) return 'organisch';
-  if (/nubeslist\.nl/.test(host)) return 'direct';
-  return 'overig';
-}
+export { BRONNEN, kanaal, normaliseerBron } from '../public/shared/herkomst.js';
 
 /**
  * Een pagina terugbrengen tot iets wat je kunt tellen.
@@ -146,6 +138,7 @@ export function overzicht(ruw) {
   const totalen = {};
   const perBron = {};
   const perPagina = {};
+  const diagnoses = {};
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
@@ -159,6 +152,10 @@ export function overzicht(ruw) {
       const [gebeurtenis, bron, pagina] = sleutel.split('|');
       if (!geldigeGebeurtenis(gebeurtenis)) continue;
       const n = Number(aantal) || 0;
+      if (BUITEN_DE_TRECHTER.includes(gebeurtenis)) {
+        diagnoses[dag] = (diagnoses[dag] || 0) + n;
+        continue;
+      }
       totalen[gebeurtenis] = (totalen[gebeurtenis] || 0) + n;
       perBron[bron] ||= {};
       perBron[bron][gebeurtenis] = (perBron[bron][gebeurtenis] || 0) + n;
@@ -186,6 +183,7 @@ export function overzicht(ruw) {
     totalen,
     perBron,
     perPagina,
+    diagnoses,
     trechter: trechterVan(totalen),
     trechterPerBron,
     stappen: TRECHTERSTAPPEN.map((id) => ({ id, label: GEBEURTENISSEN[id] })),

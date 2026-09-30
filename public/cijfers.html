@@ -57,6 +57,38 @@
   .verlies { color: var(--rood-600); font-weight: 600; }
   .nadruk { font-weight: 700; }
 
+  /* Werkt de meting? Bovenaan, en met kleur, want dit is het enige blok dat
+     je mag overslaan als er niets aan de hand is. Staat er rood, dan zijn de
+     cijfers eronder niet te vertrouwen en heeft verder kijken geen zin. */
+  .status { margin: 4px 0 26px; padding: 16px 18px; border: 1px solid var(--rand);
+            border-radius: var(--radius); background: var(--papier); }
+  .status h2 { margin: 0 0 12px; font-size: 1rem; }
+  .status__regel { display: grid; grid-template-columns: 148px 1fr; gap: 2px 14px;
+                   padding: 9px 0; border-top: 1px solid var(--rand); align-items: baseline; }
+  .status__regel:first-of-type { border-top: 0; padding-top: 0; }
+  .status__naam { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
+                  color: var(--tekst-zacht); }
+  .status__waarde { font-weight: 600; }
+  .status__uitleg { grid-column: 2; font-size: .86rem; color: var(--tekst-zacht); }
+  .status__regel--goed .status__waarde { color: var(--groen-600); }
+  .status__regel--let-op .status__waarde { color: var(--oranje-600); }
+  .status__regel--fout .status__waarde { color: var(--rood-600); }
+  .status__regel--fout .status__uitleg { color: var(--rood-600); }
+  .status__test { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+                  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--rand); }
+  .status__test button {
+    padding: 9px 15px; border-radius: 10px; border: 1px solid var(--blauw-600);
+    background: var(--vlak); color: var(--blauw-600); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .status__test button:hover:not(:disabled) { background: var(--blauw-600); color: #fff; }
+  .status__uitslag { margin: 0; flex: 1 1 260px; font-size: .88rem; }
+  .status__uitslag--goed { color: var(--groen-600); }
+  .status__uitslag--fout { color: var(--rood-600); }
+  @media (max-width: 560px) {
+    .status__regel { grid-template-columns: 1fr; }
+    .status__uitleg { grid-column: 1; }
+  }
+
   /* Leegmaken is onomkeerbaar, dus ziet de knop er ook zo uit. */
   .leegmaken { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
   .leegmaken input {
@@ -97,7 +129,7 @@
   <p class="uitleg">
     Deze cijfers zijn tellingen, geen bezoekersprofielen. Er wordt geen cookie gezet, geen
     ip-adres bewaard en niets wat naar één bezoeker terugleidt. Daardoor kun je hier niet zien
-    wie iets deed — alleen hoeveel keer het gebeurde.
+    wie iets deed, alleen hoeveel keer het gebeurde.
   </p>
 </main>
 

@@ -112,10 +112,20 @@ function gereed() {
 const indienBegrenzer = new Snelheidsbegrenzer({ max: 20, vensterMs: 60 * 60 * 1000 });
 const briefBegrenzer = new Snelheidsbegrenzer({ max: 40, vensterMs: 60 * 60 * 1000 });
 const loginBegrenzer = new Snelheidsbegrenzer({ max: 8, vensterMs: 15 * 60 * 1000 });
-// Ruimer dan de andere: één bezoeker stuurt tijdens een bezoek een handvol
-// meldingen. Wel een grens, want deze route staat open en een open route die
-// naar de opslag schrijft is een uitnodiging.
-const meetBegrenzer = new Snelheidsbegrenzer({ max: 60, vensterMs: 10 * 60 * 1000 });
+// Veel ruimer dan de andere, en met opzet.
+//
+// Eén bezoeker stuurt tijdens een bezoek een handvol meldingen, dus per
+// persoon is dit nooit krap. De grens moet ruim zijn om een andere reden:
+// mobiel verkeer komt vaak bij tientallen tegelijk achter één adres van de
+// provider vandaan, en advertentieverkeer is grotendeels mobiel. Een krappe
+// grens gooit dan het verkeer weg dat je juist wilt meten, en dat is niet te
+// zien: de route antwoordt altijd 204.
+//
+// Een grens blijft er wel, want deze route staat open en een open route die
+// naar de opslag schrijft is een uitnodiging. Het ergste wat iemand ermee kan
+// is tellers opblazen; de lijst gebeurtenissen is gesloten en de cijfers zijn
+// met één knop weer leeg te maken.
+const meetBegrenzer = new Snelheidsbegrenzer({ max: 600, vensterMs: 10 * 60 * 1000 });
 
 // ---------------------------------------------------------------- sessie --
 
@@ -935,6 +945,17 @@ async function beheerApi(req, res, url) {
     return stuurJson(res, 200, {
       vanaf: dagen[0], tot: dagen[dagen.length - 1],
       gebeurtenissen: GEBEURTENISSEN,
+      // Zonder dit is een leeg scherm niet te duiden. Tellers die in het
+      // geheugen van een serverloze functie staan, zijn weg zodra die functie
+      // afkoelt; je ziet dan nul bezoekers terwijl er wel degelijk verkeer
+      // was. Dat hoort op het scherm te staan en niet in een logboek.
+      opslag: { soort: opslag.soort, duurzaam: opslag.duurzaam, omschrijving: opslag.omschrijving },
+      versie: {
+        commit: String(process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || 'lokaal',
+        branch: process.env.VERCEL_GIT_COMMIT_REF || 'lokaal',
+      },
+      nu: new Date().toISOString(),
+      vandaag: vandaagSleutel(),
       ...overzicht(ruw),
     });
   }

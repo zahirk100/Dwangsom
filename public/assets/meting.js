@@ -14,17 +14,23 @@
  * dat er iets op het scherm misgaat.
  */
 
-/** De herkomst uit de url, als die er is. Wordt niet bewaard. */
-function bron() {
-  try {
-    const p = new URLSearchParams(location.search);
-    return p.get('bron') || p.get('utm_source') || '';
-  } catch { return ''; }
-}
+import { kanaal } from '/shared/herkomst.js';
 
 /** Alleen de host van de verwijzer, nooit het hele adres. */
 function verwijzer() {
   try { return document.referrer ? new URL(document.referrer).hostname : ''; } catch { return ''; }
+}
+
+/**
+ * Het kanaal waarlangs dit bezoek binnenkwam. Wordt niet bewaard.
+ *
+ * Hier en niet op de server, omdat alleen de browser de hele url ziet. De
+ * server krijgt alleen het uitgerekende kanaal, controleert dat tegen de
+ * vaste lijst en telt het. Van de queryreeks zelf komt dus niets in de
+ * opslag terecht.
+ */
+function bron() {
+  try { return kanaal({ zoek: location.search, verwijzer: verwijzer() }); } catch { return ''; }
 }
 
 export function meet(gebeurtenis, extra = {}) {
@@ -49,19 +55,20 @@ export function meet(gebeurtenis, extra = {}) {
  * De herkomst meegeven aan de knoppen naar de funnel.
  *
  * Zonder dit stopt de herkomst bij de landingspagina. Iemand klikt op een
- * Meta-advertentie, landt op /uwv-te-laat?bron=meta - dat bezoek telt netjes
- * onder meta - en klikt door naar /aanvraag. Op dat moment is de enige
+ * Meta-advertentie, landt op /uwv-te-laat?fbclid=... - dat bezoek telt netjes
+ * onder meta-ads - en klikt door naar /aanvraag. Op dat moment is de enige
  * verwijzer nubeslist.nl zelf, dus telt de rest van zijn bezoek als
  * "direct". De aanvraag die hij invult staat dan niet op naam van de
- * advertentie die ervoor betaald heeft.
+ * advertentie die ervoor betaald heeft, en de trechter per kanaal klopt van
+ * de tweede stap af niet meer.
  *
- * Daarom reist `bron` mee naar de funnel. Er wordt niets opgeslagen: het
+ * Daarom reist het kanaal mee naar de funnel. Er wordt niets opgeslagen: het
  * staat in de link en verder nergens.
  */
 function geefHerkomstDoor() {
   const herkomst = bron();
-  if (!herkomst) return;
-  for (const link of document.querySelectorAll('a[href^="/aanvraag"]')) {
+  if (!herkomst || herkomst === 'direct') return;
+  for (const link of document.querySelectorAll('a[href^="/aanvraag"], a[href^="/start"]')) {
     try {
       const doel = new URL(link.getAttribute('href'), location.origin);
       if (doel.searchParams.has('bron')) continue;

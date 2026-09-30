@@ -295,6 +295,120 @@ function rendereControles(data) {
       el('tbody', {}, lijst))));
 }
 
+/**
+ * Werkt de meting eigenlijk wel?
+ *
+ * Dit blok staat bovenaan omdat een leeg cijferscherm twee heel verschillende
+ * dingen kan betekenen: er kwam niemand, of er kwam wel iemand maar het is
+ * niet geteld. Dat verschil was hier niet te zien, en dat is precies wat er
+ * misging: in de advertentiebeheerder liepen de kliks op en hier bleef alles
+ * op nul staan.
+ *
+ * Drie dingen moeten kloppen, en alle drie staan ze hier los van elkaar, want
+ * ze gaan kapot om verschillende redenen: de opslag moet blijven bestaan, er
+ * moet vandaag iets binnengekomen zijn, en een melding uit deze browser moet
+ * de hele weg afleggen.
+ */
+function statusregel(naam, waarde, toon = 'goed', uitleg = '') {
+  return el('div', { class: `status__regel status__regel--${toon}` },
+    el('span', { class: 'status__naam', tekst: naam }),
+    el('span', { class: 'status__waarde', tekst: waarde }),
+    uitleg ? el('span', { class: 'status__uitleg', tekst: uitleg }) : null);
+}
+
+function statusblok(data) {
+  const vak = el('section', { class: 'status' });
+  const opslag = data.opslag || {};
+  const vandaag = (data.dagen || []).find((d) => d.dag === data.vandaag) || {};
+  const laatste = [...(data.dagen || [])].reverse().find((d) => d.bezoek > 0);
+
+  const opslagnamen = {
+    bestand: 'Bestand op schijf',
+    redis: 'Database (Upstash of Vercel KV)',
+    geheugen: 'Alleen werkgeheugen',
+  };
+
+  vak.append(
+    el('h2', { tekst: 'Werkt de meting?' }),
+    opslag.duurzaam
+      ? statusregel('Opslag', opslagnamen[opslag.soort] || opslag.soort || 'onbekend', 'goed',
+        'De tellers blijven staan, ook na een nieuwe deploy.')
+      : statusregel('Opslag', `${opslagnamen[opslag.soort] || opslag.soort}: tellers verdwijnen`, 'fout',
+        'Dit is werkgeheugen van een serverloze functie. Elke keer dat die afkoelt of '
+        + 'opnieuw start, staat alles weer op nul, en bij drukte tellen meerdere '
+        + 'instanties langs elkaar heen. Koppel een database (Upstash of Vercel KV) '
+        + 'via de omgevingsvariabelen, anders zijn deze cijfers niet te vertrouwen.'),
+    statusregel('Vandaag geteld', `${getal(vandaag.bezoek)} bezoeken, ${getal(vandaag.aanvraag)} aanvragen`,
+      vandaag.bezoek > 0 ? 'goed' : 'let-op',
+      vandaag.bezoek > 0 ? '' : (laatste
+        ? `Het laatste bezoek dat is geteld was op ${dagLabel(laatste.dag)}.`
+        : 'In deze hele periode is nog geen enkel bezoek geteld.')),
+    statusregel('Draaiende versie', `${data.versie ? data.versie.commit : '?'} op ${data.versie ? data.versie.branch : '?'}`,
+      'neutraal', 'Zie je hier een oudere commit dan je verwacht, dan staat je wijziging nog niet live.'),
+    zelftest(data),
+  );
+  return vak;
+}
+
+/** Wat de laatste test opleverde, zodat het niet verdwijnt bij het herladen. */
+let testmelding = null;
+
+/**
+ * Een melding de hele weg laten afleggen en kijken of hij aankomt.
+ *
+ * Stuurt dezelfde melding als elke pagina stuurt, over dezelfde route, en
+ * leest daarna de teller terug. Gaat er onderweg iets mis - de route bestaat
+ * niet, een grens gooit hem weg, de opslag schrijft niet - dan blijkt dat
+ * hier, in plaats van pas over twee weken uit een advertentierekening.
+ */
+function zelftest(data) {
+  const vak = el('div', { class: 'status__test' });
+  const knop = el('button', { type: 'button', tekst: 'Test de meting' });
+  const uitslag = el('p', {
+    class: testmelding ? `status__uitslag status__uitslag--${testmelding.toon}` : 'stil',
+    tekst: testmelding ? testmelding.tekst : 'Stuurt één testmelding en kijkt of die wordt opgeslagen.',
+  });
+
+  knop.addEventListener('click', async () => {
+    knop.disabled = true;
+    uitslag.className = 'stil';
+    uitslag.textContent = 'Bezig…';
+    const voor = (data.diagnoses || {})[data.vandaag] || 0;
+    try {
+      const heen = await fetch('/api/meting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ g: 'diagnose', b: 'direct' }),
+      });
+      if (heen.status !== 204) throw new Error(`de meetroute antwoordde met ${heen.status}`);
+      const terug = await fetch(`/api/beheer/metingen?dagen=1`, { headers: { Accept: 'application/json' } });
+      if (!terug.ok) throw new Error(`de cijfers waren niet te lezen (${terug.status})`);
+      const na = await terug.json();
+      const nu = (na.diagnoses || {})[na.vandaag] || 0;
+      if (nu > voor) {
+        testmelding = { toon: 'goed', tekst: 'De testmelding kwam aan en is opgeslagen. De meting werkt.' };
+      } else if (na.opslag && !na.opslag.duurzaam) {
+        testmelding = { toon: 'fout',
+          tekst: 'De melding kwam aan maar was daarna niet terug te vinden. Dat is wat er met '
+            + 'geheugenopslag gebeurt: de melding belandde op een andere instantie dan deze vraag. '
+            + 'Zie de regel "Opslag" hierboven.' };
+      } else {
+        testmelding = { toon: 'fout',
+          tekst: 'De melding kwam aan maar werd niet opgeslagen. Kijk in de logboeken van de '
+            + 'hosting naar een fout bij "[meting] tellen mislukt".' };
+      }
+    } catch (err) {
+      testmelding = { toon: 'fout', tekst: `De testmelding kwam niet aan: ${err.message}.` };
+    }
+    uitslag.className = `status__uitslag status__uitslag--${testmelding.toon}`;
+    uitslag.textContent = testmelding.tekst;
+    knop.disabled = false;
+  });
+
+  vak.append(knop, uitslag);
+  return vak;
+}
+
 async function laad() {
   inhoud.textContent = '';
   inhoud.append(el('p', { class: 'stil', tekst: 'Bezig met laden…' }));
@@ -331,6 +445,7 @@ async function laad() {
 
   inhoud.textContent = '';
   inhoud.append(
+    statusblok(data),
     el('div', { class: 'tegels' },
       tegel(getal(t.bezoek), 'Bezoeken'),
       tegel(getal(t['funnel-start']), 'Aanvraag gestart'),

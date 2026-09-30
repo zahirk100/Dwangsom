@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
-  normaliseerBron, normaliseerPagina, veld, overzicht, geldigeGebeurtenis,
+  normaliseerBron, kanaal, normaliseerPagina, veld, overzicht, geldigeGebeurtenis,
   laatsteDagen, GEBEURTENISSEN,
 } from '../src/meting.js';
 
@@ -46,10 +46,44 @@ const tel = () => opslag.tellingen(vandaag);
 // ------------------------------------------------------------- bronnen ---
 
 test('varianten van facebook komen allemaal op meta uit', () => {
-  for (const ruw of ['meta', 'facebook', 'FB', 'instagram', 'ig']) {
-    assert.equal(normaliseerBron(ruw), 'meta', `${ruw} hoort meta te zijn`);
+  for (const ruw of ['meta', 'facebook', 'FB', 'instagram', 'ig', 'meta-ads']) {
+    assert.equal(normaliseerBron(ruw), 'meta-ads', `${ruw} hoort meta-ads te zijn`);
   }
-  assert.equal(normaliseerBron('', 'l.facebook.com'), 'meta');
+  // Een verwijzing vanaf Facebook zonder klik-parameter is geen advertentie
+  // maar een gedeeld bericht. Die twee op één hoop gooien maakt het cijfer
+  // waar je op stuurt onbruikbaar: je ziet dan niet wat de advertentie deed.
+  assert.equal(normaliseerBron('', 'l.facebook.com'), 'sociaal');
+});
+
+/**
+ * De klik-parameters van de advertentieplatforms.
+ *
+ * Dit is de reden dat er weken lang wel kliks in de advertentiebeheerder
+ * stonden en geen betaald verkeer in de cijfers. Google en Meta zetten geen
+ * `utm_source`; ze plakken alleen hun eigen kenmerk achter de link. Herken je
+ * dat niet, dan telt een betaalde klik uit Google als organisch zoekverkeer
+ * en een betaalde klik uit Meta als een bezoeker die het adres zelf intypte.
+ */
+test('een klik op een advertentie is te herkennen aan de url', () => {
+  const uit = (zoek, verwijzer = '') => kanaal({ zoek, verwijzer });
+  assert.equal(uit('?gclid=EAIaIQ', 'www.google.com'), 'google-ads');
+  assert.equal(uit('?gbraid=0AAA'), 'google-ads');
+  assert.equal(uit('?wbraid=0AAA'), 'google-ads');
+  assert.equal(uit('?gad_source=1'), 'google-ads');
+  assert.equal(uit('?fbclid=IwAR'), 'meta-ads');
+  assert.equal(uit('?ttclid=abc'), 'andere-ads');
+  assert.equal(uit('?msclkid=abc'), 'andere-ads');
+  // Zonder kenmerk is dezelfde verwijzer gewoon zoekverkeer.
+  assert.equal(uit('', 'www.google.com'), 'organisch');
+});
+
+test('een medium dat zegt dat het geen advertentie is, wint van de rest', () => {
+  // Een fbclid blijft aan een link plakken als iemand hem doorstuurt. Staat er
+  // dan een eigen tag bij die zegt dat het een nieuwsbrief is, dan is dat het
+  // betrouwbaardere signaal.
+  assert.equal(kanaal({ zoek: '?fbclid=x&utm_medium=email' }), 'overig');
+  assert.equal(kanaal({ zoek: '?utm_source=google&utm_medium=organic', verwijzer: 'www.google.com' }),
+    'organisch');
 });
 
 test('een onbekende bron wordt overig, geen eigen teller', () => {
@@ -89,7 +123,53 @@ test('een gewone melding wordt geteld', async () => {
   const antwoord = await meld({ g: 'bezoek', b: 'facebook', p: '/uwv-te-laat' });
   assert.equal(antwoord.status, 204);
   const tellingen = await tel();
-  assert.equal(tellingen[veld('bezoek', 'meta', 'uwv-te-laat')], 1);
+  assert.equal(tellingen[veld('bezoek', 'meta-ads', 'uwv-te-laat')], 1);
+});
+
+/**
+ * Advertentieverkeer moet in zijn geheel aankomen.
+ *
+ * De grens is er om te voorkomen dat iemand de tellers volschrijft, niet om
+ * bezoekers te weren. Zolang het adres van de bezoeker niet doorkwam, gold
+ * hij voor de hele site tegelijk: met een advertentie aan was hij binnen
+ * enkele minuten vol en verdween al het verkeer daarna in stilte.
+ */
+test('verkeer van veel bezoekers tegelijk wordt helemaal geteld', async () => {
+  process.env.VERTROUW_PROXY = '1';
+  try {
+    const voor = (await tel())[veld('bezoek', 'google-ads', 'uwv-te-laat')] || 0;
+    const bezoekers = 80;
+    for (let i = 0; i < bezoekers; i += 1) {
+      const antwoord = await fetch(`${basis}/api/meting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': `198.51.100.${i}` },
+        body: JSON.stringify({ g: 'bezoek', b: 'google-ads', p: '/uwv-te-laat' }),
+      });
+      assert.equal(antwoord.status, 204);
+    }
+    const na = (await tel())[veld('bezoek', 'google-ads', 'uwv-te-laat')] || 0;
+    assert.equal(na - voor, bezoekers,
+      `er zijn ${bezoekers} bezoeken gemeld en ${na - voor} geteld`);
+  } finally {
+    delete process.env.VERTROUW_PROXY;
+  }
+});
+
+/**
+ * De testknop van het cijferscherm.
+ *
+ * Telt wel, maar hoort nergens tussen de bezoekerscijfers te staan: één
+ * klik op "Test de meting" zou anders als bezoeker meetellen en de trechter
+ * scheeftrekken.
+ */
+test('een testmelding telt apart en niet in de trechter', async () => {
+  assert.equal((await meld({ g: 'diagnose', b: 'direct' })).status, 204);
+  const uit = overzicht([{ dag: vandaag, tellingen: await tel() }]);
+  assert.ok((uit.diagnoses[vandaag] || 0) >= 1, 'de testmelding is niet apart geteld');
+  assert.equal(uit.totalen.diagnose, undefined, 'de testmelding staat tussen de totalen');
+  for (const [bron, tellingen] of Object.entries(uit.perBron)) {
+    assert.equal(tellingen.diagnose, undefined, `de testmelding staat onder ${bron}`);
+  }
 });
 
 test('een verzonnen gebeurtenis wordt niet geteld', async () => {
@@ -236,7 +316,7 @@ test('een paginanaam hoort niet in het kanaalveld', () => {
   // Als dit ooit weer gebeurt, is het aan de uitkomst te zien: een
   // paginanaam die als kanaal wordt aangeboden, wordt "overig".
   assert.equal(normaliseerBron('uwv-te-laat'), 'overig');
-  assert.equal(normaliseerBron('meta'), 'meta');
+  assert.equal(normaliseerBron('meta'), 'meta-ads');
 });
 
 test('de advertentielanding zet de paginanaam in `van`, niet in `bron`', async () => {
