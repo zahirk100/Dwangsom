@@ -533,3 +533,59 @@ test('zonder inloggen komt er niemand bij de controles', async () => {
       `verwacht 401 of 403, kreeg ${antwoord.status}`);
   }
 });
+
+// ------------------------------------------------ de cijfers leegmaken ---
+
+/**
+ * Voor het moment waarop de advertenties aangaan.
+ *
+ * Alles wat ervóór is geteld is testverkeer van onszelf, en twintig eigen
+ * bezoeken tussen de eerste vijftig echte zijn geen ruis maar veertig procent.
+ * Maar het is onomkeerbaar, dus gelden dezelfde regels als bij het verwijderen
+ * van een dossier: alleen een beheerder, en het woord moet worden overgetypt.
+ */
+test('de cijfers leegmaken kan niet zonder het woord over te typen', async () => {
+  const antwoord = await haal('/api/beheer/metingen', {
+    method: 'DELETE', headers: { cookie: beheer.cookie },
+    body: JSON.stringify({ bevestiging: 'ja' }),
+  });
+  assert.equal(antwoord.status, 400);
+  assert.match((await antwoord.json()).fout, /LEEGMAKEN/);
+});
+
+test('zonder inloggen kan er niets leeggemaakt worden', async () => {
+  const antwoord = await haal('/api/beheer/metingen', {
+    method: 'DELETE', body: JSON.stringify({ bevestiging: 'LEEGMAKEN' }),
+  });
+  assert.ok(antwoord.status === 401 || antwoord.status === 403,
+    `verwacht 401 of 403, kreeg ${antwoord.status}`);
+});
+
+test('leegmaken wist de tellingen en de controles, maar niet de dossiers', async () => {
+  // Dit is de belangrijkste helft van de toets. Een knop die "de cijfers"
+  // leegmaakt en er klanten bij meeneemt, is geen opruimactie maar verlies.
+  await haal('/api/controle', {
+    method: 'POST',
+    body: JSON.stringify({
+      sleutel: 'wis-proef-1', stap: 'uitslag',
+      invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', termijnEinddatum: '2026-08-01' },
+      rapport: { uitkomst: 'recht', berekening: { totaal: 300 } },
+    }),
+  });
+  const voor = await (await haal('/api/beheer/aanvragen', { headers: { cookie: beheer.cookie } })).json();
+  assert.ok(voor.aanvragen.length > 0, 'er horen dossiers te staan om te bewaken');
+
+  const weg = await haal('/api/beheer/metingen', {
+    method: 'DELETE', headers: { cookie: beheer.cookie },
+    body: JSON.stringify({ bevestiging: 'leegmaken' }),
+  });
+  const uitkomst = await weg.json().catch(() => ({}));
+  assert.equal(weg.status, 200, JSON.stringify(uitkomst));
+  assert.ok(uitkomst.controles >= 1, `verwacht minstens één gewiste controle: ${JSON.stringify(uitkomst)}`);
+
+  const controles = await (await haal('/api/beheer/controles', { headers: { cookie: beheer.cookie } })).json();
+  assert.equal(controles.controles.length, 0, 'de controles horen weg te zijn');
+
+  const na = await (await haal('/api/beheer/aanvragen', { headers: { cookie: beheer.cookie } })).json();
+  assert.equal(na.aanvragen.length, voor.aanvragen.length, 'de dossiers horen te blijven staan');
+});

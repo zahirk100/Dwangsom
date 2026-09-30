@@ -972,6 +972,32 @@ async function beheerApi(req, res, url) {
     return stuurLeeg(res);
   }
 
+  /**
+   * De meting op nul zetten.
+   *
+   * Voor het moment waarop de advertenties aangaan: alles wat ervoor is
+   * geteld is testverkeer van onszelf, en dat maakt elke verhouding
+   * waardeloos.
+   *
+   * Onomkeerbaar, dus met dezelfde afspraak als bij het verwijderen van een
+   * dossier: alleen een beheerder, en het woord moet worden overgetypt. Dat
+   * maakt een misklik onmogelijk. Dossiers en aanvragen blijven staan; dit
+   * wist tellers en controles, geen klanten.
+   */
+  if (url.pathname === '/api/beheer/metingen' && req.method === 'DELETE') {
+    if (!magBeheren(ik)) {
+      return stuurFout(res, 403, 'Alleen een beheerder kan de cijfers leegmaken.');
+    }
+    const body = await leesJsonBody(req).catch(() => ({}));
+    if (String(body.bevestiging || '').trim().toUpperCase() !== 'LEEGMAKEN') {
+      return stuurFout(res, 400, 'Typ LEEGMAKEN over om te bevestigen.');
+    }
+    const weg = await store.wisMeting();
+    console.log(`[beheer] cijfers leeggemaakt door ${ik.email}`
+      + ` (${weg.dagen} dagen, ${weg.controles} controles)`);
+    return stuurJson(res, 200, weg);
+  }
+
   if (url.pathname === '/api/beheer/export.csv' && req.method === 'GET') {
     const rijen = await store.lijst({ status: url.searchParams.get('status') });
     return stuurTekst(res, 200, naarCsv(rijen), {

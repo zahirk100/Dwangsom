@@ -100,11 +100,47 @@ export function laatsteDagen(dagen, nu = new Date()) {
   return uit;
 }
 
+/** De stappen van de trechter, in volgorde. */
+export const TRECHTERSTAPPEN = ['bezoek', 'funnel-start', 'funnel-brief', 'funnel-uitslag',
+  'funnel-gegevens', 'funnel-akkoord', 'aanvraag'];
+
+/**
+ * Van losse aantallen naar een trechter met het verlies per stap.
+ *
+ * Twee percentages, want ze beantwoorden twee verschillende vragen. `vanVorige`
+ * zegt waar het lek zit - een stap die de helft kwijtraakt is een probleem van
+ * die stap. `vanBezoek` zegt wat er onderaan overblijft, en dat is wat een
+ * advertentie oplevert.
+ */
+export function trechterVan(totalen = {}) {
+  let vorige = null;
+  const bezoek = totalen.bezoek || 0;
+  return TRECHTERSTAPPEN.map((stap) => {
+    const aantal = totalen[stap] || 0;
+    const rij = {
+      stap,
+      label: GEBEURTENISSEN[stap],
+      aantal,
+      vanVorige: vorige === null || vorige === 0 ? null : Math.round((aantal / vorige) * 1000) / 10,
+      vanBezoek: bezoek ? Math.round((aantal / bezoek) * 1000) / 10 : null,
+      // Hoeveel er op déze stap wegliep. Dat is het getal waar je iets aan
+      // kunt doen; de percentages zeggen alleen hoe erg het is.
+      verloren: vorige === null ? null : Math.max(0, vorige - aantal),
+    };
+    vorige = aantal;
+    return rij;
+  });
+}
+
 /**
  * Bouwt het overzicht uit de ruwe tellingen.
  *
+ * Alles wat hier uitkomt is per dag én per bron beschikbaar. Dat is niet
+ * netheid maar de hele reden dat er geteld wordt: "we hadden deze maand 400
+ * bezoekers" zegt niets over de advertentie van gisteren, en een trechter over
+ * alle bronnen samen verbergt precies het kanaal dat niets oplevert.
+ *
  * @param {Array<{dag: string, tellingen: object}>} ruw
- * @returns {{dagen: Array, totalen: object, perBron: object, perPagina: object, trechter: Array}}
  */
 export function overzicht(ruw) {
   const totalen = {};
@@ -113,7 +149,12 @@ export function overzicht(ruw) {
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
-    const perDag = { dag, bezoek: 0, 'funnel-start': 0, aanvraag: 0 };
+    // Elke dag krijgt alle stappen, ook de nullen: een dag die ontbreekt in de
+    // tabel leest als "geen gegevens", een dag met nullen als "niemand kwam".
+    const perDag = { dag };
+    for (const stap of TRECHTERSTAPPEN) perDag[stap] = 0;
+    perDag.bronnen = {};
+
     for (const [sleutel, aantal] of Object.entries(tellingen || {})) {
       const [gebeurtenis, bron, pagina] = sleutel.split('|');
       if (!geldigeGebeurtenis(gebeurtenis)) continue;
@@ -125,28 +166,28 @@ export function overzicht(ruw) {
         perPagina[pagina] = (perPagina[pagina] || 0) + n;
       }
       if (gebeurtenis in perDag) perDag[gebeurtenis] += n;
+      // Per dag én per bron, zodat je kunt zien of de dip van gisteren aan
+      // één kanaal lag of aan alles.
+      perDag.bronnen[bron] ||= {};
+      perDag.bronnen[bron][gebeurtenis] = (perDag.bronnen[bron][gebeurtenis] || 0) + n;
     }
     dagen.push(perDag);
   }
 
-  // De trechter: van bezoek tot ingediende aanvraag, met het verlies per stap.
-  const volgorde = ['bezoek', 'funnel-start', 'funnel-brief', 'funnel-uitslag',
-    'funnel-gegevens', 'funnel-akkoord', 'aanvraag'];
-  let vorige = null;
-  const trechter = volgorde.map((stap) => {
-    const aantal = totalen[stap] || 0;
-    const rij = {
-      stap,
-      label: GEBEURTENISSEN[stap],
-      aantal,
-      // Het percentage ten opzichte van de vorige stap zegt waar het lek zit;
-      // ten opzichte van het bezoek zegt wat er onderaan overblijft.
-      vanVorige: vorige === null || vorige === 0 ? null : Math.round((aantal / vorige) * 1000) / 10,
-      vanBezoek: totalen.bezoek ? Math.round((aantal / totalen.bezoek) * 1000) / 10 : null,
-    };
-    vorige = aantal;
-    return rij;
-  });
+  // Dezelfde trechter, per bron. Zo zie je niet alleen dát meta minder
+  // oplevert dan google, maar ook wáár die bezoekers afhaken.
+  const trechterPerBron = {};
+  for (const [bron, tellingen] of Object.entries(perBron)) {
+    trechterPerBron[bron] = trechterVan(tellingen);
+  }
 
-  return { dagen, totalen, perBron, perPagina, trechter };
+  return {
+    dagen,
+    totalen,
+    perBron,
+    perPagina,
+    trechter: trechterVan(totalen),
+    trechterPerBron,
+    stappen: TRECHTERSTAPPEN.map((id) => ({ id, label: GEBEURTENISSEN[id] })),
+  };
 }

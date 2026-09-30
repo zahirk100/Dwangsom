@@ -168,5 +168,58 @@ export function controleOverzicht(rijen = []) {
     perUitkomst,
     perInstantie,
     gemistBedrag,
+    perBron: perHerkomst(rijen, 'bron'),
+    perLanding: perHerkomst(rijen, 'van'),
+    perDag: perDagOverzicht(rijen),
   };
+}
+
+/**
+ * Wat een kanaal echt oplevert.
+ *
+ * De paginatellers zeggen hoeveel klikken een advertentie kostte. Dit zegt wat
+ * daar voor zaken uit kwamen: hoeveel controles, hoeveel daarvan een opdracht
+ * werden, en hoeveel euro er bleef liggen bij mensen die wél recht hadden.
+ * Dat laatste is het getal waarop je een bod aanpast - niet het aantal
+ * klikken.
+ */
+function perHerkomst(rijen, veld) {
+  const uit = {};
+  for (const rij of rijen) {
+    const naam = String(rij[veld] || '').trim() || 'onbekend';
+    uit[naam] ||= { controles: 0, aanvragen: 0, gemistBedrag: 0, metRecht: 0 };
+    const vak = uit[naam];
+    vak.controles += 1;
+    if (rij.aanvraagId) vak.aanvragen += 1;
+    if (rij.uitkomst === 'recht') {
+      vak.metRecht += 1;
+      if (!rij.aanvraagId) vak.gemistBedrag += Number(rij.bedrag) || 0;
+    }
+  }
+  return uit;
+}
+
+/**
+ * Dezelfde controles, per dag.
+ *
+ * Zonder dit zie je alleen een maandtotaal, en daarin verdwijnt precies wat je
+ * wilt weten: of de advertentie van gisteren iets deed, en of de wijziging van
+ * vanochtend het erger heeft gemaakt.
+ */
+function perDagOverzicht(rijen) {
+  const perDag = {};
+  for (const rij of rijen) {
+    const dag = String(rij.bijgewerktOp || rij.gestartOp || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dag)) continue;
+    perDag[dag] ||= {
+      dag, controles: 0, aanvragen: 0, gemistBedrag: 0,
+      perStap: Object.fromEntries(STAPPEN.map((s) => [s.id, 0])),
+    };
+    const vak = perDag[dag];
+    vak.controles += 1;
+    if (rij.aanvraagId) vak.aanvragen += 1;
+    if (vak.perStap[rij.stap] !== undefined) vak.perStap[rij.stap] += 1;
+    if (rij.uitkomst === 'recht' && !rij.aanvraagId) vak.gemistBedrag += Number(rij.bedrag) || 0;
+  }
+  return Object.values(perDag).sort((a, b) => b.dag.localeCompare(a.dag));
 }

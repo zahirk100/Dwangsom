@@ -641,6 +641,29 @@ export class Store {
   }
 
   /**
+   * De meting op nul zetten.
+   *
+   * Voor het moment waarop de advertenties aangaan: alles wat ervoor is
+   * geteld, is testverkeer van onszelf, en dat maakt elke verhouding
+   * waardeloos. Twintig eigen bezoeken tussen de eerste vijftig echte zijn
+   * geen ruis maar veertig procent.
+   *
+   * Onomkeerbaar, en daarom alleen achter een beheerdersaccount en met een
+   * bevestiging die overgetypt moet worden - dezelfde afspraak als bij het
+   * verwijderen van een dossier. Dossiers en aanvragen blijven staan: dit
+   * wist tellers en controles, geen klanten.
+   *
+   * @returns {Promise<{dagen: number, controles: number}>} wat er weg is
+   */
+  async wisMeting() {
+    const dagen = await this.opslag.meetdagen();
+    for (const dag of dagen) await this.opslag.wisMetingen(dag);
+    const controles = await this.controles();
+    for (const rij of controles) await this.opslag.wisRij(VERZAMELING_CONTROLES, rij.sleutel);
+    return { dagen: dagen.length, controles: controles.length };
+  }
+
+  /**
    * Opruimen: wat te oud is gaat eruit, en er blijven er nooit meer dan
    * MAX_CONTROLES staan. Zonder die tweede grens kan een open route de opslag
    * laten vollopen.

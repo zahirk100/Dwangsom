@@ -1402,6 +1402,17 @@ function overgedragenBrieven() {
 
 zetIngangstekst();
 
+/**
+ * De funnel is geopend.
+ *
+ * Deze stap stond wel in de trechter maar werd nergens geteld, en dus altijd
+ * op nul. Daarmee was het gat tussen "bezoek" en "brief geüpload" niet te
+ * zien: je wist niet of mensen de aanvraag niet openden of hem openden en
+ * meteen wegklikten. Dat zijn twee heel verschillende problemen, met twee
+ * heel verschillende oplossingen.
+ */
+meet('funnel-start');
+
 const meegekomen = overgedragenBrieven();
 if (meegekomen.length > 0) {
   toon('lezen');

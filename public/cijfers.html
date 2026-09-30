@@ -29,7 +29,7 @@
   .balk { position: relative; }
   .balk__vulling { position: absolute; inset: 0 auto 0 0; background: var(--blauw-100); border-radius: 4px; }
   .balk__tekst { position: relative; padding: 3px 6px; }
-  .stil { color: var(--tekst-licht); }
+  .stil { color: var(--tekst-zacht); }
   /* Vijf kolommen passen niet op een telefoon; schuiven is hier beter dan
      kolommen verbergen, want in een beheerscherm wil je alles zien. */
   .rol { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -38,6 +38,36 @@
              border: 1px solid var(--oranje-100); margin: 18px 0; }
   .uitleg { font-size: .88rem; color: var(--tekst-zacht); margin-top: 26px;
             padding-top: 18px; border-top: 1px solid var(--rand); }
+
+  /* Op welk kanaal je inzoomt. Dezelfde vorm als de periodekeuze, want het
+     is dezelfde soort keuze. */
+  .keuzerij { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+  .keuzerij button {
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--rand);
+    background: var(--vlak); font: inherit; font-size: .84rem; cursor: pointer;
+  }
+  .keuzerij button[aria-pressed="true"] {
+    background: var(--blauw-600); color: #fff; border-color: var(--blauw-600);
+  }
+
+  /* Wat er wegloopt, in rood. Dat is het enige getal op dit scherm waar je
+     iets aan moet doen; de rest is achtergrond. */
+  .verlies { color: var(--rood-600); font-weight: 600; }
+  .nadruk { font-weight: 700; }
+
+  /* Leegmaken is onomkeerbaar, dus ziet de knop er ook zo uit. */
+  .leegmaken { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+  .leegmaken input {
+    padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rand);
+    font: inherit; font-size: .92rem; width: 170px;
+  }
+  .knop-gevaar {
+    padding: 10px 16px; border-radius: 10px; border: 1px solid var(--rood-600);
+    background: var(--vlak); color: var(--rood-600); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .knop-gevaar:hover:not(:disabled) { background: var(--rood-600); color: #fff; }
+  .knop-gevaar:disabled { opacity: .6; cursor: default; }
+  .leegmaken p { margin: 0; font-size: .88rem; }
 </style>
 </head>
 <body>

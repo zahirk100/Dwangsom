@@ -8,6 +8,8 @@
 const inhoud = document.getElementById('inhoud');
 const periode = document.getElementById('periode');
 let dagen = 30;
+/** Op welk kanaal we inzoomen. Leeg is alles bij elkaar. */
+let bron = '';
 
 function el(tag, attrs = {}, ...kinderen) {
   const n = document.createElement(tag);
@@ -47,11 +49,21 @@ function balkcel(waarde, max) {
     el('span', { class: 'balk__tekst', tekst: getal(waarde) }));
 }
 
-function rendereTrechter(data) {
-  const max = data.trechter[0] ? data.trechter[0].aantal : 0;
-  const rijen = data.trechter.map((r) => el('tr', {},
+/**
+ * De trechter van één verzameling tellingen.
+ *
+ * "Verloren" staat erbij omdat dat het getal is waar je iets aan kunt doen: de
+ * percentages zeggen hoe erg het is, het aantal zegt hoeveel mensen het
+ * betreft. Bij 8% verlies op 12 bezoekers is er niets aan de hand; bij 8% op
+ * 4000 is dat een dag werk waard.
+ */
+function rendereTrechter(trechter) {
+  const max = trechter[0] ? trechter[0].aantal : 0;
+  const rijen = trechter.map((r) => el('tr', {},
     el('td', { tekst: r.label }),
     balkcel(r.aantal, max),
+    el('td', { class: r.verloren ? 'verlies' : 'stil',
+      tekst: r.verloren === null ? '—' : (r.verloren ? `−${getal(r.verloren)}` : '0') }),
     el('td', { class: r.vanVorige === null ? 'stil' : '',
       tekst: r.vanVorige === null ? '—' : `${r.vanVorige}%` }),
     el('td', { class: r.vanBezoek === null ? 'stil' : '',
@@ -59,8 +71,36 @@ function rendereTrechter(data) {
   return rol(el('table', {},
     el('thead', {}, el('tr', {},
       el('th', { tekst: 'Stap' }), el('th', { tekst: 'Aantal' }),
+      el('th', { tekst: 'Afgehaakt' }),
       el('th', { tekst: 'Van vorige' }), el('th', { tekst: 'Van bezoek' }))),
     el('tbody', {}, rijen)));
+}
+
+/** De trechter per bron: waar haakt het verkeer van dít kanaal af? */
+function rendereTrechterPerBron(data) {
+  const bronnen = Object.entries(data.trechterPerBron || {})
+    .sort((a, b) => (b[1][0].aantal || 0) - (a[1][0].aantal || 0))
+    .filter(([, t]) => t[0].aantal > 0);
+  if (bronnen.length === 0) return el('p', { class: 'stil', tekst: 'Nog geen verkeer per bron.' });
+
+  const stappen = data.stappen || [];
+  return rol(el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', { tekst: 'Bron' }),
+      ...stappen.map((s) => el('th', { tekst: s.label.replace(/^Funnel /, '') })),
+      el('th', { tekst: 'Omzetting' }))),
+    el('tbody', {}, bronnen.map(([naam, trechter]) => {
+      const bezoek = trechter[0].aantal;
+      const eind = trechter[trechter.length - 1].aantal;
+      return el('tr', {},
+        el('td', { tekst: naam }),
+        ...trechter.map((r) => el('td', {
+          class: r.aantal === 0 ? 'stil' : '',
+          tekst: getal(r.aantal),
+        })),
+        el('td', { class: bezoek ? 'nadruk' : 'stil',
+          tekst: bezoek ? `${Math.round((eind / bezoek) * 1000) / 10}%` : '—' }));
+    }))));
 }
 
 function rendereBronnen(data) {
@@ -97,19 +137,48 @@ function renderePaginas(data) {
       balkcel(aantal, max))))));
 }
 
-function rendereDagen(data) {
-  const metIets = data.dagen.filter((d) => d.bezoek || d['funnel-start'] || d.aanvraag);
-  if (metIets.length === 0) return el('p', { class: 'stil', tekst: 'Nog geen dagen met verkeer.' });
-  const max = Math.max(...metIets.map((d) => d.bezoek));
+/** Nederlandse weekdag plus datum: "ma 29-09" leest sneller dan "2026-09-29". */
+function dagLabel(iso) {
+  const d = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dag = d.toLocaleDateString('nl-NL', { weekday: 'short', timeZone: 'UTC' });
+  return `${dag} ${iso.slice(8, 10)}-${iso.slice(5, 7)}`;
+}
+
+/**
+ * Elke dag met de hele trechter erachter.
+ *
+ * Hier stonden eerder drie kolommen - bezoek, gestart, aanvragen - en daarmee
+ * zag je wel dát er niemand doorkwam maar niet waar hij bleef steken. Nu staat
+ * elke stap erin, plus het aantal dat op die dag afhaakte.
+ */
+function rendereDagen(data, bron) {
+  const stappen = data.stappen || [];
+  const cijfersVan = (d) => (bron ? (d.bronnen[bron] || {}) : d);
+  const metIets = data.dagen.filter((d) => stappen.some((s) => (cijfersVan(d)[s.id] || 0) > 0));
+  if (metIets.length === 0) {
+    return el('p', { class: 'stil',
+      tekst: bron ? `Nog geen verkeer van ${bron} in deze periode.` : 'Nog geen dagen met verkeer.' });
+  }
+  const max = Math.max(...metIets.map((d) => cijfersVan(d).bezoek || 0));
   return rol(el('table', {},
     el('thead', {}, el('tr', {},
-      el('th', { tekst: 'Dag' }), el('th', { tekst: 'Bezoek' }),
-      el('th', { tekst: 'Gestart' }), el('th', { tekst: 'Aanvragen' }))),
-    el('tbody', {}, metIets.slice().reverse().map((d) => el('tr', {},
-      el('td', { tekst: d.dag }),
-      balkcel(d.bezoek, max),
-      el('td', { tekst: getal(d['funnel-start']) }),
-      el('td', { tekst: getal(d.aanvraag) }))))));
+      el('th', { tekst: 'Dag' }),
+      el('th', { tekst: 'Bezoek' }),
+      ...stappen.slice(1).map((s) => el('th', { tekst: s.label.replace(/^Funnel /, '') })),
+      el('th', { tekst: 'Afgehaakt' }))),
+    el('tbody', {}, metIets.slice().reverse().map((d) => {
+      const c = cijfersVan(d);
+      const bezoek = c.bezoek || 0;
+      const eind = c[stappen[stappen.length - 1].id] || 0;
+      return el('tr', {},
+        el('td', { tekst: dagLabel(d.dag) }),
+        balkcel(bezoek, max),
+        ...stappen.slice(1).map((s) => el('td', {
+          class: (c[s.id] || 0) === 0 ? 'stil' : '', tekst: getal(c[s.id] || 0),
+        })),
+        el('td', { class: bezoek - eind > 0 ? 'verlies' : 'stil', tekst: `−${getal(bezoek - eind)}` }));
+    }))));
 }
 
 const UITKOMSTNAAM = {
@@ -157,12 +226,57 @@ function rendereControles(data) {
     el('td', { tekst: String(c.aantalBrieven || 0) }),
     el('td', { class: c.aanvraagId ? '' : 'stil', tekst: c.aanvraagId ? 'ja' : 'nee' })));
 
+  // Per kanaal: niet hoeveel klikken, maar wat voor zaken eruit kwamen.
+  const herkomsttabel = (perHerkomst, kop) => {
+    const rijen = Object.entries(perHerkomst || {})
+      .sort((a, b) => b[1].controles - a[1].controles);
+    if (rijen.length === 0) return el('p', { class: 'stil', tekst: 'Nog niets vastgelegd.' });
+    const max = rijen[0][1].controles;
+    return rol(el('table', {},
+      el('thead', {}, el('tr', {},
+        el('th', { tekst: kop }), el('th', { tekst: 'Controles' }),
+        el('th', { tekst: 'Werd opdracht' }), el('th', { tekst: 'Had recht' }),
+        el('th', { tekst: 'Blijft liggen' }))),
+      el('tbody', {}, rijen.map(([naam, w]) => el('tr', {},
+        el('td', { tekst: naam }),
+        balkcel(w.controles, max),
+        el('td', { class: w.aanvragen ? '' : 'stil', tekst: getal(w.aanvragen) }),
+        el('td', { class: w.metRecht ? '' : 'stil', tekst: getal(w.metRecht) }),
+        el('td', { class: w.gemistBedrag ? 'verlies' : 'stil',
+          tekst: w.gemistBedrag ? euro(w.gemistBedrag) : '—' }))))));
+  };
+
+  const perDag = overzicht.perDag || [];
+  const dagtabel = perDag.length === 0
+    ? el('p', { class: 'stil', tekst: 'Nog geen dagen met controles.' })
+    : rol(el('table', {},
+      el('thead', {}, el('tr', {},
+        el('th', { tekst: 'Dag' }), el('th', { tekst: 'Controles' }),
+        ...stappen.map((s) => el('th', { tekst: s.label })),
+        el('th', { tekst: 'Blijft liggen' }))),
+      el('tbody', {}, perDag.map((d) => el('tr', {},
+        el('td', { tekst: dagLabel(d.dag) }),
+        balkcel(d.controles, Math.max(...perDag.map((x) => x.controles))),
+        ...stappen.map((s) => el('td', {
+          class: (d.perStap[s.id] || 0) === 0 ? 'stil' : '', tekst: getal(d.perStap[s.id] || 0),
+        })),
+        el('td', { class: d.gemistBedrag ? 'verlies' : 'stil',
+          tekst: d.gemistBedrag ? euro(d.gemistBedrag) : '—' }))))));
+
   return el('div', {},
     el('div', { class: 'tegels' },
       tegel(getal(overzicht.totaal), 'Controles uitgevoerd'),
       tegel(getal(overzicht.zonderAanvraag), 'Zonder aanvraag'),
       tegel(euro(overzicht.gemistBedrag), 'Blijven liggen bij recht'),
       tegel(`${data.bewaardagen} dagen`, 'Bewaartermijn')),
+    el('h3', { tekst: 'Per dag' }),
+    dagtabel,
+    el('h3', { tekst: 'Per kanaal' }),
+    el('p', { class: 'stil' }, 'Niet hoeveel klikken een advertentie kostte, maar wat voor zaken '
+      + 'eruit kwamen. "Blijft liggen" is het bedrag van mensen die recht hadden en toch afhaakten.'),
+    herkomsttabel(overzicht.perBron, 'Bron'),
+    el('h3', { tekst: 'Per landingspagina' }),
+    herkomsttabel(overzicht.perLanding, 'Landing'),
     el('h3', { tekst: 'Hoever kwamen ze?' }),
     rol(el('table', {},
       el('thead', {}, el('tr', {}, el('th', { tekst: 'Laatste stap' }), el('th', { tekst: 'Aantal' }))),
@@ -210,6 +324,11 @@ async function laad() {
   const t = data.totalen;
   const omzetting = t.bezoek ? Math.round(((t.aanvraag || 0) / t.bezoek) * 1000) / 10 : null;
 
+  // Zoomen we in op één kanaal, dan geldt dat voor de trechter en de dagen.
+  // De rest van het scherm blijft het totaal tonen, want daar gaat het niet
+  // over herkomst.
+  const trechter = bron ? (data.trechterPerBron[bron] || []) : data.trechter;
+
   inhoud.textContent = '';
   inhoud.append(
     el('div', { class: 'tegels' },
@@ -218,18 +337,118 @@ async function laad() {
       tegel(getal(t.aanvraag), 'Aanvraag ingediend'),
       tegel(omzetting === null ? '—' : `${omzetting}%`, 'Bezoek naar aanvraag')),
     el('h2', { tekst: 'Waar haken mensen af?' }),
-    rendereTrechter(data),
+    bronkiezer(data),
+    trechter.length ? rendereTrechter(trechter)
+      : el('p', { class: 'stil', tekst: `Nog geen verkeer van ${bron} in deze periode.` }),
+    el('h2', { tekst: 'Per dag' }),
+    el('p', { class: 'stil' }, bron
+      ? `Alleen verkeer van ${bron}. "Afgehaakt" is het aantal bezoekers dat die dag niet tot een aanvraag kwam.`
+      : '"Afgehaakt" is het aantal bezoekers dat die dag niet tot een aanvraag kwam.'),
+    rendereDagen(data, bron),
     el('h2', { tekst: 'Per bron' }),
     rendereBronnen(data),
-    el('h2', { tekst: 'Per dag' }),
-    rendereDagen(data),
+    el('h2', { tekst: 'Waar haakt elk kanaal af?' }),
+    rendereTrechterPerBron(data),
     el('h2', { tekst: 'Meest bezochte pagina’s' }),
     renderePaginas(data),
     el('h2', { tekst: 'Controles zonder aanvraag' }),
     el('p', { class: 'stil' }, 'Wat er is uitgezocht zonder dat er een aanvraag van kwam. '
       + 'Hier staat de zaak, niet de persoon: geen naam, e-mailadres of rekeningnummer.'),
     controles ? rendereControles(controles) : el('p', { class: 'stil', tekst: 'Kon de controles niet laden.' }),
+    el('h2', { tekst: 'Opnieuw beginnen' }),
+    el('p', { class: 'stil' }, 'Voordat de advertenties aangaan: wis het testverkeer, anders '
+      + 'staan jullie eigen bezoeken tussen de echte en klopt geen enkele verhouding. '
+      + 'Dossiers en aanvragen blijven staan.'),
+    leegmaakknop(),
   );
+}
+
+/**
+ * Kiezen op welk kanaal je inzoomt.
+ *
+ * Een trechter over alle bronnen samen verbergt precies wat je wilt weten: als
+ * meta veel klikt en niets oplevert en google het omgekeerde doet, ziet het
+ * totaal er middelmatig uit en lijkt er niets aan de hand.
+ */
+function bronkiezer(data) {
+  const bronnen = Object.entries(data.trechterPerBron || {})
+    .filter(([, t]) => t[0] && t[0].aantal > 0)
+    .map(([naam]) => naam)
+    .sort();
+  if (bronnen.length <= 1) return el('span', {});
+  const rij = el('div', { class: 'keuzerij' });
+  for (const naam of ['', ...bronnen]) {
+    const knop = el('button', {
+      type: 'button', 'aria-pressed': String(naam === bron),
+      tekst: naam || 'Alle bronnen',
+    });
+    knop.addEventListener('click', () => { bron = naam; laad(); });
+    rij.append(knop);
+  }
+  return rij;
+}
+
+/**
+ * De cijfers leegmaken.
+ *
+ * Voor het moment waarop de advertenties aangaan: alles wat ervoor is geteld
+ * is testverkeer van onszelf, en twintig eigen bezoeken tussen de eerste
+ * vijftig echte zijn geen ruis maar veertig procent.
+ *
+ * Onomkeerbaar, dus met een woord dat overgetypt moet worden. Dossiers en
+ * aanvragen blijven staan; dit wist tellers en controles.
+ */
+/**
+ * Wat er bij het leegmaken gebeurde.
+ *
+ * Buiten de functie, want laad() tekent het hele scherm opnieuw en gooide de
+ * bevestiging daarmee meteen weg: je drukte op de knop, alles sprong naar nul,
+ * en er stond nergens wát er precies weg was.
+ */
+let leegmeldingTekst = '';
+
+function leegmaakknop() {
+  const vak = el('div', { class: 'leegmaken' });
+  const melding = el('p', { class: 'stil', tekst: leegmeldingTekst });
+
+  const veld = el('input', {
+    type: 'text', id: 'leeg-bevestiging', placeholder: 'LEEGMAKEN',
+    autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Typ LEEGMAKEN om te bevestigen',
+  });
+  const knop = el('button', { type: 'button', class: 'knop-gevaar', tekst: 'Cijfers leegmaken' });
+
+  // Een invoerveld en geen prompt(): dat laatste wordt in sommige browsers
+  // geblokkeerd, en dan lijkt de knop stuk terwijl er niets mis is.
+  knop.addEventListener('click', async () => {
+    const bevestiging = veld.value.trim();
+    if (bevestiging.toUpperCase() !== 'LEEGMAKEN') {
+      melding.textContent = 'Typ LEEGMAKEN in het vakje om te bevestigen.';
+      veld.focus();
+      return;
+    }
+    knop.disabled = true;
+    melding.textContent = 'Bezig\u2026';
+    try {
+      const uit = await fetch('/api/beheer/metingen', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bevestiging }),
+      });
+      const data = await uit.json().catch(() => ({}));
+      if (!uit.ok) throw new Error(data.fout || `status ${uit.status}`);
+      veld.value = '';
+      leegmeldingTekst = `Leeggemaakt: ${data.dagen} dagen en ${data.controles} controles. `
+        + 'De meting begint hier opnieuw.';
+      await laad();
+    } catch (err) {
+      melding.textContent = `Niet gelukt: ${err.message}`;
+    } finally {
+      knop.disabled = false;
+    }
+  });
+
+  vak.append(veld, knop, melding);
+  return vak;
 }
 
 for (const n of [7, 30, 90]) {

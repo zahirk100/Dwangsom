@@ -207,6 +207,11 @@ export class BestandsOpslag {
   async meetdagen() {
     return Object.keys(this.metingen).sort();
   }
+
+  async wisMetingen(dag) {
+    delete this.metingen[dag];
+    await this.#bewaarMetingen();
+  }
 }
 
 // ----------------------------------------------------------------- redis ---
@@ -364,6 +369,15 @@ export class RedisOpslag {
     const [dagen] = await this.#roep([['SMEMBERS', SLEUTEL_METING_INDEX]]);
     return (dagen || []).sort();
   }
+
+  async wisMetingen(dag) {
+    // Ook uit de index, anders blijft meetdagen() een dag noemen die er niet
+    // meer is en leest het overzicht elke keer een lege sleutel.
+    await this.#roep([
+      ['DEL', `${SLEUTEL_METING}${dag}`],
+      ['SREM', SLEUTEL_METING_INDEX, dag],
+    ]);
+  }
 }
 
 // -------------------------------------------------------------- geheugen ---
@@ -428,4 +442,6 @@ export class GeheugenOpslag {
   async tellingen(dag) { return { ...((this.metingen || {})[dag] || {}) }; }
 
   async meetdagen() { return Object.keys(this.metingen || {}).sort(); }
+
+  async wisMetingen(dag) { delete (this.metingen || {})[dag]; }
 }
