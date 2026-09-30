@@ -1,209 +1,303 @@
 /**
- * De brief is de intake.
+ * De aanvraag, van brief tot opdracht.
  *
- * De aanvrager uploadt een brief, wij lezen eruit wat nodig is, rekenen uit
- * of de instantie te laat is en laten dat meteen zien. Pas daarna vragen wij
- * gegevens, en alleen wat nog ontbreekt. Eén scherm met een machtiging sluit
- * het af.
+ * De reis bestaat uit drie sporen, en de bezoeker ziet er telkens één:
+ *
+ *   1. **de controle** - je brief, aanvullen, je uitslag. Gratis, en je zit
+ *      nergens aan vast. Wie hier stopt heeft gekregen waarvoor hij kwam.
+ *   2. **de opdracht** - je keuze, je gegevens, toestemming. Pas hier wordt
+ *      het een zaak, en pas hier vragen wij gegevens.
+ *   3. **daarna** - de bevestiging en je dossier.
+ *
+ * Die volgorde is het hele punt. Eerder vroeg dit formulier op stap drie om
+ * een adres, een geboortedatum, een burgerservicenummer en een rekeningnummer,
+ * van iemand die net een foto van zijn brief had gemaakt en nog niet wist of
+ * wij iets voor hem konden betekenen. Dat is nu weg: wij vragen een naam en
+ * een e-mailadres, en de rest pas in het dossier - als de zaak is nagelopen en
+ * er echt iets te doen valt. Zie `shared/funnelvragen.js` en `AANVRAAGVELDEN`.
+ *
+ * Elk scherm is een `<section data-scherm="...">` in start.html. `toon()`
+ * wisselt ze en tekent de stappenbalk en de zijkolom erbij; er is dus één plek
+ * waar staat waar de bezoeker is.
  */
 
 import { berekenDwangsom, euro, UITKOMST } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
-import { BESTUURSORGANEN, labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '/shared/catalogus.js';
-import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '/shared/identiteit.js';
+import { labelBestuursorgaan, zoekZaaktype } from '/shared/catalogus.js';
 import { teVragenVelden } from '/shared/funnelvragen.js';
-import { tarief, tariefZin, tariefKort } from '/shared/tarief.js';
+import { tarief, tariefSplitsing, tariefKort, euroTekst } from '/shared/tarief.js';
 import { meet } from '/assets/meting.js';
 import { leesBrieven, combineer, alsLading, gekozenBestanden, MAX_BRIEVEN } from '/assets/brieven.js';
 
-/**
- * De fasen die de bezoeker ziet. Niet "stap 7 van 12", maar waar hij is in
- * zijn eigen zaak. De laatste fase is wat wij daarna doen.
- */
-const FASEN = [
-  { stap: 1, label: 'Brief' },
-  { stap: 2, label: 'Jouw uitslag' },
-  { stap: 3, label: 'Gegevens' },
-  { stap: 4, label: 'Akkoord' },
-  { stap: 5, label: 'Wij regelen het' },
-];
-
-const TOTAAL = FASEN.length;
-
-/**
- * Instellingen die in de omgeving staan en niet in de pagina kunnen: het
- * tarief. Eén keer ophalen bij het opstarten; stap 4 komt pas veel later, dus
- * hij is altijd binnen voordat hij nodig is.
- */
-/**
- * Welke stappen al gemeld zijn. Staat hier bovenaan omdat de brieven die van
- * de campagnelanding meekomen al tijdens het laden worden verwerkt.
- */
-const gemeten = new Set();
-
+/** Instellingen die niet in de pagina kunnen staan: het tarief. */
 const INSTELLINGEN = {};
-fetch('/api/instellingen')
-  .then((a) => a.json())
-  .then((d) => Object.assign(INSTELLINGEN, d))
-  .catch(() => {});
+fetch('/api/instellingen').then((a) => a.json()).then((d) => {
+  Object.assign(INSTELLINGEN, d);
+  // Het tarief komt later binnen dan de eerste tekening; staat de bezoeker al
+  // op een scherm waar een bedrag hoort, dan hoort dat bedrag er alsnog te
+  // komen in plaats van pas bij de volgende klik.
+  if (['hulp', 'toestemming', 'voortgang'].includes(huidig)) toon(huidig);
+}).catch(() => {});
 
-/**
- * Kwam iemand via een advertentie, dan staat zijn instantie al in de url.
- * Dan hoort er nergens meer "de instantie" te staan, maar gewoon UWV.
- */
+const bij = (id) => document.getElementById(id);
+const kaart = bij('kaart');
+
+/** Kwam iemand via een advertentie, dan staat zijn instantie al in de url. */
 const ingang = (() => {
   const params = new URLSearchParams(location.search);
-  const instantie = params.get('instantie') || '';
-  const zaak = params.get('zaak') || '';
-  const geldig = BESTUURSORGANEN.some((b) => b.id === instantie);
-  return {
-    instantie: geldig ? instantie : '',
-    zaak: zaak && zoekZaaktype(zaak) ? zaak : '',
-  };
+  return { instantie: params.get('instantie') || '', van: params.get('van') || '' };
 })();
 
-/** De naam van de instantie zoals die in een lopende zin past. */
-function instantieInEenZin(id) {
-  return { gemeente: 'je gemeente', svb: 'de SVB', belastingdienst: 'de Belastingdienst',
-    anders: 'de instantie' }[id] || (id ? labelBestuursorgaan(id) : 'de instantie');
-}
-const form = document.getElementById('funnel');
-const bollen = document.getElementById('bollen');
-const navigatie = document.getElementById('navigatie');
-const knopVerder = document.getElementById('knop-verder');
-const knopTerug = document.getElementById('knop-terug');
-
-let stap = 1;
+/** De zaak zoals wij hem kennen. Groeit mee met wat de bezoeker aanlevert. */
 const zaak = {
-  brief: null,
-  verlengbrief: null,
-  brieven: [],
-  gelezenBrieven: [],
-  uitBrieven: {},
-  herkenning: null,
-  invoer: null,
-  rapport: null,
-  contact: {},
-  handtekening: null,
+  invoer: {}, herkenning: {}, contact: {}, rapport: null,
+  brief: null, verlengbrief: null, brieven: [], gelezenBrieven: [], brievenOpmerkingen: [],
+  uitBrieven: { verdaagd: false, ingebrekeGesteld: false, besluitGenomen: false },
+  handtekening: null, referentie: '', dossier: null,
 };
 
 // ------------------------------------------------------------- hulpjes ----
 
 function el(tag, attrs = {}, ...kinderen) {
   const knoop = document.createElement(tag);
-  for (const [sleutel, waarde] of Object.entries(attrs)) {
-    if (waarde === null || waarde === undefined || waarde === false) continue;
-    if (sleutel === 'class') knoop.className = waarde;
-    else if (sleutel === 'tekst') knoop.textContent = waarde;
-    else knoop.setAttribute(sleutel, waarde);
+  for (const [naam, waarde] of Object.entries(attrs)) {
+    if (waarde === null || waarde === undefined) continue;
+    if (naam === 'tekst') knoop.textContent = waarde;
+    else if (naam === 'class') knoop.className = waarde;
+    else knoop.setAttribute(naam, waarde);
   }
-  for (const kind of kinderen.flat()) {
+  for (const kind of kinderen) {
     if (kind === null || kind === undefined || kind === false) continue;
     knoop.append(typeof kind === 'string' ? document.createTextNode(kind) : kind);
   }
   return knoop;
 }
 
-function melding(soort, titel, tekst) {
-  return el('div', { class: `melding melding--${soort}` },
-    el('strong', { tekst: titel }), tekst ? el('p', { tekst }) : null);
-}
-
 function zetFout(naam, tekst) {
-  const knoop = form.querySelector(`[data-fout="${naam}"]`);
-  if (!knoop) return;
-  knoop.textContent = tekst || '';
-  knoop.classList.toggle('verborgen', !tekst);
+  const vak = document.querySelector(`[data-fout="${naam}"]`);
+  if (!vak) return;
+  vak.textContent = tekst || '';
+  vak.classList.toggle('verborgen', !tekst);
 }
 
 function datumTekst(iso) {
-  const ms = parseDatum(iso);
-  return ms === null ? null : toonDatum(ms);
+  const d = parseDatum(iso);
+  return d ? toonDatum(d) : '';
 }
 
-// -------------------------------------------------------------- stap 1 ----
+/** 'de instantie' -> 'De instantie'. */
+const metHoofdletter = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
 
-const dropzone = document.getElementById('dropzone');
-const bestandInvoer = document.getElementById('bestand');
-const uploadMelding = document.getElementById('upload-melding');
-
-function toonBezig(tekst) {
-  uploadMelding.textContent = '';
-  uploadMelding.append(el('div', { class: 'bezig' }, el('div', { class: 'tolletje' }), el('span', { tekst })));
+/** De naam van de instantie zoals hij in een zin past. */
+function orgaanNaam() {
+  return zaak.invoer.organisatienaam
+    || labelBestuursorgaan(zaak.invoer.bestuursorgaan)
+    || labelBestuursorgaan(ingang.instantie)
+    || 'de instantie';
 }
 
 /**
- * Wat er uit de brief kwam, als lijstje met vinkjes.
+ * De zaak in één korte vorm: 'je WW-aanvraag'.
  *
- * Dit is het eerste bewijs dat wij de brief echt hebben gelezen, en het kost
- * niets: de herkenning is al gedaan. Een spinner die verdwijnt laat dat niet
- * zien; deze regels wel.
+ * Met opzet een vaste lijst en niet het catalogus-label in kleine letters:
+ * daarmee werd "WW" ineens "ww" en stonden er kromme zinnen op het scherm.
  */
-const SOORTNAAM = {
-  ontvangstbevestiging: 'Ontvangstbevestiging',
-  verlenging: 'Meer tijd gevraagd',
-  beslissing: 'Beslissing',
-  ingebrekestelling: 'Jouw ingebrekestelling',
-  onbekend: 'Brief',
+function zaakInEenZin() {
+  const zaaktype = zoekZaaktype(zaak.invoer && zaak.invoer.zaaktype);
+  if (!zaaktype) return '';
+  return { 'uwv-wia': 'je WIA-beslissing', 'uwv-ww': 'je WW-aanvraag',
+    'uwv-wajong': 'je Wajong-beslissing', 'uwv-zw': 'je Ziektewet-uitkering',
+    'uwv-herbeoordeling': 'je herbeoordeling', 'uwv-bezwaar': 'je bezwaar',
+    'gem-bijstand': 'je bijstandsaanvraag', 'gem-bijzondere-bijstand': 'je aanvraag voor bijzondere bijstand',
+    'gem-wmo': 'je Wmo-aanvraag', 'gem-jeugdwet': 'je aanvraag voor jeugdhulp',
+    'gem-schuldhulp': 'je aanvraag voor schuldhulp', 'gem-parkeervergunning': 'je aanvraag bij de gemeente',
+    'gem-bezwaar': 'je bezwaar', 'duo-studiefinanciering': 'je studiefinanciering',
+    'duo-bezwaar': 'je bezwaar', 'svb-aow': 'je AOW-aanvraag', 'svb-bezwaar': 'je bezwaar',
+    'bel-toeslag': 'je toeslag', 'bel-bezwaar': 'je bezwaar',
+    'overig-aanvraag': 'je aanvraag', 'overig-bezwaar': 'je bezwaar' }[zaaktype.id] || '';
+}
+
+/**
+ * De volgende stap zoals wij hem noemen, niet zoals de wet hem noemt.
+ *
+ * "Ingebrekestelling versturen" is precies het woord waarvoor iemand hier
+ * komt; dat op zijn scherm zetten is de vertaling overslaan.
+ */
+function volgendeStapInGewoneTaal(vervolg, orgaan) {
+  const ruw = String((vervolg && vervolg.actieLabel) || '');
+  if (/ingebrekestelling/i.test(ruw)) return `${orgaan} laten weten dat je nog wacht`;
+  if (/dwangsom/i.test(ruw)) return `De vergoeding bij ${orgaan} opeisen`;
+  if (/termijn/i.test(ruw)) return `Wachten tot de termijn van ${orgaan} afloopt`;
+  return ruw || 'Beoordelen door een behandelaar';
+}
+
+/**
+ * Twee werkdagen vanaf vandaag, als datum.
+ *
+ * "Binnen twee werkdagen" laat de klant zelf rekenen, en op vrijdag rekent
+ * hij verkeerd. Wij vertalen naar de datum die voor hem geldt.
+ */
+function uiterlijkOp(werkdagen = 2, vanaf = new Date()) {
+  const d = new Date(vanaf.getTime());
+  let over = werkdagen;
+  while (over > 0) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) over--;
+  }
+  return toonDatum(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
+// ------------------------------------------------------- de schermen -----
+
+/**
+ * De drie sporen, en welk scherm waar in staat.
+ *
+ * `zij` is de tekst in de smalle kolom. Die hoort bij de stap en niet bij de
+ * kaart: het is de geruststelling die je nodig hebt op het moment dat je aan
+ * die stap begint, en hij staat daarom op één plek in plaats van in elk
+ * scherm opnieuw.
+ */
+const SPOREN = {
+  controle: ['Je brief', 'Aanvullen', 'Je uitslag'],
+  opdracht: ['Je keuze', 'Je gegevens', 'Toestemming'],
+  na: ['Bevestiging', 'Voortgang'],
 };
 
-function toonGelezen(herkenning, brieven = []) {
-  // Meer dan één brief: dan is de belangrijkste vraag niet wát wij zagen,
-  // maar wélke brief telt. Dat is precies wat de aanvrager niet wist.
-  if (brieven.length > 1) {
-    uploadMelding.textContent = '';
-    const lijst = el('ul', { class: 'gelezen' });
-    for (const brief of brieven) {
-      lijst.append(el('li', {},
-        el('span', { class: 'gelezen__vink', tekst: brief.meegeteld ? '\u2713' : '\u00b7' }),
-        el('span', {}, el('strong', { tekst: `${SOORTNAAM[brief.soort] || SOORTNAAM.onbekend}: ` }),
-          brief.rol)));
-    }
-    uploadMelding.append(lijst);
-    return;
-  }
+const SCHERMEN = {
+  kiezen: {
+    spoor: 'controle', stap: 1, zijkop: 'Een kleine eerste stap',
+    zij: ['Je hoeft niet zelf de juiste datum te vinden.', 'Een foto of pdf is genoeg.'],
+  },
+  lezen: {
+    spoor: 'controle', stap: 1, zijkop: 'Je houdt de controle',
+    zij: ['Er gaat geen melding naar de instantie.', 'Je kunt je bestanden nog aanpassen.'],
+  },
+  aanvullen: {
+    spoor: 'controle', stap: 2, zijkop: 'Je kunt verder',
+    zij: ['Je eerdere bestanden blijven staan.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  'meer-info': {
+    spoor: 'controle', stap: 2, zijkop: 'Je kunt verder',
+    zij: ['Je eerdere bestanden blijven staan.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  onleesbaar: {
+    spoor: 'controle', stap: 2, zijkop: 'Je kunt verder',
+    zij: ['Je eerdere bestanden blijven staan.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  'beslissing-binnen': {
+    spoor: 'controle', stap: 2, zijkop: 'Je kunt verder',
+    zij: ['Je eerdere bestanden blijven staan.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  storing: {
+    spoor: 'controle', stap: 2, zijkop: 'Je kunt verder',
+    zij: ['Je eerdere bestanden blijven staan.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  uitslag: {
+    spoor: 'controle', stap: 3, zijkop: 'Jouw uitslag eerst',
+    zij: ['Bekijk wat we hebben gevonden en waarop dat is gebaseerd.',
+      'Je hoeft geen opdracht te geven om je uitslag te zien.'],
+  },
+  hulp: {
+    spoor: 'opdracht', stap: 1, zijkop: 'Jij kiest de hulp',
+    zij: ['Je mag de melding ook zelf regelen.',
+      'Geen vergoeding voor het wachten? Dan kost onze hulp niets.'],
+  },
+  zelf: {
+    spoor: 'opdracht', stap: 1, zijkop: 'Jij kiest de hulp',
+    zij: ['Je mag de melding ook zelf regelen.', 'Een onzekere uitkomst is geen afwijzing.'],
+  },
+  gegevens: {
+    spoor: 'opdracht', stap: 2, zijkop: 'Alleen wat nodig is',
+    zij: ['Controleer je naam en e-mailadres voordat je verdergaat.',
+      'Je burgerservicenummer en rekeningnummer vragen wij hier niet.'],
+  },
+  toestemming: {
+    spoor: 'opdracht', stap: 3, zijkop: 'Dit is jouw keuze',
+    zij: ['Controleer de zaak, onze werkzaamheden en de kosten.',
+      'Er is nog niets naar de instantie gestuurd.'],
+  },
+  bevestiging: {
+    spoor: 'na', stap: 1, zijkop: 'Wat gebeurt er nu?',
+    zij: ['Een opdracht ontvangen is iets anders dan een melding versturen.',
+      'Je ziet apart wanneer de melding is verstuurd.'],
+  },
+  voortgang: {
+    spoor: 'na', stap: 2, zijkop: 'Geen verrassingen',
+    zij: ['Je ziet wie aan zet is en wat jij eventueel moet doen.'],
+  },
+};
 
-  const gevonden = [];
-  if (herkenning.organisatienaam || herkenning.bestuursorgaan) {
-    gevonden.push(`${herkenning.organisatienaam || labelBestuursorgaan(herkenning.bestuursorgaan)} herkend`);
-  }
-  if (herkenning.zaaktype) {
-    const zaaktype = zoekZaaktype(herkenning.zaaktype);
-    gevonden.push(`${zaaktype ? zaaktype.label : 'Soort zaak'} gevonden`);
-  }
-  if (herkenning.beslisdatum) gevonden.push('Uiterste beslisdatum gevonden');
-  if (herkenning.naam) gevonden.push('Je gegevens overgenomen');
-  if (gevonden.length === 0) return;
+/** Welke meting en welke controlestap bij een scherm horen. */
+const MEETSTAP = {
+  uitslag: 'funnel-uitslag', gegevens: 'funnel-gegevens', toestemming: 'funnel-akkoord',
+};
+const CONTROLESTAP = { uitslag: 'uitslag', gegevens: 'gegevens', toestemming: 'akkoord' };
+const gemeten = new Set();
 
-  uploadMelding.textContent = '';
-  const lijst = el('ul', { class: 'gelezen' });
-  for (const regel of gevonden) {
-    lijst.append(el('li', {}, el('span', { class: 'gelezen__vink', tekst: '\u2713' }),
-      el('span', { tekst: regel })));
-  }
-  uploadMelding.append(lijst);
-}
+let huidig = 'kiezen';
 
-/**
- * De hele stapel, brief voor brief.
- *
- * Iemand weet vaak niet welke brief de goede is - de ontvangstbevestiging, de
- * brief waarin de instantie meer tijd vraagt, of die hij zelf stuurde. Dat
- * hoeft hij ook niet te weten: hij stuurt ze allemaal en wij zoeken uit welke
- * de beslisdatum bepaalt. Zie shared/dossierlezer.js voor de regels.
- */
-async function verwerkStapel(ladingen) {
-  const data = await leesBrieven(ladingen, {
-    bijVoortgang: (klaar, totaal) => {
-      if (totaal > 1) toonBezig(`Wij lezen je brieven… (${Math.min(klaar + 1, totaal)} van ${totaal})`);
-    },
+function tekenStappen(scherm) {
+  const balk = bij('stappen');
+  balk.textContent = '';
+  const namen = SPOREN[scherm.spoor];
+  namen.forEach((naam, i) => {
+    const nummer = i + 1;
+    const stand = nummer < scherm.stap ? 'klaar' : (nummer === scherm.stap ? 'bezig' : 'open');
+    balk.append(el('li', { 'data-stand': stand },
+      el('span', { class: 'stap__bol', tekst: String(nummer), 'aria-hidden': 'true' }),
+      el('span', { class: 'stap__naam', tekst: naam }),
+      stand === 'bezig' ? el('span', { class: 'sr-only', tekst: ' (hier ben je nu)' }) : null));
   });
-  pasDossierToe(data);
-  return data;
 }
 
 /**
- * De controle vastleggen, ook als er geen aanvraag van komt.
+ * Van scherm wisselen.
+ *
+ * Eén plek, zodat de stappenbalk, de zijkolom, de meting en de focus niet
+ * kunnen gaan afwijken van wat er te zien is.
+ */
+function toon(naam) {
+  const scherm = SCHERMEN[naam];
+  if (!scherm) return;
+  huidig = naam;
+
+  for (const sectie of document.querySelectorAll('[data-scherm]')) {
+    sectie.classList.toggle('verborgen', sectie.dataset.scherm !== naam);
+  }
+  tekenStappen(scherm);
+  bij('zij-kop').textContent = scherm.zijkop;
+  const zij = bij('zij-tekst');
+  zij.textContent = '';
+  for (const regel of scherm.zij) zij.append(el('p', { tekst: regel }));
+
+  // Wat er op dit scherm hoort te staan, wordt hier getekend. Zo kan een
+  // scherm nooit oude inhoud laten zien van een eerdere doorloop.
+  if (VOORBEREID[naam]) VOORBEREID[naam]();
+
+  if (MEETSTAP[naam] && !gemeten.has(MEETSTAP[naam])) {
+    gemeten.add(MEETSTAP[naam]);
+    meet(MEETSTAP[naam]);
+  }
+  if (CONTROLESTAP[naam]) legControleVast(CONTROLESTAP[naam]);
+
+  // Naar boven, en de kaart krijgt de focus: anders leest een schermlezer na
+  // een klik gewoon door op de oude plek.
+  scrollTo({ top: 0, behavior: 'smooth' });
+  kaart.focus({ preventScroll: true });
+}
+
+// Knoppen en links die alleen van scherm wisselen.
+for (const knop of document.querySelectorAll('[data-terug], [data-scherm-heen]')) {
+  knop.addEventListener('click', (e) => {
+    e.preventDefault();
+    toon(knop.dataset.terug || knop.dataset.schermHeen);
+  });
+}
+
+// ------------------------------------------- de controle vastleggen ------
+
+/**
+ * Een uitgevoerde controle vastleggen, ook als er geen aanvraag van komt.
  *
  * Verreweg de meeste mensen die hun brief laten lezen, dienen niets in. Wat
  * er dan wegloopt willen wij kunnen zien: wat voor zaak het was en waar
@@ -211,14 +305,11 @@ async function verwerkStapel(ladingen) {
  * tabblad leeft - er wordt niets op het apparaat gezet en niets herkend bij
  * een volgend bezoek.
  *
- * De brieven gaan één keer mee, bij de uitslag. Naam, e-mailadres, telefoon
- * en rekeningnummer gaan nooit mee; die worden pas later ingevuld en horen
- * niet bij iemand die niets van ons heeft gevraagd.
+ * Naam, e-mailadres en telefoon gaan nooit mee; die horen niet bij iemand die
+ * niets van ons heeft gevraagd.
  */
 const controleSleutel = (() => {
-  try {
-    return crypto.randomUUID();
-  } catch {
+  try { return crypto.randomUUID(); } catch {
     return `c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 })();
@@ -257,338 +348,353 @@ function legControleVast(stap) {
   } catch { /* meten mag nooit in de weg zitten */ }
 }
 
-/** Wat een gelezen stapel met de zaak doet. */
-function pasDossierToe(data) {
-  if (!gemeten.has('funnel-brief')) {
-    gemeten.add('funnel-brief');
-    meet('funnel-brief');
+// --------------------------------------------------- 1. je brief kiezen --
+
+const invoerveld = bij('bestand');
+const kiesvak = bij('kiesvak');
+const bestandenlijst = bij('bestanden');
+const kiesmelding = bij('kiezen-melding');
+
+/** @type {{bestand: File, sleutel: string, soort: 'foto'|'pdf', url: string}[]} */
+let gekozen = [];
+
+const sleutelVan = (b) => JSON.stringify([b.name, b.size, b.lastModified, b.type]);
+
+function soortVan(bestand) {
+  const naam = String(bestand.name || '').toLowerCase();
+  if (bestand.type === 'image/svg+xml' || /\.svgz?$/.test(naam)) return null;
+  if (bestand.type === 'application/pdf' || /\.pdf$/.test(naam)) return 'pdf';
+  if (/^image\/(jpeg|png|webp|heic|heif|avif|gif|bmp|x-ms-bmp|tiff)$/i.test(bestand.type)
+    || /\.(jpe?g|png|webp|heic|heif|avif|gif|bmp|tiff?)$/.test(naam)) return 'foto';
+  return null;
+}
+
+function leesbaarFormaat(bytes) {
+  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} kB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} MB`;
+}
+
+function melding(soort, titel, tekst) {
+  return el('div', { class: `melding melding--${soort}`, style: 'margin-top:18px' },
+    el('strong', { tekst: titel }), tekst ? el('p', { tekst }) : null);
+}
+
+function toonKiesfout(regels) {
+  kiesmelding.textContent = '';
+  if (!regels.length) return;
+  const vak = el('div', { class: 'melding melding--let-op', style: 'margin-top:18px' },
+    el('strong', { tekst: 'Deze bestanden hebben aandacht nodig' }));
+  const lijst = el('ul', { style: 'margin:8px 0 0; padding-left:18px' });
+  for (const regel of regels) lijst.append(el('li', { tekst: regel }));
+  vak.append(lijst);
+  kiesmelding.append(vak);
+}
+
+function verwijderBestand(sleutel) {
+  const plek = gekozen.findIndex((r) => r.sleutel === sleutel);
+  if (plek < 0) return;
+  const [regel] = gekozen.splice(plek, 1);
+  URL.revokeObjectURL(regel.url);
+  toonBestanden();
+}
+
+function bestandKaartje(regel) {
+  const rij = el('li', { class: 'bestand' });
+
+  const duim = el(regel.soort === 'pdf' ? 'a' : 'button', { class: 'bestand__duim' });
+  if (regel.soort === 'pdf') {
+    duim.href = regel.url;
+    duim.target = '_blank';
+    duim.rel = 'noopener noreferrer';
+    duim.setAttribute('aria-label', `Open ${regel.bestand.name} in een nieuw tabblad`);
+    duim.textContent = 'PDF';
+    duim.append(el('span', { tekst: 'Open' }));
+  } else {
+    duim.type = 'button';
+    duim.setAttribute('aria-label', `Bekijk ${regel.bestand.name}`);
+    const beeld = el('img', { alt: '', src: regel.url });
+    duim.append(beeld, el('span', { tekst: 'Bekijk' }));
+    duim.addEventListener('click', () => window.open(regel.url, '_blank', 'noopener'));
+    // Lukt de miniatuur niet - heic op een android-telefoon - dan blijft het
+    // bestand bruikbaar; alleen het plaatje valt weg.
+    beeld.addEventListener('error', () => {
+      duim.textContent = 'FOTO';
+      duim.disabled = true;
+      duim.setAttribute('aria-label', 'Foto gekozen; voorvertoning niet beschikbaar op dit apparaat');
+    });
   }
+
+  const weg = el('button', { type: 'button', class: 'bestand__weg', tekst: 'Verwijder',
+    'aria-label': `Verwijder ${regel.bestand.name}` });
+  weg.addEventListener('click', () => verwijderBestand(regel.sleutel));
+
+  rij.append(duim,
+    el('div', {},
+      el('p', { class: 'bestand__naam', tekst: regel.bestand.name }),
+      el('p', { class: 'bestand__over',
+        tekst: `${regel.soort === 'pdf' ? 'PDF' : 'Foto'}, ${leesbaarFormaat(regel.bestand.size)}` })),
+    weg);
+  return rij;
+}
+
+function toonBestanden() {
+  bestandenlijst.replaceChildren(...gekozen.map(bestandKaartje));
+}
+
+function voegBestandenToe(bestanden) {
+  const fouten = [];
+  const sleutels = new Set(gekozen.map((r) => r.sleutel));
+  let teveel = 0;
+  let nieuw = 0;
+
+  for (const bestand of gekozenBestanden(bestanden, Infinity)) {
+    const soort = soortVan(bestand);
+    if (!soort) {
+      fouten.push(`${bestand.name}: kies een foto of pdf. Dit bestandstype kunnen we niet lezen.`);
+      continue;
+    }
+    const sleutel = sleutelVan(bestand);
+    if (sleutels.has(sleutel)) continue;
+    if (gekozen.length >= MAX_BRIEVEN) { teveel += 1; continue; }
+    const bron = soort === 'pdf' ? new Blob([bestand], { type: 'application/pdf' }) : bestand;
+    gekozen.push({ bestand, sleutel, soort, url: URL.createObjectURL(bron) });
+    sleutels.add(sleutel);
+    nieuw += 1;
+  }
+
+  if (teveel) fouten.push(`Er passen ${MAX_BRIEVEN} brieven in één controle; de rest is niet toegevoegd.`);
+  toonKiesfout(fouten);
+  toonBestanden();
+  return nieuw;
+}
+
+bij('knop-kiezen').addEventListener('click', () => invoerveld.click());
+invoerveld.addEventListener('change', () => {
+  const erbij = voegBestandenToe(invoerveld.files);
+  invoerveld.value = '';
+  // "Na je keuze gaan we direct verder": wie een brief kiest, wil hem laten
+  // lezen. Nog een knop ertussen is een stap die niets toevoegt.
+  if (erbij > 0) leesDeBrieven();
+});
+
+let sleepdiepte = 0;
+kiesvak.addEventListener('dragenter', (e) => {
+  e.preventDefault(); sleepdiepte += 1; kiesvak.classList.add('sleep');
+});
+kiesvak.addEventListener('dragover', (e) => {
+  e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+});
+kiesvak.addEventListener('dragleave', (e) => {
+  e.preventDefault(); sleepdiepte = Math.max(0, sleepdiepte - 1);
+  if (!sleepdiepte) kiesvak.classList.remove('sleep');
+});
+kiesvak.addEventListener('drop', (e) => {
+  e.preventDefault(); sleepdiepte = 0; kiesvak.classList.remove('sleep');
+  if (e.dataTransfer && voegBestandenToe(e.dataTransfer.files) > 0) leesDeBrieven();
+});
+
+// "Een brief toevoegen" op de aanvulschermen brengt je terug naar de keuze én
+// opent meteen de kiezer: dat is waar de knop om vraagt.
+for (const knop of document.querySelectorAll('[data-erbij]')) {
+  knop.addEventListener('click', () => { toon('kiezen'); invoerveld.click(); });
+}
+
+bij('knop-opnieuw').addEventListener('click', () => leesDeBrieven());
+
+// -------------------------------------------------- de brieven lezen ----
+
+function herbereken() {
+  zaak.rapport = berekenDwangsom(zaak.invoer);
+}
+
+function pasDossierToe(data) {
+  if (!gemeten.has('funnel-brief')) { gemeten.add('funnel-brief'); meet('funnel-brief'); }
   zaak.brief = data.brief;
   zaak.verlengbrief = data.verlengbrief || null;
   zaak.brieven = data.alleBrieven || [];
   zaak.gelezenBrieven = data.brieven || [];
   zaak.brievenOpmerkingen = data.opmerkingen || [];
-  zaak.herkenning = data.herkenning;
-  zaak.invoer = data.invoer;
-  zaak.rapport = berekenDwangsom(data.invoer);
-  // Wat uit de brieven zelf blijkt, hoeft straks niet meer gevraagd te
-  // worden. Dat is de winst van alles tegelijk uploaden.
+  zaak.herkenning = data.herkenning || {};
+  zaak.invoer = data.invoer || {};
+  if (!zaak.invoer.bestuursorgaan && ingang.instantie) zaak.invoer.bestuursorgaan = ingang.instantie;
+  zaak.rapport = berekenDwangsom(zaak.invoer);
+  // Wat uit de brieven zelf blijkt, hoeft straks niet meer gevraagd te worden.
   zaak.uitBrieven = {
-    verdaagd: Boolean(data.invoer.verdaagd),
-    ingebrekeGesteld: Boolean(data.invoer.ingebrekeGesteld),
-    besluitGenomen: Boolean(data.invoer.besluitGenomen),
+    verdaagd: Boolean(zaak.invoer.verdaagd),
+    ingebrekeGesteld: Boolean(zaak.invoer.ingebrekeGesteld),
+    besluitGenomen: Boolean(zaak.invoer.besluitGenomen),
   };
 }
 
-async function stuurBrief(payload, { tweede = false } = {}) {
-  const antwoord = await fetch('/api/brief', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  });
-  const data = await antwoord.json().catch(() => ({}));
-  if (!antwoord.ok) {
-    const err = new Error(data.fout || 'Wij konden deze brief niet lezen.');
-    err.hint = data.hint;
-    throw err;
-  }
-  if (tweede) return data;
-
-  zaak.brief = data.brief;
-  zaak.herkenning = data.herkenning;
-  zaak.invoer = data.invoer;
-  zaak.rapport = data.rapport;
-  return data;
-}
-
-async function verwerkBestanden(bestanden) {
-  const gekozen = gekozenBestanden(bestanden);
-  if (gekozen.length === 0) return;
-  const foto = gekozen.some((b) => /^image\//i.test(b.type || ''));
-  toonBezig(bezigTekst(gekozen.length, foto));
-  const ladingen = [];
-  for (const bestand of gekozen) ladingen.push(await alsLading(bestand));
-  await verwerkLadingen(ladingen);
-}
-
-function bezigTekst(aantal, foto) {
-  if (aantal > 1) return `Wij lezen je ${aantal} brieven…`;
-  return foto ? 'Wij lezen je foto…' : 'Wij lezen je brief…';
-}
-
-async function verwerkLadingen(ladingen) {
-  const foto = ladingen.some((l) => /^image\//i.test(l.mediaType || ''));
-  toonBezig(bezigTekst(ladingen.length, foto));
-  try {
-    const data = await verwerkStapel(ladingen);
-    // Eerst laten zien wát wij eruit haalden, dan pas doorspringen. Die halve
-    // seconde is het moment waarop iemand denkt: ze hebben mijn brief gelezen.
-    toonGelezen(data.herkenning || {}, data.brieven || []);
-    await new Promise((klaar) => setTimeout(klaar, data.brieven.length > 1 ? 1400 : 700));
-    uploadMelding.textContent = '';
-    gaNaar(2);
-  } catch (err) {
-    uploadMelding.textContent = '';
-    uploadMelding.append(melding('let-op', err.message, err.hint || ''));
-    uploadMelding.append(el('p', { class: 'fijndruk', style: 'text-align:left; margin-top:10px' },
-      'Je kunt de tekst van je brief ook hieronder plakken, of ',
-      el('a', { href: '/aanvraag-klassiek' }, 'de vragen zelf beantwoorden'), '.'));
-  }
-}
-
-/** Wat een tweede brief over dezelfde zaak verandert: de datum. */
-function pasVerlengbriefToe(data) {
-  zaak.verlengbrief = data.brief;
-  if (data.herkenning && data.herkenning.beslisdatum) {
-    zaak.invoer.termijnEinddatum = data.herkenning.beslisdatum;
-    zaak.invoer.verdagingEinddatum = data.herkenning.beslisdatum;
-    zaak.invoer.termijnBekend = true;
-  }
-  zaak.invoer.verdaagd = true;
-}
-
-/**
- * De brieven die op de campagnelanding al zijn gelezen.
- *
- * Die pagina leest ze daar zelf en zet alleen het resultaat klaar - geen
- * bestanden, want die passen niet in de opslag van een tabblad. Hier wordt
- * dat resultaat opgepakt en getoond alsof het hier was gebeurd. Eén keer:
- * daarna is het weg, zodat een pagina die terugveert niet opnieuw begint.
- */
-function overgedragenBrieven() {
-  try {
-    const ruw = sessionStorage.getItem('nubeslist:brieven');
-    if (!ruw) return [];
-    sessionStorage.removeItem('nubeslist:brieven');
-    const gelezen = JSON.parse(ruw);
-    return Array.isArray(gelezen) ? gelezen.filter((b) => b && b.herkenning && b.brief) : [];
-  } catch {
-    return [];
-  }
-}
-
-async function toonOvergedragen(gelezen) {
-  const data = combineer(gelezen);
-  pasDossierToe(data);
-  toonGelezen(data.herkenning || {}, data.brieven || []);
-  await new Promise((klaar) => setTimeout(klaar, data.brieven.length > 1 ? 1400 : 700));
-  uploadMelding.textContent = '';
-  gaNaar(2);
-}
-
-dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('sleep'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('sleep'));
-dropzone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropzone.classList.remove('sleep');
-  verwerkBestanden(e.dataTransfer.files);
-});
-bestandInvoer.addEventListener('change', () => verwerkBestanden(bestandInvoer.files));
-
-const meegekomen = overgedragenBrieven();
-if (meegekomen.length > 0) {
-  toonBezig(meegekomen.length > 1 ? 'Wij zetten je brieven op een rij…' : 'Wij lezen je brief…');
-  toonOvergedragen(meegekomen.slice(0, MAX_BRIEVEN));
-}
-
-document.getElementById('knop-plak').addEventListener('click', async () => {
-  const tekst = document.getElementById('plaktekst').value.trim();
-  if (tekst.length < 40) {
-    uploadMelding.textContent = '';
-    uploadMelding.append(melding('let-op', 'Er staat te weinig tekst', 'Plak de hele brief, inclusief de datum waarop je een beslissing zou krijgen.'));
-    return;
-  }
-  toonBezig('Wij lezen je tekst…');
-  try {
-    await stuurBrief({ tekst });
-    if (!gemeten.has('funnel-brief')) {
-      gemeten.add('funnel-brief');
-      meet('funnel-brief');
-    }
-    uploadMelding.textContent = '';
-    gaNaar(2);
-  } catch (err) {
-    uploadMelding.textContent = '';
-    uploadMelding.append(melding('let-op', err.message, err.hint || ''));
-  }
-});
-
-// -------------------------------------------------------------- stap 2 ----
-
-/** Opnieuw rekenen na een antwoord van de aanvrager. */
-function herbereken() {
-  zaak.rapport = zaak.invoer.zaaktype && zaak.invoer.basisdatum ? berekenDwangsom(zaak.invoer) : null;
-}
-
-/**
- * "met jouw WIA-beslissing" erachter, als wij dat uit de brief hebben gehaald.
- * Alles wat we al weten, gebruiken we: dat is het verschil tussen een uitslag
- * over een instantie en een uitslag over jouw zaak.
- */
-/**
- * De zaak van deze klant in gewone taal: "je WW-aanvraag".
- *
- * Het label uit de catalogus is een werkwoordzin voor een keuzelijst ("WIA-
- * uitkering aanvragen of beoordelen") en past nergens in een lopende zin.
- * Kleine letters maken helpt niet: dan wordt WW ineens ww. Daarom hier één
- * korte vorm per zaaktype, die overal wordt hergebruikt.
- *
- * @returns {string} bijvoorbeeld 'je WW-aanvraag', of '' als wij het niet weten
- */
-function zaakInEenZin() {
-  const zaaktype = zoekZaaktype(zaak.invoer && zaak.invoer.zaaktype);
-  if (!zaaktype) return '';
-  return { 'uwv-wia': 'je WIA-beslissing', 'uwv-ww': 'je WW-aanvraag',
-    'uwv-wajong': 'je Wajong-beslissing', 'uwv-zw': 'je Ziektewet-uitkering',
-    'uwv-herbeoordeling': 'je herbeoordeling', 'uwv-bezwaar': 'je bezwaar',
-    'gem-bijstand': 'je bijstandsaanvraag', 'gem-bijzondere-bijstand': 'je aanvraag voor bijzondere bijstand',
-    'gem-wmo': 'je Wmo-aanvraag', 'gem-jeugdwet': 'je aanvraag voor jeugdhulp',
-    'gem-schuldhulp': 'je aanvraag voor schuldhulp', 'gem-parkeervergunning': 'je aanvraag bij de gemeente',
-    'gem-bezwaar': 'je bezwaar', 'duo-studiefinanciering': 'je studiefinanciering',
-    'duo-bezwaar': 'je bezwaar', 'svb-aow': 'je AOW-aanvraag', 'svb-bezwaar': 'je bezwaar',
-    'bel-toeslag': 'je toeslag', 'bel-bezwaar': 'je bezwaar',
-    'overig-aanvraag': 'je aanvraag', 'overig-bezwaar': 'je bezwaar' }[zaaktype.id] || '';
-}
-
-function zaakErbij() {
-  const kort = zaakInEenZin();
-  return kort ? ` met ${kort}` : '';
-}
-
-function rendereUitslag() {
-  const vak = document.getElementById('uitslag');
-  vak.textContent = '';
+/** Welk scherm hoort bij wat wij net gelezen hebben? */
+function naHetLezen() {
   const r = zaak.rapport;
-  const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan) || 'de instantie';
-  const einddatum = datumTekst(r && r.beslistermijn ? r.beslistermijn.einddatum : zaak.invoer.termijnEinddatum);
+  if (zaak.invoer.besluitGenomen && !zaak.invoer.ingebrekeGesteld) {
+    return 'beslissing-binnen';
+  }
+  if (!r || r.onvolledig) {
+    const wat = bij('meerinfo-wat');
+    wat.textContent = (r && r.samenvatting)
+      || 'Heb je na deze brief een nieuwe datum of beslissing gekregen?';
+    return 'meer-info';
+  }
+  return 'aanvullen';
+}
 
-  // Ontbreekt er nog iets, dan blijft de vorige uitkomst staan en vragen wij
-  // alleen het ontbrekende; het scherm springt niet naar iets anders.
-  if (r && r.onvolledig) {
-    vak.append(el('div', { class: 'melding melding--info' },
-      el('strong', { tekst: r.kop }),
-      el('p', { tekst: r.samenvatting })));
-    navigatie.classList.add('verborgen');
-    return;
+async function leesDeBrieven() {
+  if (gekozen.length === 0) { toon('kiezen'); return; }
+  toon('lezen');
+  const stand = bij('lezen-stand');
+  const foto = gekozen.some((r) => r.soort !== 'pdf');
+  stand.textContent = gekozen.length > 1 ? 'Wij lezen je brieven…' : 'Wij lezen je brief…';
+  let traag = null;
+  if (foto) {
+    traag = setTimeout(() => {
+      stand.textContent = `${stand.textContent} Een foto duurt wat langer dan een pdf.`;
+    }, 6000);
   }
 
-  if (!r) {
-    vak.append(el('div', { class: 'uitslag' },
-      el('div', { class: 'uitslag__icoon', tekst: '🔍' }),
-      el('h2', {}, 'Wij konden er niet genoeg uithalen'),
-      el('p', {}, 'Uit deze brief halen wij te weinig om nu al te rekenen. Beantwoord een paar korte vragen, dan kijken wij alsnog mee.')));
-    vak.append(el('div', { style: 'margin-top:20px; text-align:center' },
-      el('a', { class: 'knop knop--primair', href: '/aanvraag-klassiek' }, 'Vragen beantwoorden →')));
-    navigatie.classList.add('verborgen');
-    return;
+  try {
+    const ladingen = [];
+    for (const regel of gekozen) ladingen.push(await alsLading(regel.bestand));
+    const data = await leesBrieven(ladingen, {
+      bijVoortgang: (klaar, totaal) => {
+        stand.textContent = totaal > 1
+          ? `Wij lezen je brieven… (${Math.min(klaar + 1, totaal)} van ${totaal})`
+          : 'Wij lezen je brief…';
+      },
+    });
+    pasDossierToe(data);
+    toonWatWijLazen();
+    toon(naHetLezen());
+  } catch (fout) {
+    // Een foto die niet te lezen is, is iets anders dan een storing: in het
+    // eerste geval kan de bezoeker er zelf iets aan doen, in het tweede niet.
+    const beeldfout = ['onleesbaar-beeld', 'afbeelding', 'heic', 'formaat'].includes(fout.soort);
+    if (beeldfout) {
+      bij('onleesbaar-onder').textContent = fout.message;
+      if (fout.hint) bij('onleesbaar-hint').textContent = fout.hint;
+      toon('onleesbaar');
+    } else {
+      bij('storing-onder').textContent = `${fout.message} Je bestanden staan er nog.`;
+      toon('storing');
+    }
+  } finally {
+    clearTimeout(traag);
   }
+}
 
-  const teLaat = r.uitkomst === UITKOMST.RECHT
-    || r.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
-    || r.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
+// ----------------------------------------------------- 2. aanvullen ------
 
-  const icoon = { [UITKOMST.RECHT]: '🎉', [UITKOMST.INGEBREKESTELLING_NODIG]: '⏰',
-    [UITKOMST.HERSTELTERMIJN_LOOPT]: '⏳', [UITKOMST.TERMIJN_LOOPT]: '🕐',
-    [UITKOMST.GEEN_RECHT]: 'ℹ️' }[r.uitkomst] || 'ℹ️';
+/** Wat al uit de brieven bleek: geen vraag maar een bevestiging. */
+function uitJeBrieven(tekst) {
+  return el('div', { class: 'melding melding--info', style: 'margin-top:14px' },
+    el('strong', { tekst: '✓ Dit stond al in je brief' }), el('p', { tekst }));
+}
 
-  const opgebouwd = r.berekening && r.berekening.dagen > 0 ? euro(r.berekening.totaal) : null;
-
-  let titel;
-  if (r.uitkomst === UITKOMST.GEEN_RECHT) titel = 'Hier kunnen wij niets mee claimen';
-  else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) titel = `${orgaan} heeft nog even de tijd`;
-  else if (opgebouwd) titel = `${orgaan} is te laat: er staat ${opgebouwd} open`;
-  else titel = `Het lijkt erop dat ${orgaan} te laat is${zaakErbij()}`;
-
-  vak.append(el('div', { class: 'uitslag' },
-    el('div', { class: 'uitslag__icoon', tekst: icoon }),
-    el('h2', { tekst: titel })));
-
-  if (einddatum) {
-    const dagen = r.beslistermijn ? verschilDagen(parseDatum(r.beslistermijn.einddatum), vandaag()) : 0;
-    // Twee naast elkaar, niet één lopende zin: dit is het moment waarop iemand
-    // moet zien dat wij zijn brief echt gelezen hebben.
-    //
-    // En "dat is 114 dagen geleden" is rekenwerk; de bezoeker wil de betekenis.
-    // "Je wacht 114 dagen langer dan in je brief staat" zegt: je stelt je niet
-    // aan. Dat is dezelfde informatie met een heel ander effect.
-    const onder = dagen > 0
-      ? { kop: 'Je wacht inmiddels', waarde: `${dagen} ${dagen === 1 ? 'dag' : 'dagen'} langer`,
-        onder: 'dan de datum in je brief' }
-      : dagen === 0
-        ? { kop: 'Dat is', waarde: 'vandaag', onder: 'de laatste dag volgens je brief' }
-        : { kop: 'Dat is over', waarde: `${-dagen} ${dagen === -1 ? 'dag' : 'dagen'}`,
-          onder: 'vanaf vandaag gerekend' };
-
-    vak.append(el('div', { class: 'feitrij' },
-      el('div', { class: 'feitrij__vak' },
-        el('span', { class: 'feitrij__kop',
-          tekst: dagen > 0 ? `${orgaan} zou uiterlijk beslissen` : `${orgaan} moet beslissen uiterlijk` }),
-        el('strong', { class: 'feitrij__waarde', tekst: einddatum }),
-        el('span', { class: 'feitrij__onder', tekst: 'volgens jouw brief' })),
-      el('div', { class: `feitrij__vak${dagen > 0 ? ' feitrij__vak--let-op' : ''}` },
-        el('span', { class: 'feitrij__kop', tekst: onder.kop }),
-        el('strong', { class: 'feitrij__waarde', tekst: onder.waarde }),
-        el('span', { class: 'feitrij__onder', tekst: onder.onder }))));
+/** Eén ja/nee-vraag, of met eigen antwoorden. */
+function vraag(tekst, naam, huidigAntwoord, bijKeuze, uitleg, opties) {
+  const keuzes = opties || [{ label: 'Nee', waarde: false }, { label: 'Ja', waarde: true }];
+  const vak = el('div', { class: 'veld', style: 'margin-top:20px' },
+    el('span', { class: 'veld__kop', tekst }));
+  if (uitleg) vak.append(el('p', { class: 'veld__hulp', tekst: uitleg }));
+  const rij = el('div', { class: 'keuzes keuzes--rij' });
+  for (const keuze of keuzes) {
+    const knop = el('button', {
+      type: 'button',
+      class: `knop knop--keuze${keuze.waarde === huidigAntwoord ? ' knop--keuze-aan' : ''}`,
+      tekst: keuze.label,
+    });
+    knop.addEventListener('click', () => bijKeuze(keuze.waarde));
+    rij.append(knop);
   }
+  vak.append(rij);
+  return vak;
+}
 
-  // --- 3. Wat er hierna komt is geen vragenlijst maar een aanvulling --------
-  // Zonder deze zin verandert het gevoel van "ze hebben mijn zaak uitgezocht"
-  // naar "oké, nu begint alsnog een formulier".
-  vak.append(el('p', { class: 'aanvulkop' },
-    'Je brief is duidelijk. We hoeven alleen nog een paar dingen van je te weten om te '
-    + 'controleren of je nu daadwerkelijk in actie kunt komen.'));
+/** Wat wij uit de brieven haalden, op één rij. */
+function toonWatWijLazen() {
+  const vak = bij('uitbrief');
+  vak.textContent = '';
+  const orgaan = orgaanNaam();
+  const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
+  const einddatum = datumTekst(
+    (zaak.rapport && zaak.rapport.beslistermijn && zaak.rapport.beslistermijn.einddatum)
+    || zaak.invoer.termijnEinddatum,
+  );
 
-  // Twee korte vragen die de uitkomst kunnen omgooien.
+  const lijst = el('dl', { class: 'samenvatting' });
+  const regel = (kop, waarde) => {
+    if (!waarde) return;
+    lijst.append(el('div', {}, el('dt', { tekst: kop }), el('dd', { tekst: waarde })));
+  };
+  regel('Instantie', orgaan);
+  regel('Soort zaak', zaaktype ? zaaktype.label : '');
+  regel('Uiterste beslisdatum volgens je brief', einddatum);
+  regel('Aantal brieven gelezen', zaak.brieven.length ? String(zaak.brieven.length) : '');
+  if (lijst.children.length) vak.append(lijst);
+
+  for (const opmerking of zaak.brievenOpmerkingen) {
+    vak.append(melding('let-op', opmerking.kop || 'Let op', opmerking.tekst || ''));
+  }
+}
+
+/** De vragen die de uitkomst nog kunnen omgooien. */
+function tekenAanvulvragen() {
+  const vak = bij('aanvullen');
+  vak.textContent = '';
+  const orgaan = orgaanNaam();
+
   vak.append(vraag('Heb je inmiddels een beslissing ontvangen?', 'beslissing',
     zaak.invoer.besluitGenomen, (ja) => {
       zaak.invoer.besluitGenomen = ja;
       if (!ja) zaak.invoer.besluitDatum = '';
       else if (!zaak.invoer.besluitDatum) zaak.invoer.besluitDatum = zaak.herkenning.briefdatum || '';
       herbereken();
-      rendereUitslag();
+      tekenAanvulvragen();
     }));
 
   if (!zaak.invoer.besluitGenomen && zaak.uitBrieven.verdaagd) {
-    // Stond al in een van de brieven. Die vraag dan toch stellen is vragen
-    // naar iets wat de aanvrager net heeft aangeleverd.
-    vak.append(uitJeBrieven(`${orgaan} heeft de beslisdatum verzet naar `
+    vak.append(uitJeBrieven(`${metHoofdletter(orgaan)} heeft de beslisdatum verzet naar `
       + `${datumTekst(zaak.invoer.verdagingEinddatum || zaak.invoer.termijnEinddatum)}.`));
   } else if (!zaak.invoer.besluitGenomen) {
-    vak.append(vraag(`Heeft ${orgaan} daarna laten weten dat zij meer tijd nodig hebben?`, 'verlenging',
+    vak.append(vraag(`Heeft ${orgaan} daarna laten weten meer tijd nodig te hebben?`, 'verlenging',
       zaak.invoer.verdaagd, (ja) => {
         zaak.invoer.verdaagd = ja;
-        if (ja) toonTweedeUpload(vak);
-        else {
+        if (!ja) {
           zaak.invoer.verdagingEinddatum = '';
           zaak.invoer.termijnEinddatum = zaak.herkenning.beslisdatum || '';
-          herbereken();
-          rendereUitslag();
         }
+        herbereken();
+        tekenAanvulvragen();
       }));
+    if (zaak.invoer.verdaagd && !zaak.verlengbrief) {
+      vak.append(el('div', { class: 'melding melding--info', style: 'margin-top:12px' },
+        el('strong', {}, 'Voeg die brief erbij'),
+        el('p', {}, 'Daarin staat de nieuwe datum. Zonder die brief rekenen wij met de oude.')));
+      const knop = el('button', { type: 'button', class: 'knop knop--zacht knop--klein',
+        style: 'margin-top:10px' }, 'Brief toevoegen');
+      knop.addEventListener('click', () => { toon('kiezen'); invoerveld.click(); });
+      vak.append(knop);
+    }
   }
 
-  if (zaak.invoer.verdaagd && !zaak.verlengbrief && !zaak.invoer.besluitGenomen) {
-    toonTweedeUpload(vak, true);
-  }
-
-  // Wie zelf al heeft aangemaand, loopt al een dwangsom op. Dat is precies de
-  // situatie waarin er nu geld te halen valt, dus die vraag hoort hier - maar
-  // alleen als de termijn ook echt voorbij is, anders is hij verwarrend.
-  if (teLaat && !zaak.invoer.besluitGenomen && zaak.uitBrieven.ingebrekeGesteld) {
+  if (!zaak.invoer.besluitGenomen && zaak.uitBrieven.ingebrekeGesteld) {
     vak.append(uitJeBrieven('Je hebt zelf al gemeld dat je wacht'
       + `${zaak.invoer.ingebrekestellingDatum ? `, op ${datumTekst(zaak.invoer.ingebrekestellingDatum)}` : ''}. `
       + 'Dat hoef je dus niet nog een keer te doen.'));
-  } else if (teLaat && !zaak.invoer.besluitGenomen) {
+  } else if (!zaak.invoer.besluitGenomen) {
     // Bewust niet "aangemaand": dat woord kent bijna niemand. En bewust een
     // derde antwoord: iemand kan best iets gestuurd hebben zonder te weten of
-    // dat juridisch als melding telt. Dat laten wij beoordelen, niet hem.
+    // dat juridisch als melding telt. Dat beoordelen wij, niet hij.
     vak.append(vraag(`Heb je ${orgaan} al een brief of bericht gestuurd omdat je te lang wacht?`,
-      'igs', zaak.invoer.ingebrekeGesteld, (ja) => {
+      'igs', zaak.invoer.igsOnzeker ? 'onzeker' : zaak.invoer.ingebrekeGesteld, (ja) => {
         zaak.invoer.ingebrekeGesteld = ja === true;
         zaak.invoer.igsOnzeker = ja === 'onzeker';
         if (!ja) zaak.invoer.ingebrekestellingDatum = '';
-        // Pas herrekenen als de datum er is; anders is de invoer onvolledig
-        // en zou het scherm omslaan naar een uitkomst die nergens op slaat.
         if (!ja || zaak.invoer.ingebrekestellingDatum) herbereken();
-        rendereUitslag();
+        tekenAanvulvragen();
       },
       'Je hoeft niet te weten of dat juridisch als officiële melding telt; dat zoeken wij uit.',
       [{ label: 'Nee', waarde: false }, { label: 'Ja', waarde: true },
@@ -597,551 +703,432 @@ function rendereUitslag() {
     if (zaak.invoer.igsOnzeker) {
       vak.append(el('div', { class: 'melding melding--info', style: 'margin-top:12px' },
         el('strong', {}, 'Geen probleem, dat zoeken wij uit'),
-        el('p', {}, 'Stuur die brief of e-mail mee in je dossier, dan controleren wij of hij als '
+        el('p', {}, 'Voeg die brief of e-mail toe aan je dossier, dan controleren wij of hij als '
           + 'melding kan gelden. Zo niet, dan versturen wij alsnog een nieuwe.')));
     }
-
     if (zaak.invoer.ingebrekeGesteld) {
-      const datumvak = el('div', { class: 'veld', style: 'margin-top:12px' },
+      const datumvak = el('div', { class: 'veld', style: 'margin-top:14px' },
         el('label', { for: 'igs-datum' }, 'Wanneer heb je die verstuurd?'));
-      const invoerveld = el('input', { type: 'date', id: 'igs-datum' });
-      invoerveld.value = zaak.invoer.ingebrekestellingDatum || '';
-      invoerveld.addEventListener('change', () => {
-        zaak.invoer.ingebrekestellingDatum = invoerveld.value;
+      const veld = el('input', { type: 'date', id: 'igs-datum' });
+      veld.value = zaak.invoer.ingebrekestellingDatum || '';
+      veld.addEventListener('change', () => {
+        zaak.invoer.ingebrekestellingDatum = veld.value;
         herbereken();
-        rendereUitslag();
+        tekenAanvulvragen();
       });
-      datumvak.append(invoerveld,
+      datumvak.append(veld,
         el('p', { class: 'veld__hulp', style: 'margin-top:6px' },
           'Weet je de datum niet meer? Kies dan hierboven "Weet ik niet"; wij zoeken het uit.'),
         el('p', { class: 'veld__fout verborgen', 'data-fout': 'igs-datum' }));
       vak.append(datumvak);
     }
   }
+}
 
-  const bedrag = opgebouwd;
+bij('knop-naar-uitslag').addEventListener('click', () => {
+  if (zaak.invoer.ingebrekeGesteld && !zaak.invoer.ingebrekestellingDatum) {
+    zetFout('igs-datum', 'Vul de datum in, of kies "Weet ik niet".');
+    return;
+  }
+  herbereken();
+  if (zaak.rapport && zaak.rapport.onvolledig) {
+    bij('meerinfo-wat').textContent = zaak.rapport.samenvatting
+      || 'Heb je na deze brief een nieuwe datum of beslissing gekregen?';
+    toon('meer-info');
+    return;
+  }
+  tekenUitslag();
+  toon('uitslag');
+});
+
+// ------------------------------------------------------ 3. je uitslag ----
+
+/**
+ * De zin uit de brief waarin de datum staat.
+ *
+ * Wij vertellen de bezoeker dat zijn brief gelezen is; dat is overtuigender
+ * als hij zijn eigen zin terugziet dan als wij alleen een datum noemen. Staat
+ * de zin er niet in - een gescande brief levert soms rommelige tekst - dan
+ * laten wij het citaat gewoon weg in plaats van iets te verzinnen.
+ */
+function citaatUitBrief(tekst, datumISO) {
+  const datum = parseDatum(datumISO);
+  if (!datum || !tekst) return null;
+  const geschreven = toonDatum(datum);
+  const plek = tekst.indexOf(geschreven);
+  if (plek < 0) return null;
+  const begin = Math.max(0, tekst.lastIndexOf('.', plek) + 1);
+  const eind = tekst.indexOf('.', plek + geschreven.length);
+  const zin = tekst.slice(begin, eind < 0 ? plek + geschreven.length + 60 : eind + 1)
+    .replace(/\s+/g, ' ').trim();
+  if (zin.length < geschreven.length + 8 || zin.length > 240) return null;
+  return { zin, datum: geschreven };
+}
+
+function tekenUitslag() {
+  const vak = bij('uitslag');
+  vak.textContent = '';
+  const r = zaak.rapport;
+  const orgaan = orgaanNaam();
+  const kaartvak = bij('kaart');
+  kaartvak.classList.add('kaartblad--uitslag');
+
+  if (!r) {
+    vak.append(
+      el('p', { class: 'bovenkop', tekst: 'Je uitslag' }),
+      el('h1', {}, 'Wij konden er niet genoeg uithalen'),
+      el('p', {}, 'Uit deze brief halen wij te weinig om nu al te rekenen. Beantwoord een paar '
+        + 'korte vragen, dan kijken wij alsnog mee.'));
+    const knoppen = el('div', { class: 'knoprij' },
+      el('a', { class: 'knop knop--primair', href: '/aanvraag-klassiek' }, 'Vragen beantwoorden'));
+    vak.append(knoppen);
+    return;
+  }
+
+  const einddatum = datumTekst(r.beslistermijn ? r.beslistermijn.einddatum : zaak.invoer.termijnEinddatum);
+  const teLaat = r.uitkomst === UITKOMST.RECHT
+    || r.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
+    || r.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
+  const opgebouwd = r.berekening && r.berekening.dagen > 0 ? euro(r.berekening.totaal) : null;
+
+  let titel;
+  if (r.uitkomst === UITKOMST.GEEN_RECHT) titel = 'Hier kunnen wij niets mee claimen';
+  else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) titel = `${metHoofdletter(orgaan)} heeft nog tijd om te beslissen`;
+  else if (opgebouwd) titel = `${metHoofdletter(orgaan)} is te laat: er staat ${opgebouwd} open`;
+  else titel = `${metHoofdletter(orgaan)} lijkt te laat`;
+
+  vak.append(el('p', { class: 'bovenkop', tekst: 'Je uitslag' }), el('h1', { tekst: titel }));
+
   if (teLaat) {
-    // Dit is het conversiemoment. Niet één zin, maar een opsomming van wat wij
-    // precies overnemen: dat is waar iemand ja op zegt.
-    const lijst = el('ul', { class: 'wijdoen' });
-    for (const regel of [
-      `stellen wij de melding aan ${orgaan} voor je op`,
-      'versturen wij deze en bewaren wij het verzendbewijs',
-      `houden wij bij wanneer ${orgaan} moet reageren`,
-      'controleren wij daarna of je recht hebt op een vergoeding',
-    ]) {
-      lijst.append(el('li', {}, el('span', { class: 'wijdoen__vink', tekst: '\u2713' }),
-        el('span', { tekst: regel })));
+    vak.append(el('p', {}, einddatum
+      ? `De datum uit je brief is voorbij. Je wacht nog steeds op een beslissing.`
+      : 'De beslistermijn lijkt verstreken. Je wacht nog steeds op een beslissing.'));
+  } else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) {
+    vak.append(el('p', {}, `${metHoofdletter(orgaan)} is nog niet te laat. Je hoeft nu niets te doen.`));
+  }
+
+  // Het citaat uit de eigen brief, als wij de zin kunnen terugvinden.
+  const bron = zaak.brief && zaak.brief.tekst;
+  const citaat = citaatUitBrief(bron, r.beslistermijn ? r.beslistermijn.einddatum : zaak.invoer.termijnEinddatum);
+  if (citaat) {
+    const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
+    const blok = el('div', { class: 'briefcitaat' },
+      el('p', { class: 'bovenkop',
+        tekst: `Uit je brief${zaaktype ? `: ${zaaktype.label}` : ''}` }));
+    const quote = el('blockquote');
+    const stukken = citaat.zin.split(citaat.datum);
+    quote.append(document.createTextNode(`“${stukken[0]}`));
+    quote.append(el('mark', { tekst: citaat.datum }));
+    quote.append(document.createTextNode(`${stukken.slice(1).join(citaat.datum)}”`));
+    blok.append(quote);
+    if (zaak.brief && zaak.brief.bestandsnaam) {
+      blok.append(el('p', { tekst: `Gelezen uit ${zaak.brief.bestandsnaam}.` }));
     }
+    vak.append(blok);
+  }
+
+  // De twee feiten naast elkaar. Dit is het moment waarop iemand moet zien dat
+  // wij zijn brief echt gelezen hebben.
+  if (einddatum) {
+    const dagen = r.beslistermijn ? verschilDagen(parseDatum(r.beslistermijn.einddatum), vandaag()) : 0;
+    const situatie = zaak.invoer.besluitGenomen
+      ? 'Beslissing ontvangen'
+      : (dagen > 0 ? `${dagen} ${dagen === 1 ? 'dag' : 'dagen'} langer dan in je brief`
+        : dagen === 0 ? 'Vandaag is de laatste dag' : 'Nog geen beslissing');
+    vak.append(el('dl', { class: 'feiten' },
+      el('div', {}, el('dt', { tekst: 'Datum in de brief' }), el('dd', { tekst: einddatum })),
+      el('div', {}, el('dt', { tekst: 'Jouw situatie' }), el('dd', { tekst: situatie }))));
+  }
+
+  if (opgebouwd) {
+    vak.append(el('p', { class: 'blok blok--geld' },
+      el('strong', { tekst: `Er staat op dit moment ${opgebouwd} open.` }),
+      'Dat bedrag loopt op zolang er geen beslissing is, tot het wettelijke maximum.'));
+  }
+
+  // --- wat kun je nu doen -------------------------------------------------
+  if (teLaat) {
     // De conclusie herhaalt wat de bezoeker zélf heeft aangeleverd, in zijn
-    // eigen woorden. "De beslistermijn lijkt verstreken" wist hij al vanaf de
-    // kop; dat hij daarom nú iets kan doen, is de conclusie waar hij op wacht.
+    // eigen woorden. Dat de termijn verstreken is, wist hij al vanaf de kop;
+    // dat hij daarom nú iets kan doen, is de conclusie waar hij op wacht.
     const kortezaak = zaakInEenZin();
-    const overZaak = kortezaak ? ` met ${kortezaak}` : '';
-    const uitEigenInvoer = [];
+    const blok = el('div', { class: 'blok blok--info' },
+      el('strong', { style: 'display:block; margin-bottom:8px',
+        tekst: `Je kunt nu in actie komen${kortezaak ? ` met ${kortezaak}` : ''}` }));
     if (einddatum) {
-      uitEigenInvoer.push(`Volgens je brief had ${orgaan} uiterlijk ${einddatum} moeten beslissen.`);
+      blok.append(el('p', { style: 'margin:0 0 8px',
+        tekst: `Volgens je brief had ${orgaan} uiterlijk ${einddatum} moeten beslissen.` }));
     }
     const nogNiets = [];
     if (!zaak.invoer.besluitGenomen) nogNiets.push('nog geen beslissing');
     if (!zaak.invoer.verdaagd) nogNiets.push('geen nieuwe datum');
     if (nogNiets.length) {
-      uitEigenInvoer.push(`Je gaf aan dat je ${nogNiets.join(' en ')} van ${orgaan} hebt ontvangen.`);
+      blok.append(el('p', { style: 'margin:0 0 8px',
+        tekst: `Je gaf aan dat je ${nogNiets.join(' en ')} van ${orgaan} hebt ontvangen.` }));
     }
-    uitEigenInvoer.push(zaak.invoer.ingebrekeGesteld
+    blok.append(el('p', { style: 'margin:0', tekst: zaak.invoer.ingebrekeGesteld
       ? `Je hebt ${orgaan} zelf al laten weten dat je wacht; wij nemen die melding over.`
-      : `Daarom kunnen wij ${orgaan} nu officieel laten weten dat je nog steeds wacht.`);
-
-    const blok = el('div', { class: 'melding melding--goed', style: 'margin-top:20px' },
-      el('strong', {}, `Je kunt nu in actie komen${overZaak}`));
-    for (const regel of uitEigenInvoer) blok.append(el('p', { tekst: regel }));
-    if (bedrag) {
-      blok.append(el('p', {}, 'Er staat op dit moment ', el('strong', { tekst: bedrag }), ' open.'));
-    }
-    blok.append(el('p', { style: 'margin-bottom:6px' }, 'Als je doorgaat:'), lijst,
-      el('p', { class: 'wijdoen__slot' }, 'Jij hoeft dit zelf niet uit te zoeken of bij te houden.'));
+      : `Daarom kunnen wij ${orgaan} nu officieel laten weten dat je nog steeds wacht.` }));
     vak.append(blok);
-    knopVerder.textContent = 'Ja, regel dit voor mij →';
-    navigatie.classList.remove('verborgen');
-  } else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) {
-    // Nog niet te laat is geen afwijzing maar een afspraak voor later.
-    const einde = r.beslistermijn ? datumTekst(r.beslistermijn.einddatum) : '';
-    vak.append(el('div', { class: 'melding melding--info', style: 'margin-top:20px' },
-      el('strong', {}, `${orgaan} is nog niet te laat`),
-      el('p', {}, einde
-        ? `Volgens je brief loopt de beslistermijn af op ${einde}. Je hoeft nu niets te doen.`
-        : 'De beslistermijn loopt nog. Je hoeft nu niets te doen.'),
-      el('p', {}, 'Wil je dat wij het voor je bijhouden en in actie komen zodra dat kan? Dan hoef '
-        + 'je er zelf niet aan te denken.')));
-    knopVerder.textContent = 'Ja, houd dit voor mij bij →';
-    navigatie.classList.remove('verborgen');
-  } else {
-    for (const blokkade of r.blokkades) {
-      vak.append(el('div', { class: 'melding melding--let-op', style: 'margin-top:16px' },
-        el('strong', { tekst: blokkade.titel }), el('p', { tekst: blokkade.uitleg })));
-    }
-    vak.append(el('div', { class: 'melding melding--info', style: 'margin-top:16px' },
-      el('strong', {}, 'Toch laten bekijken?'),
-      el('p', {}, 'Een behandelaar kan er met een menselijk oog naar kijken. Dat kost je niets.')));
-    knopVerder.textContent = 'Laat een mens meekijken →';
-    navigatie.classList.remove('verborgen');
-  }
 
-  knopTerug.classList.remove('verborgen');
+    vak.append(el('h2', {}, 'Wat kun je nu doen?'));
+    vak.append(el('p', { style: 'margin-top:6px' },
+      `Je kunt ${orgaan} officieel laten weten dat je nog op een beslissing wacht. Dat heet een `
+      + 'melding te late beslissing. Wij kunnen die voor je regelen.'));
+    vak.append(el('p', { class: 'blok blok--info' },
+      'Een melding betekent niet dat je zeker geld krijgt. Of een vergoeding mogelijk is, hangt '
+      + `af van jouw situatie en de reactie van ${orgaan}.`));
+    vak.append(el('div', { class: 'knoprij' },
+      knopNaar('Bekijk onze hulp', 'hulp', 'primair'),
+      knopNaar('Ik wil het zelf regelen', 'zelf', 'zacht')));
+  } else if (r.uitkomst === UITKOMST.TERMIJN_LOOPT) {
+    vak.append(el('div', { class: 'blok blok--info' },
+      el('strong', { style: 'display:block; margin-bottom:6px', tekst: 'Uiterste beslisdatum' }),
+      el('div', { style: 'font-size:1.3rem; font-weight:800; margin-bottom:8px', tekst: einddatum || 'nog onbekend' }),
+      el('span', {}, 'Is er daarna nog geen beslissing? Controleer je situatie dan opnieuw, ook als '
+        + 'je intussen een nieuwe brief krijgt.')));
+    vak.append(el('div', { class: 'knoprij' },
+      knopNaar('Laat het ons bijhouden', 'hulp', 'primair'),
+      knopNaar('Ik wil het zelf regelen', 'zelf', 'zacht')));
+  } else {
+    for (const blokkade of r.blokkades || []) {
+      vak.append(melding('let-op', blokkade.titel, blokkade.uitleg));
+    }
+    vak.append(el('p', { class: 'blok blok--info' },
+      'Een behandelaar kan er met een menselijk oog naar kijken. Dat kost je niets.'));
+    vak.append(el('div', { class: 'knoprij' },
+      knopNaar('Laat een mens meekijken', 'hulp', 'primair'),
+      knopNaar('Ik wil het zelf regelen', 'zelf', 'zacht')));
+  }
 }
+
+function knopNaar(tekst, scherm, soort) {
+  const knop = el('button', { type: 'button', class: `knop knop--${soort}`, tekst });
+  knop.addEventListener('click', () => toon(scherm));
+  return knop;
+}
+
+// ---------------------------------------------- opdracht 1. je keuze -----
 
 /**
- * Wat al uit de brieven bleek.
+ * Het rekenvoorbeeld bij de kosten.
  *
- * Geen vraag maar een bevestiging: de aanvrager ziet dat zijn upload iets
- * heeft opgeleverd, en krijgt één vraag minder.
+ * Het bedrag komt uit deze zaak als wij het weten, en anders is het een rond
+ * voorbeeldbedrag dat ook zo benoemd wordt. Het percentage komt uit
+ * `tarief.js`, nooit uit deze tekst: staat hier 20% terwijl de voorwaarden 25%
+ * zeggen, dan is dat een onjuiste prijsvermelding.
  */
-function uitJeBrieven(tekst) {
-  return el('div', { class: 'melding melding--info', style: 'margin-top:14px' },
-    el('strong', {}, 'Dit weten wij al uit je brieven'),
-    el('p', { tekst }));
-}
+function kostenblok({ compact = false } = {}) {
+  const t = tarief(INSTELLINGEN);
+  const orgaan = orgaanNaam();
+  const blok = el('div', { class: 'blok blok--geld' });
 
-function vraag(tekst, naam, huidig, bijKeuze, uitleg, opties) {
-  const blok = el('div', { class: 'vraagblok' }, el('span', { tekst }),
-    uitleg ? el('p', { class: 'veld__hulp', style: 'margin:-4px 0 8px', tekst: uitleg }) : null);
-  const keuzes = el('div', { class: 'keuzes keuzes--twee' });
-  for (const optie of opties || [{ label: 'Nee', waarde: false }, { label: 'Ja', waarde: true }]) {
-    const invoerveld = el('input', { type: 'radio', name: `vraag-${naam}` });
-    invoerveld.checked = huidig === optie.waarde;
-    invoerveld.addEventListener('change', () => bijKeuze(optie.waarde));
-    keuzes.append(el('label', { class: 'keuze' }, invoerveld, el('span', { class: 'keuze__tekst', tekst: optie.label })));
+  // Eerst wat de klant nú betaalt. Dat is de vraag waarmee hij hier zit, en
+  // het antwoord is niets.
+  blok.append(el('strong', { class: 'kostenblok__nu', tekst: 'Je betaalt nu niets.' }));
+
+  if (!t.bekend) {
+    blok.append(el('span', {}, 'Krijg je een vergoeding voor het wachten? Dan hoor je eerst '
+      + 'precies wat onze hulp kost. Je gaat nooit ergens aan vast zonder dat je het bedrag kent.'));
+    return blok;
   }
-  blok.append(keuzes);
+
+  // De twee gevallen als vraag met antwoord. Een tabel met bedragen leest als
+  // een rekening; dit moet lezen als een afspraak.
+  const geval = (vraagtekst, antwoord) => el('p', { class: 'kostengeval', style: 'margin-top:14px' },
+    el('span', { style: 'display:block; color:var(--tekst-zacht)', tekst: vraagtekst }),
+    el('strong', { tekst: antwoord }));
+
+  blok.append(geval(`Krijg je uiteindelijk geen vergoeding van ${orgaan}?`,
+    'Dan betaal je ons niets, ook niet voor het werk dat we al hebben gedaan.'));
+  blok.append(geval(`Krijg je wél een vergoeding omdat ${orgaan} te laat is?`,
+    t.soort === 'percentage'
+      ? `Dan rekenen wij ${t.percentage}% van die vergoeding voor het behandelen van je zaak, `
+        + 'pas als het geld op je rekening staat.'
+      : `Dan rekenen wij ${tariefKort(t)} voor het behandelen van je zaak, pas als het geld `
+        + 'op je rekening staat.'));
+
+  const echtBedrag = zaak.rapport && zaak.rapport.berekening && zaak.rapport.berekening.dagen > 0
+    ? zaak.rapport.berekening.totaal : 0;
+  const voorbeeld = echtBedrag || 500;
+  const splitsing = tariefSplitsing(t, voorbeeld);
+
+  if (!compact && splitsing) {
+    blok.append(el('p', { style: 'font-size:.94rem; margin:18px 0 0',
+      tekst: echtBedrag ? 'Bij het bedrag dat nu openstaat' : `Rekenvoorbeeld bij ${euroTekst(voorbeeld)}` }));
+    blok.append(el('div', { class: 'verdeling' },
+      el('div', { class: 'verdeling__jij', tekst: `${euroTekst(splitsing.overhoudt)} voor jou` }),
+      el('div', { class: 'verdeling__ons', tekst: `${euroTekst(splitsing.vergoeding)} voor onze hulp` }),
+      el('div', { class: 'verdeelbalk', 'aria-hidden': 'true' },
+        el('span', { style: `flex:${splitsing.overhoudt}` }),
+        el('span', { style: `flex:${splitsing.vergoeding}` })),
+      el('p', { class: 'verdeling__voetnoot',
+        tekst: echtBedrag
+          ? 'Het bedrag loopt nog op. Wij rekenen niets over je uitkering.'
+          : 'Rekenvoorbeeld, geen voorspelling. Wij rekenen niets over je uitkering.' })));
+  }
+
+  // Waar het geld heen gaat. Dit is de vraag die mensen niet stellen maar wel
+  // hebben: krijgt dit bedrijf mijn vergoeding onder zich?
+  blok.append(el('p', { class: 'kostenblok__slot', style: 'font-size:.94rem; margin-top:16px' },
+    `Een eventuele vergoeding wordt door ${orgaan} rechtstreeks aan jou betaald. `
+    + 'Wij ontvangen jouw vergoeding niet.'));
   return blok;
 }
 
-function toonTweedeUpload(vak, direct = false) {
-  const houder = el('div', { class: 'melding melding--info', style: 'margin-top:14px' },
-    el('strong', {}, 'Upload ook die brief'),
-    el('p', {}, 'Dan rekenen wij met de nieuwe datum in plaats van de oude.'));
-  const invoerveld = el('input', { type: 'file', accept: 'image/*,.pdf,.txt,application/pdf,text/plain' });
-  invoerveld.addEventListener('change', async () => {
-    const bestand = invoerveld.files[0];
-    if (!bestand) return;
-    houder.append(el('div', { class: 'bezig', style: 'margin-top:10px' }, el('div', { class: 'tolletje' }), el('span', {}, 'Bezig…')));
-    try {
-      pasVerlengbriefToe(await stuurBrief(await alsLading(bestand), { tweede: true }));
-      herbereken();
-      rendereUitslag();
-    } catch (err) {
-      houder.append(melding('let-op', err.message, err.hint || ''));
-    }
-  });
-  houder.append(invoerveld);
-  if (direct) houder.append(el('p', { class: 'fijndruk', style: 'text-align:left' },
-    'Heb je die brief niet bij de hand? Ga verder; wij vragen hem later op.'));
-  vak.append(houder);
+/**
+ * Wat wij aanbieden, hangt af van waar de zaak staat.
+ *
+ * "Wij regelen nu de melding" is bij een termijn die nog loopt gewoon onwaar,
+ * en bij een onvolledige of geblokkeerde uitslag is nog helemaal niet
+ * vastgesteld dát er een melding moet. Eén vaste zin zou hier dus een belofte
+ * doen die wij op dat moment niet nakomen. De terugvaloptie is daarom bewust
+ * de neutrale zin en niet die melding.
+ */
+function watWijDoenBij(uitkomst, orgaan) {
+  return {
+    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wil je dat wij ${orgaan} officieel laten weten dat je nog `
+      + 'op een beslissing wacht? Wij regelen nu de melding en houden daarna het vervolg bij.',
+    [UITKOMST.RECHT]: `Wij eisen de vergoeding bij ${orgaan} op en nemen het vervolg van je zaak `
+      + 'voor je uit handen.',
+    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij nemen de lopende procedure van je over en bewaken de `
+      + `termijn die voor ${orgaan} loopt.`,
+    [UITKOMST.TERMIJN_LOOPT]: `Wij houden de datum in de gaten waarop ${orgaan} moet beslissen, en `
+      + 'versturen de melding zodra die voorbij is.',
+  }[uitkomst]
+    || `Wij nemen je zaak in behandeling, zoeken uit welke stap er nodig is en nemen het vervolg `
+      + 'voor je uit handen.';
 }
 
-// -------------------------------------------------------------- stap 3 ----
+function tekenHulp() {
+  const orgaan = orgaanNaam();
+  bij('hulp-onder').textContent = watWijDoenBij((zaak.rapport || {}).uitkomst, orgaan);
+  bij('hulp-volgen').textContent = `We houden bij wanneer ${orgaan} moet reageren en laten je `
+    + 'weten wat de volgende stap is.';
+  const vak = bij('hulp-kosten');
+  vak.textContent = '';
+  vak.append(kostenblok());
+}
 
-const UIT_BRIEF_VELDEN = [
-  { id: 'naam', label: 'Naam' },
-  { id: 'adres', label: 'Adres' },
-  { id: 'postcode', label: 'Postcode' },
-  { id: 'woonplaats', label: 'Woonplaats' },
-  { id: 'bsn', label: 'Burgerservicenummer' },
-  { id: 'kenmerk', label: 'Kenmerk' },
-];
+function tekenZelf() {
+  const orgaan = orgaanNaam();
+  bij('zelf-onder').textContent = 'Bewaar je brieven en controleer welke datum voor jouw situatie '
+    + `geldt. Is ${orgaan} te laat, dan kun je zelf schriftelijk melden dat je nog wacht.`;
+  bij('zelf-uitleg').textContent = `Zet in die brief of e-mail om welke aanvraag het gaat, dat je `
+    + 'nog geen beslissing hebt ontvangen, en vraag om alsnog te beslissen. Bewaar het '
+    + 'verzendbewijs: dat bepaalt vanaf welke dag een vergoeding kan gaan lopen.';
+}
 
-/**
- * Velden die wij normaal niet vragen omdat ze al bekend zijn, maar die toch
- * op het scherm moeten komen: omdat de waarde niet blijkt te kloppen, of
- * omdat de server erover klaagde. Anders kan de aanvrager een fout niet
- * herstellen die hij niet ziet.
- */
+bij('knop-regel').addEventListener('click', () => toon('gegevens'));
+
+// -------------------------------------------- opdracht 2. je gegevens ---
+
+/** Velden waarover de server klaagde; die tonen wij daarna altijd. */
 const geforceerdeVelden = new Set();
 
-/**
- * "Klopt dit?" - wat wij uit de brief haalden.
- *
- * Eerder opende "Iets aanpassen" het hele formulier weer: elf velden, terwijl
- * er meestal één postcode fout is. Nu is elke regel zelf aan te klikken en
- * verandert alleen die ene regel in een invoerveld. Dat is het verschil tussen
- * "controleren" en "toch weer invullen".
- */
-function rendereControle() {
-  const vak = document.getElementById('uitbrief');
+function tekenGegevens() {
+  const vak = bij('gegevensvelden');
   vak.textContent = '';
-  const h = zaak.herkenning;
-  const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
-  const wordtGevraagd = new Set(ontbrekendeVelden().map((v) => v.id));
-
-  // Elke regel: waar hij vandaan komt, hoe hij heet en waar hij heen gaat.
-  const regels = [];
-  for (const veld of UIT_BRIEF_VELDEN) {
-    if (wordtGevraagd.has(veld.id)) continue;
-    if (!zaak.contact[veld.id] && !h[veld.id]) continue;
-    regels.push({
-      id: veld.id, label: veld.label, soort: 'text',
-      waarde: zaak.contact[veld.id] || h[veld.id],
-      zet: (waarde) => { zaak.contact[veld.id] = waarde; },
-    });
-  }
-  regels.push({
-    id: 'organisatienaam', label: 'Instantie', soort: 'text',
-    waarde: zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan),
-    zet: (waarde) => { zaak.invoer.organisatienaam = waarde; },
-  });
-  // De zaak zelf is een keuze uit de catalogus, geen vrije tekst: die laten
-  // wij hier zien maar niet bewerken.
-  regels.push({ id: 'zaak', label: 'Zaak', waarde: zaaktype ? zaaktype.label : 'Onbekend', vast: true });
-  if (zaak.invoer.termijnEinddatum) {
-    regels.push({
-      id: 'termijnEinddatum', label: 'Uiterste beslisdatum', soort: 'date',
-      waarde: zaak.invoer.termijnEinddatum,
-      toon: datumTekst(zaak.invoer.termijnEinddatum),
-      zet: (waarde) => {
-        zaak.invoer.termijnEinddatum = waarde;
-        zaak.invoer.termijnBekend = Boolean(waarde);
-        herbereken();
-      },
-    });
-  }
-
-  const lijst = el('dl', {});
-  for (const regel of regels) lijst.append(controleregel(regel));
-  vak.append(el('div', { class: 'kaartje' },
-    el('div', { class: 'uit-brief', tekst: 'automatisch uit je brief gehaald' }), lijst));
-  vak.append(el('p', { class: 'veld__hulp', style: 'margin-top:10px' },
-    'Klopt er iets niet? Klik op die regel om hem aan te passen.'));
-}
-
-/** Eén regel die in zichzelf bewerkbaar is. */
-function controleregel({ id, label, waarde, toon, soort, zet, vast }) {
-  const rij = el('div', { class: vast ? 'controleregel controleregel--vast' : 'controleregel' },
-    el('dt', { tekst: label }));
-
-  if (vast) {
-    rij.append(el('dd', { tekst: waarde }));
-    return rij;
-  }
-
-  const knop = el('button', { class: 'controleregel__waarde', type: 'button' },
-    el('span', { tekst: toon || waarde }),
-    el('span', { class: 'controleregel__pen', 'aria-hidden': 'true', tekst: '\u270E' }));
-  knop.setAttribute('aria-label', `${label} aanpassen`);
-
-  const dd = el('dd', {}, knop);
-  knop.addEventListener('click', () => {
-    const invoerveld = el('input', {
-      type: soort === 'date' ? 'date' : 'text', id: `veld-${id}`, maxlength: '120',
-    });
-    invoerveld.value = waarde;
-    const bewaar = () => {
-      if (soort !== 'date' && invoerveld.value.trim() === '') return; // leeg is geen correctie
-      zet(soort === 'date' ? invoerveld.value : invoerveld.value.trim());
-      rendereControle();
-    };
-    invoerveld.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); bewaar(); }
-      if (e.key === 'Escape') rendereControle();
-    });
-    invoerveld.addEventListener('blur', bewaar);
-    dd.textContent = '';
-    dd.append(invoerveld, el('p', { class: 'veld__fout verborgen', 'data-fout': id }));
-    invoerveld.focus();
-    if (soort !== 'date') invoerveld.select();
-  });
-
-  rij.append(dd);
-  return rij;
-}
-
-/** Alleen wat nog niet bekend is - de regel zelf staat in shared/funnelvragen.js. */
-function ontbrekendeVelden() {
-  return teVragenVelden({
-    herkenning: zaak.herkenning || {},
+  const velden = teVragenVelden({
+    herkenning: zaak.herkenning,
     contact: zaak.contact,
-    bestuursorgaan: zaak.invoer ? zaak.invoer.bestuursorgaan : '',
+    bestuursorgaan: zaak.invoer.bestuursorgaan,
     geforceerd: [...geforceerdeVelden],
   });
-}
 
-function rendereAanvullen() {
-  const vak = document.getElementById('aanvullen');
-  vak.textContent = '';
-  vak.append(el('h2', { style: 'font-size:1.05rem; margin-bottom:4px' }, 'Nog dit van u'),
-    el('p', { class: 'onder', style: 'margin-bottom:18px' }, 'De rest hebben wij al uit je brief.'));
-
-  for (const veld of ontbrekendeVelden()) {
-    const invoerveld = el('input', {
-      type: veld.type, id: `in-${veld.id}`, maxlength: '120',
-      autocomplete: { email: 'email', telefoon: 'tel', naam: 'name', adres: 'street-address',
-        postcode: 'postal-code', woonplaats: 'address-level2' }[veld.id] || 'off',
+  for (const veld of velden) {
+    const rij = el('div', { class: 'veld', style: 'margin-top:20px' },
+      el('label', { for: `veld-${veld.id}` }, veld.label,
+        veld.verplicht ? null : el('span', { class: 'subtiel', tekst: ' (optioneel)' })));
+    const invoer = el('input', { type: veld.type, id: `veld-${veld.id}`, maxlength: '160' });
+    invoer.value = zaak.contact[veld.id] !== undefined ? zaak.contact[veld.id] : (veld.waarde || '');
+    zaak.contact[veld.id] = invoer.value;
+    invoer.addEventListener('input', () => {
+      zaak.contact[veld.id] = invoer.value;
+      zetFout(veld.id, '');
     });
-    invoerveld.value = zaak.contact[veld.id] || (zaak.herkenning[veld.id] || '');
-    invoerveld.addEventListener('input', () => { zaak.contact[veld.id] = invoerveld.value; });
-    vak.append(el('div', { class: 'veld' },
-      el('label', { for: `in-${veld.id}` }, veld.label,
-        veld.verplicht ? null : el('span', { class: 'subtiel', tekst: ' (optioneel)' })),
-      veld.hulp ? el('p', { class: 'veld__hulp', tekst: veld.hulp }) : null,
-      invoerveld,
-      // Bij het burgerservicenummer en het rekeningnummer hoort er onder het
-      // veld te staan wat wij ermee doen. Daar haakt iemand anders af.
-      veld.slot ? el('p', { class: 'veld__slot' },
-        el('span', { class: 'veld__slot-teken', 'aria-hidden': 'true', tekst: '\u{1F512}' }),
-        el('span', { tekst: veld.slot })) : null,
-      el('p', { class: 'veld__fout verborgen', 'data-fout': veld.id })));
+    rij.append(invoer);
+    if (veld.hulp) rij.append(el('p', { class: 'veld__hulp', tekst: veld.hulp }));
+    rij.append(el('p', { class: 'veld__fout verborgen', 'data-fout': veld.id }));
+    vak.append(rij);
   }
 }
 
-function valideerControle() {
+const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+
+function valideerGegevens() {
   let ok = true;
-  const h = zaak.herkenning;
-  for (const veld of ontbrekendeVelden()) {
-    const waarde = String(zaak.contact[veld.id] || h[veld.id] || '').trim();
-    zetFout(veld.id, '');
-    if (veld.verplicht && waarde.length < 2) { zetFout(veld.id, `${veld.label} is nog leeg.`); ok = false; continue; }
-    if (veld.id === 'email' && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(waarde)) {
-      zetFout('email', 'Vul een geldig e-mailadres in.'); ok = false;
-    }
-    if (veld.id === 'bsn' && !bsnKlopt(waarde)) {
-      zetFout('bsn', 'Dit burgerservicenummer klopt niet. Controleer de cijfers.'); ok = false;
-    }
-    if (veld.id === 'iban' && !ibanKlopt(waarde)) {
-      zetFout('iban', 'Dit IBAN klopt niet. Controleer het rekeningnummer.'); ok = false;
-    }
-  }
+  const naam = String(zaak.contact.naam || '').trim();
+  if (naam.length < 2) { zetFout('naam', 'Vul je naam in.'); ok = false; }
+  const email = String(zaak.contact.email || '').trim();
+  if (!EMAIL.test(email)) { zetFout('email', 'Vul een geldig e-mailadres in.'); ok = false; }
   if (!ok) {
-    const eerste = form.querySelector('[data-fout]:not(.verborgen)');
+    const eerste = document.querySelector('[data-fout]:not(.verborgen)');
     if (eerste) eerste.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
   return ok;
 }
 
-// -------------------------------------------------------------- stap 4 ----
+bij('knop-naar-toestemming').addEventListener('click', () => {
+  if (valideerGegevens()) toon('toestemming');
+});
 
-/**
- * Wat wij na de ondertekening gaan doen, toegespitst op deze zaak. Dit is het
- * verschil tussen "jullie vullen een formulier in" en "jullie nemen het over".
- */
-function rendereActieplan() {
-  const vak = document.getElementById('actieplan');
-  if (!vak) return;
-  vak.textContent = '';
-  const naam = instantieInEenZin(zaak.invoer.bestuursorgaan);
-  const r = zaak.rapport || {};
-  const alAangemaand = Boolean(zaak.invoer.ingebrekeGesteld);
-  const nogInTermijn = r.uitkomst === UITKOMST.TERMIJN_LOOPT;
+// -------------------------------------------- opdracht 3. toestemming ---
 
-  const stappen = nogInTermijn
-    ? [
-      ['Nu', `Wij leggen je zaak vast en zetten de datum waarop ${naam} moet beslissen in de gaten.`],
-      ['Daarna', `Beslist ${naam} niet op tijd, dan versturen wij de melding zonder dat je eraan hoeft te denken.`],
-      ['Blijft een beslissing uit?', 'Dan controleren wij of er een dwangsom ontstaat en welk bedrag bij jouw situatie hoort.'],
-    ]
-    : [
-      ['Nu', alAangemaand
-        ? `Wij nemen je aanmaning over en houden de termijn bij die voor ${naam} is gaan lopen.`
-        : `Wij regelen de formele melding dat ${naam} te laat is.`],
-      ['Daarna', `Wij bewaken de twee weken die ${naam} daarna nog heeft om te beslissen.`],
-      ['Blijft een beslissing uit?', 'Dan controleren wij of er een dwangsom ontstaat en welk bedrag bij jouw situatie hoort.'],
-    ];
-
-  const lijst = el('ol', {});
-  for (const [wanneer, wat] of stappen) {
-    lijst.append(el('li', {},
-      el('span', { class: 'actieplan__wanneer', tekst: wanneer }),
-      el('span', { class: 'actieplan__wat', tekst: wat })));
-  }
-  // De kop noemt de zaak van deze klant. "Dit gaan we nu voor je doen" is
-  // waar; "voor jouw WW-aanvraag" is van hem.
-  const kortezaak = zaakInEenZin();
-  const kop = kortezaak
-    ? `Dit gaan we nu doen voor ${kortezaak}`
-    : 'Dit gaan we nu voor je doen';
-  vak.append(el('div', { class: 'actieplan' },
-    el('h2', { tekst: kop }),
-    lijst,
-    el('p', { class: 'actieplan__slot', tekst: 'Jij hoeft ondertussen niets te doen.' })));
-}
-
-/**
- * De volgende stap in de taal van de klant.
- *
- * `actieLabel` komt uit de rekenmodule en is voor de behandelaar geschreven:
- * "Ingebrekestelling versturen". Dat is precies het woord dat wij horen te
- * vertalen. De juridische term staat op de uitlegpagina voor wie hem wil.
- */
-function volgendeStapInGewoneTaal(vervolg, orgaan) {
-  const ruw = String((vervolg && vervolg.actieLabel) || '');
-  if (/ingebrekestelling/i.test(ruw)) return `${orgaan} laten weten dat je nog wacht`;
-  if (/dwangsom/i.test(ruw)) return `De vergoeding bij ${orgaan} opeisen`;
-  if (/termijn/i.test(ruw)) return `Wachten tot de termijn van ${orgaan} afloopt`;
-  return ruw || 'Beoordelen door een behandelaar';
-}
-
-/** De zaak zoals wij die nu kennen, met zoveel woorden voorgelegd. */
-function rendereJouwZaak() {
-  const vak = document.getElementById('jouwzaak');
-  if (!vak) return;
-  vak.textContent = '';
+function tekenToestemming() {
+  const orgaan = orgaanNaam();
   const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
-  const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan);
-  const r = zaak.rapport || {};
-  const vervolg = r.vervolg || {};
-  const einde = r.beslistermijn ? parseDatum(r.beslistermijn.einddatum) : null;
-
-  const rijen = [
-    ['Instantie', orgaan],
-    ['Procedure', zaaktype ? zaaktype.label : 'Aanvraag'],
-    ['Beslistermijn volgens brief', einde ? toonDatum(einde) : 'niet uit de brief te halen'],
-    ['Beslissing ontvangen', zaak.invoer.besluitGenomen ? 'Ja' : 'Nee'],
-    ['Volgende stap', volgendeStapInGewoneTaal(vervolg, orgaan)],
-  ];
-  const lijst = el('dl', {});
-  for (const [naam, waarde] of rijen) {
-    lijst.append(el('div', {}, el('dt', { tekst: naam }), el('dd', { tekst: waarde })));
-  }
-  vak.append(el('div', { class: 'jouwzaak' }, el('h2', { tekst: 'Jouw zaak' }), lijst));
-}
-
-/**
- * De financiële afspraak, vlak voordat iemand tekent.
- *
- * Dit blok heette "Wat het je kost" en rekende het bedrag van deze zaak voor:
- * dwangsom, min onze vergoeding, is wat jij overhoudt. Dat leek behulpzaam en
- * werkte averechts.
- *
- * Wie hier komt, heeft al besloten dat wij het regelen. Hij wil geen
- * kostenopgave meer maar een afspraak. En die aftreksom - "€ 1.442, daarvan
- * gaat € 288 af" - zet vlak voor de handtekening een verliesanker neer bij
- * een bedrag dat hij op dat moment nog helemaal niet heeft. Het percentage
- * staat er onverkort; er wordt niets verzwegen, alleen niet meer uitvergroot
- * wat hij kwijtraakt.
- *
- * Wat wél blijft: waarvoor hij betaalt, en dat het geld rechtstreeks naar hem
- * gaat. Dat zijn de twee vragen die hij echt heeft.
- */
-function rendereKosten() {
-  const vak = document.getElementById('kostenblok');
-  if (!vak) return;
-  vak.textContent = '';
   const t = tarief(INSTELLINGEN);
-  // Overal midden in een zin ("bij je gemeente", "van UWV"), dus geen
-  // hoofdletter: die maakte er "bij Je gemeente" van.
-  const orgaan = instantieInEenZin(zaak.invoer.bestuursorgaan);
-  const kortezaak = zaakInEenZin();
-  const overZaak = kortezaak ? ` over ${kortezaak}` : '';
-  const uitkomst = (zaak.rapport || {}).uitkomst;
 
-  // Wat wij "nu" doen, hangt af van waar de zaak staat. "Wij regelen nu de
-  // melding" is bij een termijn die nog loopt gewoon onwaar: dan houden wij
-  // een datum in de gaten. Eén vaste zin zou hier een belofte doen die wij
-  // op dat moment niet nakomen.
-  //
-  // De laatste regel is met opzet de terugvaloptie en niet "wij regelen nu de
-  // melding". Is de uitslag onvolledig of onbekend - de brief gaf te weinig,
-  // of er speelt een uitsluiting - dan is er nog helemaal niet vastgesteld
-  // dát er een melding moet. Dat dan toch beloven is een toezegging die wij
-  // op dat moment niet kunnen waarmaken.
-  const watWijNuDoen = {
-    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wij regelen nu de melding${overZaak} bij ${orgaan} en `
-      + 'nemen het vervolg van je zaak voor je uit handen.',
-    // Hier bewust zonder de zaaknaam: "beslissen over je WIA-beslissing" is
-    // dubbelop. Het actieplan erboven noemt de zaak al.
-    [UITKOMST.TERMIJN_LOOPT]: `Wij houden de datum in de gaten waarop ${orgaan} moet beslissen, `
-      + 'en versturen de melding zodra die voorbij is.',
-    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij nemen de lopende procedure${overZaak} van je over en `
-      + `bewaken de termijn die voor ${orgaan} loopt.`,
-    [UITKOMST.RECHT]: `Wij eisen de vergoeding${overZaak} bij ${orgaan} op en nemen het vervolg `
-      + 'van je zaak voor je uit handen.',
-  }[uitkomst]
-    || `Wij nemen ${kortezaak || 'je zaak'} in behandeling, zoeken uit welke stap er nodig is en `
-      + 'nemen het vervolg voor je uit handen.';
+  const lijst = bij('samenvatting');
+  lijst.textContent = '';
+  const regel = (kop, ...waarde) => {
+    lijst.append(el('div', {}, el('dt', { tekst: kop }), el('dd', {}, ...waarde)));
+  };
+  regel('Jouw gegevens', [zaak.contact.naam, zaak.contact.email].filter(Boolean).join(', '));
+  regel('Je zaak', [zaaktype ? zaaktype.label : 'je aanvraag', `bij ${orgaan}`].join(' ')
+    + (zaak.contact.kenmerk ? `, kenmerk ${zaak.contact.kenmerk}` : ''));
+  regel('Onze hulp', `De melding voor deze zaak maken en versturen. Daarna de reactie en termijn `
+    + `van ${orgaan} bijhouden.`);
+  regel('Grenzen van je toestemming',
+    'Geen wijziging van je aanvraag of bezwaar. Geen toestemming voor andere zaken.');
 
-  const blok = el('div', { class: 'kostenblok' },
-    el('h2', { tekst: 'Onze afspraak met jou' }),
-    el('p', { class: 'kostenblok__nu' }, el('strong', {}, 'Je betaalt nu niets.')),
-    el('p', { class: 'kostenblok__kop', tekst: watWijNuDoen }));
+  const kosten = bij('toestemming-kosten');
+  kosten.textContent = '';
+  kosten.append(kostenblok({ compact: true }));
 
-  // Twee gevallen, elk als vraag met antwoord. Dat leest als een afspraak;
-  // een tabel met bedragen leest als een rekening.
-  const geval = (vraag, antwoord, klasse) => el('div', { class: `kostengeval ${klasse || ''}` },
-    el('p', { class: 'kostengeval__vraag', tekst: vraag }),
-    el('p', { class: 'kostengeval__antwoord' }, el('strong', { tekst: antwoord })));
-
-  blok.append(geval(
-    `Krijg je uiteindelijk geen vergoeding van ${orgaan}?`,
-    'Dan betaal je ons niets.',
-  ));
-
-  blok.append(geval(
-    `Krijg je wél een vergoeding omdat ${orgaan} te laat is met de beslissing${overZaak}?`,
-    t.bekend
-      ? (t.soort === 'percentage'
-        ? `Dan rekenen wij ${t.percentage}% van die vergoeding voor het behandelen van je zaak.`
-        : `Dan rekenen wij ${tariefKort(t)} voor het behandelen van je zaak.`)
-      : 'Dan hoor je vooraf wat het behandelen van je zaak kost.',
-    'kostengeval--wel',
-  ));
-
-  blok.append(el('p', { class: 'kostenblok__slot' },
-    `Een eventuele vergoeding wordt door ${orgaan} rechtstreeks aan jou betaald. `
-    + 'Wij ontvangen jouw vergoeding niet.'));
-
-  vak.append(blok);
-
-  // De regel onder het vinkje herhaalt de afspraak in zakelijke vorm. Daar
-  // bevestigt de klant hem juridisch, dus daar telt ondubbelzinnigheid.
-  const bijAkkoord = document.getElementById('akkoord-tarief');
-  if (bijAkkoord) {
-    // Niet tariefKort() gebruiken: dat geeft "20% van de vergoeding", en dan
-    // staat er twee keer "vergoeding" in één zin.
-    const wat = t.soort === 'percentage' ? `${t.percentage}% daarvan` : tariefKort(t);
-    bijAkkoord.textContent = t.bekend
-      ? `Geen vergoeding is € 0. Bij een vergoeding betaal ik ${wat} voor de behandeling van mijn zaak.`
-      : 'Geen vergoeding is € 0. Wat onze hulp bij een vergoeding kost, hoor ik vooraf.';
-  }
-}
-
-/** 'de instantie' -> 'De instantie'. */
-function metHoofdletter(tekst) {
-  return String(tekst).charAt(0).toUpperCase() + String(tekst).slice(1);
-}
-
-// kostenSom() is hier weggehaald: de aftreksom met het bedrag van deze zaak
-// stond vlak voor de handtekening en werkte als verliesanker. De reden staat
-// uitgeschreven boven rendereKosten().
-
-function rendereMachtiging() {
-  const zaaktype = zoekZaaktype(zaak.invoer.zaaktype);
-  const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan);
-  const naam = zaak.contact.naam || zaak.herkenning.naam || 'ondergetekende';
-  const vak = document.getElementById('machtigingtekst');
-  vak.textContent = '';
-
+  // De machtigingstekst: waar zet je precies je handtekening onder?
   // Deze angst is op de landingspagina al beantwoord, maar erover lezen is
   // iets anders dan je handtekening zetten. Hier komt hij terug.
-  vak.append(el('div', { class: 'melding melding--info', style: 'margin-bottom:16px' },
-    el('strong', {}, 'Dit gaat alleen over het wachten op je beslissing'),
-    el('p', {}, `Met deze stap vragen wij ${orgaan} om een beslissing te nemen. `
-      + 'Wij veranderen daarmee niets aan wat je hebt aangevraagd.')));
+  const machtiging = bij('machtigingtekst');
+  machtiging.textContent = '';
+  machtiging.append(
+    el('span', { class: 'blok blok--info', style: 'display:block; margin-bottom:16px' },
+      el('strong', { style: 'display:block; margin-bottom:6px',
+        tekst: 'Dit gaat alleen over het wachten op je beslissing' }),
+      `Met deze stap vragen wij ${orgaan} om een beslissing te nemen. `
+      + 'Wij veranderen daarmee niets aan wat je hebt aangevraagd.'),
+    el('span', {}, 'Ik, ', el('strong', { tekst: zaak.contact.naam || 'ondergetekende' }),
+      ', machtig NuBeslist om mij te vertegenwoordigen bij ', el('strong', { tekst: orgaan }),
+      ' in de procedure over ', el('strong', { tekst: zaaktype ? zaaktype.label : 'mijn aanvraag' }),
+      '. Dat geldt alleen voor deze ene procedure over de te late beslissing; wij mogen daarmee '
+      + 'geen andere zaken van je behandelen.'));
 
-  vak.append(
-    el('p', { class: 'machtiging__uitleg' },
-      el('strong', {}, 'Waar geef je toestemming voor? '),
-      `Met deze machtiging mogen wij alleen handelen in deze ene procedure over de te late `
-      + `beslissing van ${orgaan}. Wij mogen daarmee geen andere zaken van je behandelen.`),
-    el('p', { style: 'margin:0 0 10px' }, 'Ik, ', el('strong', { tekst: naam }),
-      ', machtig NuBeslist om mij te vertegenwoordigen bij ',
-      el('strong', { tekst: orgaan }), ' in de procedure over ',
-      el('strong', { tekst: zaaktype ? zaaktype.label : 'mijn aanvraag' }), '.'),
-    el('p', { style: 'margin:0' }, 'NuBeslist mag namens mij de benodigde stukken indienen, de '
-      + 'procedure voeren en correspondentie ontvangen. Een toegekende vergoeding wordt '
-      + 'rechtstreeks aan mij uitbetaald.'),
-  );
+  // De regel bij het vinkje herhaalt de afspraak zakelijk. Daar bevestigt de
+  // klant hem, dus daar telt ondubbelzinnigheid boven een prettige zin.
+  const wat = t.bekend
+    ? (t.soort === 'percentage' ? `${t.percentage}% daarvan` : tariefKort(t))
+    : 'wat wij vooraf met je afspreken';
+  bij('akkoord-tekst').textContent = 'Ik geef NuBeslist toestemming om de melding voor deze zaak'
+    + ' te regelen en ga akkoord met de voorwaarden.'
+    + ` Ik betaal alleen als ik een vergoeding voor het wachten krijg: ${wat},`
+    + ' pas als dat geld binnen is.';
 }
 
-const canvas = document.getElementById('handtekening');
-const vakje = document.getElementById('handtekeningvak');
+// ------------------------------------------------------ handtekening ----
+
+const canvas = bij('handtekening');
+const vakje = bij('handtekeningvak');
 const penseel = canvas.getContext('2d');
 let tekent = false;
 let getekend = false;
@@ -1154,81 +1141,64 @@ function penPositie(gebeurtenis) {
   };
 }
 
-function startLijn(gebeurtenis) {
-  gebeurtenis.preventDefault();
+penseel.lineWidth = 3;
+penseel.lineCap = 'round';
+penseel.lineJoin = 'round';
+penseel.strokeStyle = '#16202e';
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
   tekent = true;
   penseel.beginPath();
-  const punt = penPositie(gebeurtenis);
+  const punt = penPositie(e);
   penseel.moveTo(punt.x, punt.y);
-  canvas.setPointerCapture(gebeurtenis.pointerId);
-}
-
-function trekLijn(gebeurtenis) {
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
   if (!tekent) return;
-  gebeurtenis.preventDefault();
-  const punt = penPositie(gebeurtenis);
+  e.preventDefault();
+  const punt = penPositie(e);
   penseel.lineTo(punt.x, punt.y);
   penseel.stroke();
   if (!getekend) {
     getekend = true;
     vakje.classList.add('getekend');
     zetFout('handtekening', '');
-    // Meteen bevestigen dat het gelukt is; anders blijft het gissen of die
-    // krabbel wel is aangekomen.
-    const uitleg = document.getElementById('handtekening-uitleg');
-    if (uitleg) {
-      const nu = new Date();
-      uitleg.classList.add('handtekening-gezet');
-      uitleg.textContent = `\u2713 Handtekening toegevoegd op ${nu.toLocaleDateString('nl-NL')} `
-        + `om ${nu.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`;
-    }
   }
+});
+for (const eind of ['pointerup', 'pointercancel']) {
+  canvas.addEventListener(eind, () => { tekent = false; });
 }
-
-function stopLijn() { tekent = false; }
-
-penseel.lineWidth = 3;
-penseel.lineCap = 'round';
-penseel.lineJoin = 'round';
-penseel.strokeStyle = '#16202e';
-canvas.addEventListener('pointerdown', startLijn);
-canvas.addEventListener('pointermove', trekLijn);
-canvas.addEventListener('pointerup', stopLijn);
-canvas.addEventListener('pointercancel', stopLijn);
-
-document.getElementById('knop-wissen').addEventListener('click', () => {
+bij('knop-wissen').addEventListener('click', () => {
   penseel.clearRect(0, 0, canvas.width, canvas.height);
   getekend = false;
   vakje.classList.remove('getekend');
 });
 
-// ------------------------------------------------------------- indienen ---
+// --------------------------------------------------------- indienen -----
 
 async function verzend() {
-  const foutVak = document.getElementById('indien-fout');
+  const foutVak = bij('indien-fout');
   foutVak.textContent = '';
   let ok = true;
   if (!getekend) { zetFout('handtekening', 'Zet hier je handtekening.'); ok = false; }
-  if (!document.getElementById('akkoord').checked) { zetFout('akkoord', 'Zet een vinkje om te machtigen.'); ok = false; }
+  if (!bij('akkoord').checked) { zetFout('akkoord', 'Zet een vinkje om de opdracht te geven.'); ok = false; }
   if (!ok) return;
 
   zaak.handtekening = { afbeelding: canvas.toDataURL('image/png'), gezetOp: new Date().toISOString() };
 
-  knopVerder.disabled = true;
-  knopVerder.textContent = 'Bezig met indienen…';
+  const knop = bij('knop-indienen');
+  knop.disabled = true;
+  knop.textContent = 'Bezig met versturen…';
   try {
     const h = zaak.herkenning;
+    // Alleen wat wij nu weten. Adres, geboortedatum, burgerservicenummer en
+    // rekeningnummer vragen wij hier niet; die vult de aanvrager later aan in
+    // zijn dossier. Wat wél uit de brief kwam, sturen wij mee.
     const contact = {
       naam: zaak.contact.naam || h.naam || '',
-      adres: zaak.contact.adres || h.adres || '',
-      postcode: zaak.contact.postcode || h.postcode || '',
-      woonplaats: zaak.contact.woonplaats || h.woonplaats || '',
-      kenmerk: zaak.contact.kenmerk || h.kenmerk || '',
-      geboortedatum: zaak.contact.geboortedatum || '',
-      bsn: normaliseerBsn(zaak.contact.bsn || h.bsn || ''),
-      iban: normaliseerIban(zaak.contact.iban || ''),
       email: zaak.contact.email || '',
-      telefoon: zaak.contact.telefoon || '',
+      kenmerk: zaak.contact.kenmerk || h.kenmerk || '',
       machtiging: true,
       akkoordVoorwaarden: true,
     };
@@ -1248,247 +1218,239 @@ async function verzend() {
     });
     const data = await antwoord.json().catch(() => ({}));
     if (!antwoord.ok) {
-      // Klaagt de server over een veld, breng de aanvrager dan terug naar dat
-      // veld in plaats van hem met een melding te laten zitten.
       const velden = data.velden && typeof data.velden === 'object' ? data.velden : null;
       if (velden && Object.keys(velden).length > 0) {
-        // Deze twee horen bij de vraag op het uitslagscherm; daar staat ook het
-        // enige veld waarin ze te herstellen zijn.
-        const opUitslag = ['ingebrekestellingDatum', 'basisdatum'];
-        const uitslagveld = Object.keys(velden).find((id) => opUitslag.includes(id));
-        if (uitslagveld) {
-          gaNaar(2);
-          zetFout('igs-datum', velden[uitslagveld]);
-          const veld = document.getElementById('igs-datum');
-          if (veld) veld.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        // Klaagt de server over de datum van de melding, dan is die alleen op
+        // het aanvulscherm te herstellen. Anders horen de velden bij de
+        // gegevens; breng de bezoeker daarheen in plaats van hem met een
+        // melding te laten zitten over iets wat hij niet ziet.
+        const opAanvullen = ['ingebrekestellingDatum', 'basisdatum', 'zaaktype', 'besluitDatum'];
+        const aanvulveld = Object.keys(velden).find((id) => opAanvullen.includes(id));
+        if (aanvulveld) {
+          toon('aanvullen');
+          zetFout('igs-datum', velden[aanvulveld]);
           return;
         }
         for (const id of Object.keys(velden)) geforceerdeVelden.add(id);
-        gaNaar(3);
+        toon('gegevens');
         for (const [id, tekst] of Object.entries(velden)) zetFout(id, tekst);
-        const eerste = form.querySelector('[data-fout]:not(.verborgen)');
-        if (eerste) eerste.scrollIntoView({ block: 'center', behavior: 'smooth' });
         return;
       }
-      foutVak.append(melding('fout', data.fout || 'Indienen is niet gelukt', ''));
+      foutVak.append(melding('fout', data.fout || 'Versturen is niet gelukt',
+        'Probeer het nog een keer. Lukt het weer niet, neem dan contact met ons op.'));
       return;
     }
     meet('aanvraag');
-    rendereKlaar(data);
-    gaNaar(5);
+    zaak.referentie = data.referentie || (data.aanvraag && data.aanvraag.referentie) || '';
+    zaak.dossier = data.aanvraag || null;
+    tekenBevestiging();
+    toon('bevestiging');
   } catch (err) {
-    console.error('[funnel] indienen mislukt:', err);
+    console.error('[funnel] versturen mislukt:', err);
     foutVak.append(melding('fout', 'Er ging iets mis',
-      `Je aanmelding is mogelijk wel ontvangen. Neem contact op als je geen bevestiging krijgt. (${err && err.message ? err.message : err})`));
+      'Je opdracht is mogelijk wel ontvangen. Neem contact op als je geen bevestiging krijgt.'));
   } finally {
-    knopVerder.disabled = false;
-    knopVerder.textContent = 'Ja, NuBeslist mag dit regelen →';
+    knop.disabled = false;
+    knop.textContent = 'Opdracht bevestigen';
   }
 }
 
-/**
- * Twee werkdagen vanaf vandaag, als datum.
- *
- * "Binnen twee werkdagen" laat de klant zelf rekenen, en op vrijdag rekent
- * hij verkeerd. Dezelfde regel als bij de uitslag: wij vertalen naar de datum
- * die voor hem geldt.
- */
-function uiterlijkOp(werkdagen = 2, vanaf = new Date()) {
-  const d = new Date(vanaf.getTime());
-  let over = werkdagen;
-  while (over > 0) {
-    d.setDate(d.getDate() + 1);
-    if (d.getDay() !== 0 && d.getDay() !== 6) over--;
-  }
-  return toonDatum(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-}
+bij('knop-indienen').addEventListener('click', verzend);
 
-function rendereKlaar(data) {
-  const orgaan = zaak.invoer.organisatienaam || labelBestuursorgaan(zaak.invoer.bestuursorgaan);
+// -------------------------------------------- na 1. de bevestiging ------
+
+function tekenBevestiging() {
+  const orgaan = orgaanNaam();
   const uiterlijk = uiterlijkOp(2);
-  document.getElementById('referentie').textContent = data.referentie;
-  document.getElementById('klaar-titel').textContent = 'Gelukt. Vanaf hier regelen wij het.';
-  // Wij weten inmiddels om welke zaak het gaat; dat hoort de klant hier terug
-  // te lezen, met erbij dat hij zelf niets naar de instantie hoeft te sturen.
-  const kortKlaar = zaakInEenZin();
-  const overZaak = kortKlaar ? ` over ${kortKlaar}` : '';
-  document.getElementById('klaar-tekst').textContent = {
-    [UITKOMST.TERMIJN_LOOPT]: `Wij bewaken de termijn bij ${orgaan}${overZaak} en komen in actie `
-      + 'zodra die voorbij is. Je hoeft zelf niets te sturen.',
-    [UITKOMST.HERSTELTERMIJN_LOOPT]: `Wij nemen de procedure${overZaak} over en bewaken de twee weken `
-      + `die ${orgaan} nog heeft. Je hoeft zelf niets te sturen.`,
-    [UITKOMST.RECHT]: `Wij eisen de vergoeding${overZaak} bij ${orgaan} op. Je hoeft zelf niets te sturen.`,
-    [UITKOMST.INGEBREKESTELLING_NODIG]: `Wij bereiden nu de melding voor${overZaak}. `
-      + `Je hoeft zelf niets naar ${orgaan} te sturen.`,
-  }[(zaak.rapport || {}).uitkomst] || `Wij nemen je zaak bij ${orgaan} in behandeling en laten van ons horen.`;
+  // Een datum en geen "binnen twee werkdagen": dat laatste laat de klant zelf
+  // rekenen, en op vrijdag rekent hij verkeerd.
+  bij('bevestiging-onder').textContent = 'Je opdracht is bij ons binnen. Er is nog niets naar '
+    + `${orgaan} verstuurd. Uiterlijk ${uiterlijk} hoor je van ons.`;
+  bij('bevestiging-uitleg').textContent = `Eerst controleren we de gegevens en maken we de `
+    + `melding: ${volgendeStapInGewoneTaal((zaak.rapport || {}).vervolg, orgaan).toLowerCase()}. `
+    + 'Je ziet apart wanneer die is verstuurd.';
+  bij('referentie').textContent = zaak.referentie || '';
 
-  // De staat moet kloppen met wat er twee schermen terug is vastgesteld. Bij
-  // een verstreken termijn "wachten tot de termijn verstrijkt" tonen is
-  // verwarrend: die is net verstreken.
-  const uitkomst = (zaak.rapport || {}).uitkomst;
-  const stappen = [
-    { tekst: 'Je zaak is aangemaakt', onder: 'Je brief en je gegevens zijn binnen', staat: 'klaar' },
-    { tekst: 'Machtiging ontvangen', onder: 'Ondertekend en vastgelegd', staat: 'klaar' },
-  ];
-  if (uitkomst === UITKOMST.TERMIJN_LOOPT) {
-    // Het enige geval waarin wij echt op de klok wachten.
-    stappen.push(
-      { tekst: `Termijn van ${orgaan} bewaken`, onder: 'Wij houden de datum in de gaten', staat: 'bezig' },
-      { tekst: 'Melding versturen', onder: 'Zodra de termijn is verstreken', staat: 'wacht' },
-    );
-  } else if (uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT) {
-    stappen.push(
-      { tekst: 'Melding is al verstuurd', onder: 'Wij nemen de procedure over', staat: 'klaar' },
-      { tekst: 'Vervolgtermijn bewaken', onder: `${orgaan} heeft nog twee weken`, staat: 'bezig' },
-    );
-  } else if (uitkomst === UITKOMST.RECHT) {
-    stappen.push(
-      { tekst: 'Dwangsom opeisen', onder: `Wij stellen de vordering aan ${orgaan} nu op`, staat: 'bezig' },
-      { tekst: `Indienen bij ${orgaan}`, onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
-    );
-  } else if (uitkomst === UITKOMST.INGEBREKESTELLING_NODIG) {
-    // De termijn is al voorbij. Hier niet zeggen dat wij op die termijn
-    // wachten: dat is precies wat twee schermen terug is weerlegd.
-    stappen.push(
-      { tekst: 'Melding voorbereiden', onder: `De termijn van ${orgaan} is voorbij; wij stellen de brief nu op`, staat: 'bezig' },
-      { tekst: `Indienen bij ${orgaan}`, onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
-    );
-  } else {
-    stappen.push(
-      { tekst: 'Een behandelaar kijkt ernaar', onder: 'Wij zoeken uit wat er in jouw geval mogelijk is', staat: 'bezig' },
-      { tekst: 'Je hoort van ons', onder: `Uiterlijk ${uiterlijk}`, staat: 'wacht' },
-    );
+  // Wat wij later nog nodig hebben, zeggen wij nú - niet pas in een mailtje.
+  const vak = bij('bevestiging-aanvullen');
+  vak.textContent = '';
+  const nog = ontbrekendeDossiergegevens();
+  if (nog.length) {
+    vak.append(el('div', { class: 'blok blok--info' },
+      el('strong', { style: 'display:block; margin-bottom:8px', tekst: 'Straks vragen wij nog' }),
+      el('span', {}, `${nog.join(', ')}. Dat hebben wij nodig om de melding te kunnen versturen. `
+        + 'Je vult het in je eigen dossier aan; wij laten je weten wanneer.')));
   }
-  stappen.push(uitkomst === UITKOMST.RECHT
-    ? { tekst: 'Uitbetaling volgen', onder: 'Wij rekenen na wat jou toekomt', staat: 'wacht' }
-    : { tekst: 'Eventuele dwangsom volgen', onder: 'Wij rekenen na wat jou toekomt', staat: 'wacht' });
-  const lijst = document.getElementById('tracker');
-  lijst.textContent = '';
-  for (const s of stappen) {
-    lijst.append(el('li', { 'data-staat': s.staat },
-      el('span', { class: 'tracker__merk', tekst: s.staat === 'klaar' ? '✓' : (s.staat === 'bezig' ? '→' : '○') }),
-      el('span', { class: 'tracker__tekst' }, s.tekst, el('span', { tekst: s.onder }))));
-  }
-  // De klant heeft zojuist zijn zaak uit handen gegeven. Wat hij nu wil is
-  // zijn dossier zien, niet terug naar de homepage.
-  const knoppen = document.getElementById('klaar-knoppen');
-  if (knoppen) {
-    knoppen.textContent = '';
-    // "Vanaf hier regelen wij het" leidt tot de logische conclusie "dan hoef
-    // ik niets meer te doen". Dat klopt, op één ding na: post die rechtstreeks
-    // naar de klant gaat, zien wij niet. Zonder deze regel horen wij het pas
-    // als het te laat is.
-    knoppen.append(el('div', { class: 'melding melding--info', style: 'text-align:left;margin-bottom:18px' },
-      el('strong', {}, 'Wat moet jij nu doen? Niets.'),
-      el('p', {}, `Krijg je ondertussen een nieuwe brief, e-mail of beslissing van ${orgaan}? `
-        + 'Zet die dan in je dossier. Wij kijken wat dat voor jouw zaak betekent.')));
-    knoppen.append(
-      el('a', { class: 'knop knop--primair knop--groot', href: '/mijn' }, 'Bekijk mijn dossier'),
-      el('p', { class: 'fijndruk', style: 'margin:12px 0 0' },
-        `Wij hebben een link gestuurd naar ${zaak.contact.email || 'je e-mailadres'}. `
-        + 'Daarmee kom je er altijd weer in, zonder wachtwoord.'),
-      el('p', { style: 'margin:14px 0 0' },
-        el('a', { class: 'nav-secundair', href: '/' }, 'Terug naar NuBeslist')),
-    );
-  }
-  navigatie.classList.add('verborgen');
 }
 
-// ------------------------------------------------------------ navigatie ---
-
 /**
- * Welke stap welke meting oplevert.
+ * Welke gegevens later nog nodig zijn.
  *
- * Alleen de eerste keer dat een stap wordt bereikt telt mee. Wie terugloopt
- * en opnieuw doorklikt, zou anders drie keer als "uitslag gezien" in de
- * cijfers staan, en dan lijkt de trechter beter dan hij is.
+ * Wij vragen ze niet meer in de funnel, maar dat mag niet betekenen dat de
+ * aanvrager er pas achter komt als hij een mailtje krijgt. Hier staat wat er
+ * nog komt, met de reden erbij.
  */
-const MEETSTAP = { 2: 'funnel-uitslag', 3: 'funnel-gegevens', 4: 'funnel-akkoord' };
-const CONTROLESTAP = { 2: 'uitslag', 3: 'gegevens', 4: 'akkoord' };
-
-function gaNaar(nummer) {
-  stap = Math.max(1, Math.min(TOTAAL, nummer));
-  const gebeurtenis = MEETSTAP[stap];
-  if (gebeurtenis && !gemeten.has(gebeurtenis)) {
-    gemeten.add(gebeurtenis);
-    meet(gebeurtenis);
-    if (CONTROLESTAP[stap]) legControleVast(CONTROLESTAP[stap]);
+function ontbrekendeDossiergegevens() {
+  const nog = [];
+  const r = zaak.rapport || {};
+  const teLaat = r.uitkomst === UITKOMST.RECHT
+    || r.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
+    || r.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
+  if (!teLaat) return nog;
+  nog.push('je adres en geboortedatum voor op de stukken');
+  if (zaak.invoer.bestuursorgaan && zaak.invoer.bestuursorgaan !== 'overig') {
+    nog.push('het burgerservicenummer waarmee de instantie je zaak terugvindt');
   }
-  for (const sectie of form.querySelectorAll('.stap')) {
-    sectie.classList.toggle('verborgen', Number(sectie.dataset.stap) !== stap);
-  }
-  if (stap === 2) rendereUitslag();
-  if (stap === 3) { rendereControle(); rendereAanvullen(); }
-  if (stap === 4) { rendereActieplan(); rendereJouwZaak(); rendereKosten(); rendereMachtiging(); }
-
-  bollen.textContent = '';
-  for (const fase of FASEN) {
-    const staat = fase.stap < stap ? 'klaar' : (fase.stap === stap ? 'bezig' : 'straks');
-    bollen.append(el('span', { class: `fasebalk__fase fasebalk__fase--${staat}` },
-      el('span', { class: 'fasebalk__merk', tekst: staat === 'klaar' ? '\u2713' : String(fase.stap) }),
-      el('span', { class: 'fasebalk__label', tekst: fase.label })));
-  }
-
-  navigatie.classList.toggle('verborgen', stap === 1 || stap === TOTAAL);
-  knopTerug.classList.toggle('verborgen', stap <= 2);
-  if (stap === 3) knopVerder.textContent = 'Verder naar akkoord →';
-  if (stap === 4) knopVerder.textContent = 'Ja, NuBeslist mag dit regelen →';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  nog.push('het rekeningnummer waarop een vergoeding wordt uitbetaald');
+  return nog;
 }
 
-/**
- * Zei iemand dat hij al gemeld heeft, dan moet de datum erbij: zonder die
- * datum weigert de server de aanvraag. Dat mocht niet pas na het zetten van
- * de handtekening blijken.
- */
-function valideerUitslag() {
-  if (!zaak.invoer.ingebrekeGesteld || zaak.invoer.ingebrekestellingDatum) {
-    zetFout('igs-datum', '');
-    return true;
+// --------------------------------------------- na 2. de voortgang -------
+
+const VOORTGANGSTAPPEN = [
+  ['Opdracht ontvangen', 'Eerst komt je opdracht bij NuBeslist binnen.'],
+  ['Gegevens controleren', 'Als iets ontbreekt, krijg je een gerichte vraag.'],
+  ['Melding verzonden', 'Na verzending zie je hier de datum en een kopie.'],
+  ['Reactie volgen', 'Daarna zie je of de instantie heeft gereageerd en wat er volgt.'],
+];
+
+function tekenVoortgang() {
+  const orgaan = orgaanNaam();
+  bij('voortgang-onder').textContent = 'Je ziet hier wie aan zet is en wat er gebeurd is.';
+  bij('voortgang-wie').textContent = 'NuBeslist';
+  bij('voortgang-status').textContent = 'Status: gegevens controleren.';
+  bij('voortgang-jij').textContent = ontbrekendeDossiergegevens().length
+    ? 'Jouw actie: straks een paar gegevens aanvullen in je dossier.'
+    : 'Jouw actie: nu niets.';
+
+  const stappen = bij('voortgang-stappen');
+  stappen.textContent = '';
+  for (const [kop, uitleg] of VOORTGANGSTAPPEN) {
+    stappen.append(el('li', {}, el('b', { tekst: kop }),
+      el('span', { tekst: uitleg.replace('de instantie', orgaan) })));
   }
-  zetFout('igs-datum', 'Vul de datum in waarop je dat hebt verstuurd. Zonder die datum kunnen '
-    + 'wij de dwangsom niet berekenen.');
-  const veld = document.getElementById('igs-datum');
-  if (veld) { veld.scrollIntoView({ block: 'center', behavior: 'smooth' }); veld.focus(); }
-  return false;
+
+  const kosten = bij('kostenafspraak-binnen');
+  kosten.textContent = '';
+  kosten.append(kostenblok({ compact: true }));
+
+  // "Vanaf hier regelen wij het" leidt tot "dan hoef ik niets te doen", en dat
+  // klopt op één ding na: post die rechtstreeks naar de klant gaat. Zonder
+  // deze zin belandt een verlengingsbrief in een la in plaats van in de zaak.
+  const zelf = bij('voortgang-zelf');
+  zelf.textContent = '';
+  zelf.append(el('div', { class: 'blok blok--info' },
+    el('strong', { style: 'display:block; margin-bottom:6px', tekst: 'Wat moet jij nu doen? Niets.' }),
+    el('span', {}, `Krijg je ondertussen een nieuwe brief, e-mail of beslissing van ${orgaan}? `
+      + 'Zet die dan in je dossier. Wij kijken wat dat voor jouw zaak betekent.')));
+
+  const knoppen = bij('voortgang-knoppen');
+  knoppen.textContent = '';
+  knoppen.append(el('a', { class: 'knop knop--primair', href: '/mijn' }, 'Naar mijn dossier'));
+  knoppen.append(el('a', { class: 'knop knop--zacht', href: '/' }, 'Terug naar de website'));
+  if (zaak.contact.email) {
+    knoppen.append(el('p', { class: 'verdeling__voetnoot', style: 'width:100%; margin-top:4px' },
+      `Wij hebben een link gestuurd naar ${zaak.contact.email}. Daarmee kom je er altijd weer in, `
+      + 'zonder wachtwoord.'));
+  }
 }
 
-knopVerder.addEventListener('click', () => {
-  if (stap === 2) return valideerUitslag() ? gaNaar(3) : undefined;
-  if (stap === 3) return valideerControle() ? gaNaar(4) : undefined;
-  if (stap === 4) return void verzend();
-  return gaNaar(stap + 1);
-});
-knopTerug.addEventListener('click', () => gaNaar(stap - 1));
-form.addEventListener('submit', (e) => e.preventDefault());
+// --------------------------------------------------------- opstarten ----
 
-/**
- * De eerste zin moet de zaak van de bezoeker zijn. Kwam hij van de
- * WIA-advertentie, dan staat hier UWV en niet "de instantie".
- */
+/** Wat er getekend moet worden zodra een scherm in beeld komt. */
+const VOORBEREID = {
+  aanvullen: tekenAanvulvragen,
+  uitslag: tekenUitslag,
+  hulp: tekenHulp,
+  zelf: tekenZelf,
+  gegevens: tekenGegevens,
+  toestemming: tekenToestemming,
+  voortgang: tekenVoortgang,
+};
+
+/** De instantie uit de url benoemen, zodat er nergens "de instantie" staat. */
 function zetIngangstekst() {
   if (!ingang.instantie) return;
-  const naam = instantieInEenZin(ingang.instantie);
-  const kop = document.getElementById('stap1-kop');
-  const onder = document.getElementById('stap1-onder');
-  const knop = document.getElementById('dropzone-titel');
-  if (kop) kop.textContent = `Laten we kijken of ${naam} te laat is`;
-  if (onder) {
-    // Het label uit de catalogus is een werkwoordzin ("WIA-uitkering aanvragen
-    // of beoordelen") en past niet in deze zin; bovendien mag WIA geen kleine
-    // letters krijgen. Dus hier alleen de instantie, de procedure komt later.
-    onder.textContent = `Upload de brief van ${naam} waarin staat wanneer je een beslissing kon `
-      + 'verwachten. Wij zoeken de relevante datum voor je op.';
-  }
-  if (knop) {
-    const kort = { uwv: 'UWV-brief', duo: 'DUO-brief', svb: 'SVB-brief',
-      gemeente: 'gemeentebrief' }[ingang.instantie] || 'brief';
-    knop.textContent = `Kies mijn ${kort}`;
+  const orgaan = labelBestuursorgaan(ingang.instantie);
+  if (!orgaan) return;
+  bij('kiezen-onder').textContent = `Kies de brief waarin staat wanneer ${orgaan} beslist. `
+    + 'Je mag meerdere brieven of pagina’s toevoegen.';
+  document.title = `Laat je ${orgaan}-brief bekijken · NuBeslist`;
+}
+
+bij('kiesvak-grens').textContent = `Een foto of pdf is genoeg. Je kunt er maximaal `
+  + `${MAX_BRIEVEN} kiezen.`;
+
+/**
+ * De brieven die op de campagnelanding al gelezen zijn.
+ *
+ * Die pagina leest ze daar zelf en zet alleen het resultaat klaar - geen
+ * bestanden, want die passen niet in de opslag van een tabblad. Eén keer:
+ * daarna is het weg, zodat een pagina die terugveert niet opnieuw begint.
+ */
+function overgedragenBrieven() {
+  try {
+    const ruw = sessionStorage.getItem('nubeslist:brieven');
+    if (!ruw) return [];
+    sessionStorage.removeItem('nubeslist:brieven');
+    const gelezen = JSON.parse(ruw);
+    return Array.isArray(gelezen) ? gelezen.filter((b) => b && b.herkenning && b.brief) : [];
+  } catch {
+    return [];
   }
 }
 
 zetIngangstekst();
-gaNaar(1);
-// De funnel is geopend. Het bezoek zelf wordt al geteld doordat meting.js
-// wordt geladen; dit zegt dat iemand ook echt aan de aanvraag begint.
-meet('funnel-start');
+
+const meegekomen = overgedragenBrieven();
+if (meegekomen.length > 0) {
+  toon('lezen');
+  bij('lezen-stand').textContent = meegekomen.length > 1
+    ? 'Wij zetten je brieven op een rij…' : 'Wij lezen je brief…';
+  // Even laten staan: wie net "controleer mijn brief" heeft geklikt, moet
+  // kunnen zien dát er iets met zijn brief gebeurt.
+  setTimeout(() => {
+    pasDossierToe(combineer(meegekomen.slice(0, MAX_BRIEVEN)));
+    toonWatWijLazen();
+    toon(naHetLezen());
+  }, meegekomen.length > 1 ? 1100 : 700);
+} else {
+  toon('kiezen');
+}
+
+// Een voorbeeldbrief om mee te proberen, zonder eerst iets te moeten zoeken.
+bij('knop-voorbeeldbrief').addEventListener('click', async () => {
+  const knop = bij('knop-voorbeeldbrief');
+  knop.disabled = true;
+  try {
+    const antwoord = await fetch('/voorbeelden/uwv-wia-ontvangstbevestiging.pdf');
+    if (!antwoord.ok) throw new Error('niet gevonden');
+    const blob = await antwoord.blob();
+    const bestand = new File([blob], 'voorbeeld-uwv-brief.pdf', { type: 'application/pdf' });
+    if (voegBestandenToe([bestand]) > 0) leesDeBrieven();
+  } catch {
+    toonKiesfout(['De voorbeeldbrief kon niet worden geladen. Kies zelf een bestand.']);
+  } finally {
+    knop.disabled = false;
+  }
+});
+
+// De geplakte tekst, voor wie zijn brief niet digitaal heeft.
+bij('knop-plak').addEventListener('click', async () => {
+  const tekst = bij('plaktekst').value.trim();
+  if (tekst.length < 40) {
+    toonKiesfout(['Plak wat meer tekst, inclusief de datum waarop je een beslissing zou krijgen.']);
+    return;
+  }
+  toon('lezen');
+  bij('lezen-stand').textContent = 'Wij lezen je tekst…';
+  try {
+    const data = await leesBrieven([{ bestandsnaam: 'geplakte tekst', mediaType: '', tekst }]);
+    pasDossierToe(data);
+    toonWatWijLazen();
+    toon(naHetLezen());
+  } catch (fout) {
+    bij('storing-onder').textContent = `${fout.message} Je tekst staat er nog.`;
+    toon('storing');
+  }
+});

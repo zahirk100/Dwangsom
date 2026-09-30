@@ -182,34 +182,78 @@ test('een zaak waarin nog niets te vorderen valt, wordt een vooraanmelding', asy
   assert.equal(data.rapport.vervolg.kanNuIndienen, false);
 });
 
-test('een vooraanmelding vraagt geen adresgegevens, een aanvraag wel', async () => {
+/**
+ * Een aanvraag komt binnen met een naam en een e-mailadres, en verder niets.
+ *
+ * Dat is met opzet zo. Wie net een foto van zijn brief heeft gemaakt, weet nog
+ * niet of wij iets voor hem kunnen betekenen; hem dan zijn burgerservicenummer
+ * laten intypen is vragen om af te haken, en het zet een bijzonder
+ * persoonsgegeven in de opslag van iemand die misschien nooit klant wordt.
+ *
+ * Wat er nodig is om de zaak echt in te dienen, verdwijnt daarmee niet: het
+ * blijft staan als ontbrekend gegeven in het dossier, en de aanvrager vult het
+ * daar aan zodra blijkt dat er iets te doen valt.
+ */
+test('een aanvraag komt binnen zonder adres, burgerservicenummer of rekeningnummer', async () => {
   const recent = new Date();
   recent.setUTCDate(recent.getUTCDate() - 7);
 
-  // Zonder adres mag een vooraanmelding gewoon binnenkomen.
+  // Een zaak waarin de termijn nog loopt: een vooraanmelding.
   const vooraf = await haal('/api/aanvragen', {
     method: 'POST',
     body: JSON.stringify({
       invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: recent.toISOString().slice(0, 10) },
-      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
+      contact: { naam: 'V. Vooraf', email: 'v@voorbeeld.nl', akkoordVoorwaarden: true },
     }),
   });
-  assert.equal(vooraf.status, 201);
+  assert.equal(vooraf.status, 201, await vooraf.text());
 
-  // Bij een lopende dwangsom is het adres wel nodig; dat hoort de server te zeggen.
-  const zonderAdres = await haal('/api/aanvragen', {
+  // En een zaak waarin de dwangsom al loopt. Die had eerder een adres nodig
+  // om überhaupt binnen te komen; nu niet meer.
+  const antwoord = await haal('/api/aanvragen', {
     method: 'POST',
     body: JSON.stringify({
       invoer: {
         bestuursorgaan: 'uwv', zaaktype: 'uwv-wia', basisdatum: '2025-01-06',
         ingebrekeGesteld: true, ingebrekestellingDatum: '2025-04-01',
       },
-      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', iban: 'NL91ABNA0417164300', akkoordVoorwaarden: true },
+      contact: { naam: 'Z. Zonder', email: 'z@voorbeeld.nl', akkoordVoorwaarden: true },
     }),
   });
-  assert.equal(zonderAdres.status, 422);
-  const fouten = (await zonderAdres.json()).velden;
-  assert.ok(fouten.adres && fouten.postcode && fouten.woonplaats);
+  assert.equal(antwoord.status, 201, await antwoord.text());
+});
+
+test('zonder naam of e-mailadres kunnen wij niets, en dat zegt de server ook', async () => {
+  const antwoord = await haal('/api/aanvragen', {
+    method: 'POST',
+    body: JSON.stringify({
+      invoer: { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: '2025-01-06' },
+      contact: { akkoordVoorwaarden: true },
+    }),
+  });
+  assert.equal(antwoord.status, 422);
+  const fouten = (await antwoord.json()).velden;
+  assert.ok(fouten.naam, 'zonder naam staat er niets op de stukken');
+  assert.ok(fouten.email, 'zonder e-mailadres kunnen wij niets laten weten');
+  assert.ok(!fouten.adres && !fouten.bsn && !fouten.iban,
+    'die vragen wij pas in het dossier, niet aan de balie');
+});
+
+test('wat later nog nodig is, staat als ontbrekend in het dossier', async () => {
+  // Anders verdwijnt het uit beeld: de aanvraag komt binnen, en niemand weet
+  // meer dat er nog een adres en een rekeningnummer moeten komen.
+  const lijst = await (await haal('/api/beheer/aanvragen?soort=aanvraag', {
+    headers: { cookie: beheer.cookie },
+  })).json();
+  const zonder = lijst.aanvragen.find((a) => a.naam === 'Z. Zonder');
+  assert.ok(zonder, 'het dossier van de adresloze aanvraag hoort in het overzicht te staan');
+  const detail = await (await haal(`/api/beheer/aanvragen/${zonder.id}`, {
+    headers: { cookie: beheer.cookie },
+  })).json();
+  const ontbreekt = detail.eisen.gegevens.filter((g) => g.verplicht).map((g) => g.id);
+  for (const nodig of ['adres', 'postcode', 'woonplaats', 'iban']) {
+    assert.ok(ontbreekt.includes(nodig), `${nodig} hoort nog als nodig te staan`);
+  }
 });
 
 test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
@@ -250,7 +294,10 @@ test('de beheerder maakt met een klik een machtiging en houdt de status bij', as
   const metCookie = { headers: { cookie } };
 
   const aanvragen = await (await haal('/api/beheer/aanvragen?soort=aanvraag', metCookie)).json();
-  const dossier = aanvragen.aanvragen[0];
+  // Uitdrukkelijk het volledig ingevulde dossier: sinds een aanvraag ook
+  // zonder adres binnenkomt, staat die adresloze soms vooraan.
+  const dossier = aanvragen.aanvragen.find((a) => a.naam === 'T. Tester');
+  assert.ok(dossier, 'het volledig ingevulde testdossier hoort er te zijn');
 
   const document = await haal(`/api/beheer/aanvragen/${dossier.id}/machtiging`, metCookie);
   assert.equal(document.status, 200);

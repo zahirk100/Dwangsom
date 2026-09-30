@@ -6,7 +6,7 @@
 import { parseDatum, vandaag } from '../public/shared/datum.js';
 import { zoekZaaktype } from '../public/shared/catalogus.js';
 import { berekenDwangsom } from '../public/shared/dwangsom.js';
-import { bepaalDossiereisen, stukkenVanKlant } from '../public/shared/dossier.js';
+import { AANVRAAGVELDEN, CONTACTVELDEN, bepaalDossiereisen, stukkenVanKlant } from '../public/shared/dossier.js';
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '../public/shared/identiteit.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
@@ -87,14 +87,21 @@ export function valideerAanvraag(body) {
     fouten.basisdatum = rapport.samenvatting || 'De gegevens zijn niet compleet.';
   }
 
-  // Welke velden verplicht zijn, hangt af van deze zaak: wie een machtiging
-  // wil of al kan vorderen, heeft een adres nodig voor de brieven.
+  // Om een aanvraag aan te nemen hebben wij een naam en een e-mailadres nodig,
+  // en verder niets. Wat er nodig is om de zaak daadwerkelijk in te dienen -
+  // adres, geboortedatum, burgerservicenummer, rekeningnummer - rekent
+  // `bepaalDossiereisen` uit, en dat blijft staan als "ontbreekt" in het
+  // dossier. De aanvrager vult het daar aan zodra blijkt dat er echt iets te
+  // doen valt; zie AANVRAAGVELDEN in shared/dossier.js voor het waarom.
   const eisen = bepaalDossiereisen({ invoer, contact, rapport });
-  for (const gegeven of eisen.gegevens) {
-    if (!gegeven.verplicht) continue;
-    const waarde = contact[gegeven.id];
+  const bijNaam = Object.fromEntries(eisen.gegevens.map((g) => [g.id, g]));
+  for (const id of AANVRAAGVELDEN) {
+    const waarde = contact[id];
     if (typeof waarde === 'string' && waarde.trim().length >= 2) continue;
-    fouten[gegeven.id] = `${gegeven.label} is nodig: ${gegeven.reden.toLowerCase()}`;
+    const gegeven = bijNaam[id];
+    fouten[id] = gegeven
+      ? `${gegeven.label} is nodig: ${gegeven.reden.toLowerCase()}`
+      : `${CONTACTVELDEN[id] || id} is nodig.`;
   }
   if (contact.email && !EMAIL.test(contact.email)) {
     fouten.email = 'Vul een geldig e-mailadres in.';

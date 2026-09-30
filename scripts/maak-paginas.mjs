@@ -8,7 +8,7 @@
  *
  * Uitvoeren met: node scripts/maak-paginas.mjs
  */
-import { existsSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { alleLandingspaginas } from '../src/landingpagina.js';
@@ -78,6 +78,23 @@ const lettertype = gevonden.length
   : '/* Figtree niet gevonden in public/assets/; de site gebruikt het systeemlettertype. */';
 writeFileSync(path.join(PUBLIEK, 'assets', 'lettertype.css'), `${lettertype}\n`);
 console.log(`  ${'assets/lettertype.css'.padEnd(26)} ${gevonden.length} gewichten`);
+
+/*
+  De voorbeeldbrieven.
+
+  Ze staan in `voorbeelden/` omdat ze daar gemaakt worden, maar de funnel heeft
+  ze nodig op een adres dat de browser kan ophalen: de knop "Probeer met een
+  voorbeeldbrief" haalt er een op. Kopiëren in plaats van dubbel bewaren, zodat
+  er niet twee versies kunnen ontstaan.
+*/
+const VOORBEELDEN = path.join(HIER, '..', 'voorbeelden');
+const NAAR = path.join(PUBLIEK, 'voorbeelden');
+if (existsSync(VOORBEELDEN)) {
+  mkdirSync(NAAR, { recursive: true });
+  const brieven = readdirSync(VOORBEELDEN).filter((naam) => naam.endsWith('.pdf'));
+  for (const naam of brieven) copyFileSync(path.join(VOORBEELDEN, naam), path.join(NAAR, naam));
+  console.log(`  ${'voorbeelden/'.padEnd(26)} ${brieven.length} brieven`);
+}
 
 writeFileSync(path.join(PUBLIEK, 'robots.txt'), robotsTxt());
 console.log(`  ${'robots.txt'.padEnd(26)} ${robotsTxt().length} tekens`);

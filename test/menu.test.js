@@ -20,9 +20,16 @@ import { alleIngangen } from '../public/shared/campagnes.js';
 const WORTEL = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const lees = (naam) => fs.readFileSync(path.join(WORTEL, 'public', naam), 'utf8');
 
-/** Pagina's met een balk waar een bezoeker op kan landen. */
+/**
+ * Pagina's met een balk waar een bezoeker op kan landen.
+ *
+ * `start.html` staat er met opzet niet bij. Dat is de aanvraag, en die is één
+ * taak en geen website: een menu met "Hoe het werkt" en "Vragen" is daar een
+ * uitnodiging om halverwege weg te klikken. Er staat één weg terug in de balk,
+ * en de toets hieronder bewaakt dat die er ook echt is.
+ */
 const MET_BALK = [
-  'start.html', 'mijn.html', 'beheer.html', 'hoe-werkt-het.html',
+  'mijn.html', 'beheer.html', 'hoe-werkt-het.html',
   'privacy.html', 'voorwaarden.html', 'aanvraag-klassiek.html',
 ];
 
@@ -47,9 +54,19 @@ test('een klant kan zijn eigen dossier vinden vanuit de navigatie', () => {
   const balkVan = (html) => html.slice(html.indexOf('<nav id="balk-nav"'), html.indexOf('</nav>'));
 
   assert.match(balkVan(landingHtml(alleIngangen()[0])), /href="\/mijn"/);
-  for (const naam of ['start.html', 'hoe-werkt-het.html', 'privacy.html', 'voorwaarden.html']) {
+  for (const naam of ['hoe-werkt-het.html', 'privacy.html', 'voorwaarden.html']) {
     assert.match(balkVan(lees(naam)), /href="\/mijn"/, `${naam} heeft geen link naar het dossier`);
   }
+});
+
+test('de aanvraag heeft geen menu, maar wel een weg terug', () => {
+  // Geen menu is een keuze, geen doodlopende weg: wie zich bedenkt moet met
+  // één klik terug kunnen naar de site, en daar staat zijn dossier in de balk.
+  const html = lees('start.html');
+  assert.ok(!html.includes('<nav id="balk-nav"'), 'de aanvraag hoort geen sitemenu te hebben');
+  const balk = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  assert.match(balk, /href="\/"/, 'er hoort een weg terug naar de site te staan');
+  assert.match(balk, /Terug naar de website/);
 });
 
 test('het open menu toont zijn links ook echt', () => {

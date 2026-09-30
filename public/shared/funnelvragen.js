@@ -1,17 +1,28 @@
 /**
  * Welke velden vraagt de funnel nog?
  *
- * Uitgangspunt is: nooit twee keer vragen wat al uit de brief kwam. Maar wat
- * uit een brief komt, kan fout zijn - een nummer bij het woord
- * "burgerservicenummer" is niet altijd een burgerservicenummer. Wordt een
- * gelezen waarde afgekeurd, dan moet het veld alsnog verschijnen; anders
- * krijgt de aanvrager een foutmelding over iets dat hij niet kan zien.
+ * Het antwoord is: zo weinig mogelijk. Wie zijn brief heeft laten lezen, weet
+ * nog niet of wij iets voor hem kunnen betekenen. Hem op dat moment zijn
+ * adres, geboortedatum, burgerservicenummer en rekeningnummer laten intypen is
+ * vragen om af te haken - en het zet een bijzonder persoonsgegeven in onze
+ * opslag van iemand die misschien nooit klant wordt.
  *
- * Die regel staat hier apart zodat hij getest kan worden zonder browser.
+ * Wat er nodig is om de zaak echt in te dienen, vragen wij daarom pas in het
+ * dossier, als wij de zaak hebben nagelopen en er iets te doen valt. Zie
+ * `bepaalDossiereisen` in dossier.js: dat blijft onverkort gelden, en wat
+ * ontbreekt staat in het dossier én in de beheeromgeving.
+ *
+ * Hier blijft over wat wij nu écht nodig hebben: een naam om de opdracht op te
+ * zetten, een e-mailadres om iets te kunnen laten weten, en - als de bezoeker
+ * het bij de hand heeft - het kenmerk waarmee de instantie de zaak terugvindt.
+ *
+ * Nooit twee keer vragen wat al uit de brief kwam blijft de regel; wat de
+ * brief opleverde staat er alvast in.
+ *
+ * Deze regel staat hier apart zodat hij getest kan worden zonder browser.
  */
 
-import { bsnKlopt, ibanKlopt } from './identiteit.js';
-import { vraagtBsn, labelBestuursorgaan } from './catalogus.js';
+import { labelBestuursorgaan } from './catalogus.js';
 
 /**
  * @param {{herkenning?: object, contact?: object, bestuursorgaan?: string, geforceerd?: Array<string>}} zaak
@@ -19,56 +30,35 @@ import { vraagtBsn, labelBestuursorgaan } from './catalogus.js';
  */
 export function teVragenVelden({ herkenning = {}, contact = {}, bestuursorgaan = '', geforceerd = [] } = {}) {
   const afgedwongen = new Set(geforceerd);
-  // Bij de gevoelige velden hoort de naam van de instantie: "nodig om je bij
-  // UWV te identificeren" is een reden, "vraagt de instantie" is een frase.
   const orgaan = bestuursorgaan ? labelBestuursorgaan(bestuursorgaan) : 'de instantie';
   const waardeVan = (id) => String(contact[id] || herkenning[id] || '').trim();
-  const ontbreekt = (id) => waardeVan(id) === '' || afgedwongen.has(id);
 
-  const velden = [];
-  const eenvoudig = [
-    ['naam', 'Je naam'],
-    ['adres', 'Straat en huisnummer'],
-    ['postcode', 'Postcode'],
-    ['woonplaats', 'Woonplaats'],
+  const velden = [
+    { id: 'naam', label: 'Naam', type: 'text', verplicht: true },
+    {
+      id: 'email', label: 'E-mailadres', type: 'email', verplicht: true,
+      hulp: 'Voor berichten over je zaak.',
+    },
+    {
+      id: 'kenmerk', label: `Kenmerk op je ${orgaan}-brief`, type: 'text', verplicht: false,
+      hulp: `Heb je het niet bij de hand? Laat het leeg; wij zoeken het later met je uit.`,
+    },
   ];
-  for (const [id, label] of eenvoudig) {
-    if (ontbreekt(id)) velden.push({ id, label, type: 'text', verplicht: true });
+
+  // Een gelezen waarde die is afgekeurd hoort alsnog gevraagd te worden, want
+  // anders krijgt de aanvrager een foutmelding over iets dat hij niet ziet.
+  for (const veld of velden) {
+    if (afgedwongen.has(veld.id)) veld.verplicht = true;
+    veld.waarde = waardeVan(veld.id);
   }
-
-  velden.push({
-    id: 'geboortedatum', label: 'Geboortedatum', type: 'date', verplicht: true,
-    hulp: `Staat op de machtiging, zodat ${orgaan} je kan herkennen.`,
-  });
-
-  if (vraagtBsn(bestuursorgaan)) {
-    const gelezen = waardeVan('bsn');
-    const onbruikbaar = gelezen !== '' && !bsnKlopt(gelezen);
-    if (gelezen === '' || onbruikbaar || afgedwongen.has('bsn')) {
-      velden.push({
-        id: 'bsn', label: 'Burgerservicenummer', type: 'text', verplicht: true,
-        hulp: onbruikbaar
-          ? 'Wij lazen een nummer uit je brief dat geen geldig burgerservicenummer is. Vul het hier in.'
-          : `Nodig om je bij ${orgaan} correct te identificeren.`,
-        // Hier neemt de weerstand toe; dan hoort er te staan wat wij ermee doen.
-        slot: 'Beveiligd verwerkt. Je burgerservicenummer staat nooit in een e-mail.',
-      });
-    }
-  }
-
-  const gelezenIban = waardeVan('iban');
-  velden.push({
-    id: 'iban', label: 'IBAN', type: 'text', verplicht: true,
-    hulp: gelezenIban !== '' && !ibanKlopt(gelezenIban)
-      ? 'Het rekeningnummer uit je brief klopt niet. Vul het hier in.'
-      : `Een eventuele vergoeding wordt door ${orgaan} rechtstreeks aan jou uitbetaald.`,
-    slot: 'Wij ontvangen jouw vergoeding niet; het geld komt op jouw rekening binnen.',
-  });
-  velden.push({
-    id: 'email', label: 'E-mailadres', type: 'email', verplicht: true,
-    hulp: 'Hierop houden wij je op de hoogte.',
-  });
-  velden.push({ id: 'telefoon', label: 'Telefoonnummer', type: 'tel', verplicht: false });
-
   return velden;
 }
+
+/**
+ * Wat wij hier met opzet niet vragen.
+ *
+ * Staat hier zodat het een gecontroleerde keuze blijft in plaats van iets dat
+ * ooit is weggehaald. Deze velden komen uit `bepaalDossiereisen` en worden in
+ * het dossier gevraagd, niet in de funnel.
+ */
+export const NIET_IN_DE_FUNNEL = ['adres', 'postcode', 'woonplaats', 'geboortedatum', 'bsn', 'iban'];

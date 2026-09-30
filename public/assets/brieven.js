@@ -122,6 +122,9 @@ async function leesEen(lading, { wachttijd = WACHTTIJD_MS } = {}) {
   if (!antwoord.ok) {
     const fout = new Error(data.fout || 'Wij konden deze brief niet lezen.');
     fout.hint = data.hint;
+    // Het soort fout bepaalt wat de bezoeker te zien krijgt: een donkere foto
+    // kan hij zelf oplossen, een storing niet.
+    fout.soort = data.soort || '';
     throw fout;
   }
   return data;
@@ -148,7 +151,10 @@ export async function leesBrieven(ladingen, { bijVoortgang } = {}) {
         brief: data.brief,
       });
     } catch (fout) {
-      mislukt.push({ bestandsnaam: ladingen[i].bestandsnaam, fout: fout.message, hint: fout.hint });
+      mislukt.push({
+        bestandsnaam: ladingen[i].bestandsnaam, fout: fout.message, hint: fout.hint,
+        soort: fout.soort || '',
+      });
     }
   }
   if (bijVoortgang) bijVoortgang(ladingen.length, ladingen.length);
@@ -156,6 +162,7 @@ export async function leesBrieven(ladingen, { bijVoortgang } = {}) {
   if (gelezen.length === 0) {
     const fout = new Error(mislukt[0] ? mislukt[0].fout : 'Wij konden deze brieven niet lezen.');
     fout.hint = mislukt[0] ? mislukt[0].hint : '';
+    fout.soort = mislukt[0] ? mislukt[0].soort || '' : '';
     throw fout;
   }
 

@@ -28,6 +28,27 @@ export const CONTACTVELDEN = {
   kenmerk: 'Kenmerk of zaaknummer',
 };
 
+/**
+ * Wat een aanvraag nodig heeft om binnen te mogen komen.
+ *
+ * Dit is bewust iets anders dan `bepaalDossiereisen`. Dat rekent uit wat een
+ * zaak nodig heeft om **ingediend** te kunnen worden bij het bestuursorgaan -
+ * een adres voor op de brief, een burgerservicenummer waarmee de instantie de
+ * zaak terugvindt, een rekeningnummer voor de uitbetaling.
+ *
+ * Die gegevens vragen wij niet meer aan de balie. Iemand die net een foto van
+ * zijn brief heeft gemaakt, weet nog niet of wij iets voor hem kunnen
+ * betekenen; hem dan zijn burgerservicenummer laten intypen is vragen om af te
+ * haken, en het zet een bijzonder persoonsgegeven in onze opslag van iemand
+ * die misschien nooit klant wordt.
+ *
+ * Dus: hier alleen wat nodig is om de opdracht aan te nemen en contact te
+ * kunnen houden. De rest vult de aanvrager later aan in zijn eigen dossier,
+ * als wij de zaak hebben nagelopen en er echt iets te doen valt. Wat er dan
+ * nog ontbreekt, staat in het dossier en in de beheeromgeving.
+ */
+export const AANVRAAGVELDEN = ['naam', 'email'];
+
 function veld(id, verplicht, reden) {
   return { id, label: CONTACTVELDEN[id] || id, verplicht, reden };
 }

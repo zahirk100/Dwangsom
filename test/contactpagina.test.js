@@ -80,8 +80,10 @@ test('de pagina wordt meegebouwd, is bereikbaar en staat in de voetregels', () =
 test('contact staat in het menu, niet alleen onderaan de pagina', () => {
   // Wie een vraag heeft, scrolt niet eerst naar de voetregel. De balk is waar
   // iemand kijkt, en op een telefoon zit die balk achter de menuknop.
+  // start.html ontbreekt hier met opzet: de aanvraag heeft geen sitemenu.
+  // Zie test/menu.test.js voor de reden en voor de weg terug die er wél is.
   const paginas = ['index.html', 'uwv.html', 'uwv-wia.html', 'beslistermijn.html',
-    'hoe-werkt-het.html', 'contact.html', 'start.html', 'mijn.html', 'privacy.html',
+    'hoe-werkt-het.html', 'contact.html', 'mijn.html', 'privacy.html',
     'voorwaarden.html', 'aanvraag-klassiek.html'];
   for (const bestand of paginas) {
     const html = fs.readFileSync(path.join(PUBLIEK, bestand), 'utf8');

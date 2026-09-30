@@ -494,6 +494,19 @@ async function stuurBestand({ dossier, stukId, invoer, knop, fout, knoptekst }) 
  * contact. Anders is één typefout genoeg om het geld naar iemand anders te
  * laten gaan.
  */
+/**
+ * Wat de aanvrager hier zelf kan invullen.
+ *
+ * Sinds de aanvraag alleen nog om een naam en een e-mailadres vraagt, is dit
+ * de plek waar de rest binnenkomt: adres en geboortedatum voor de stukken,
+ * het burgerservicenummer waarmee de instantie de zaak terugvindt, en het
+ * rekeningnummer waarop een toegekende vergoeding wordt uitbetaald.
+ *
+ * Dat gebeurt hier en niet in de funnel omdat het hier pas ergens over gaat:
+ * er is een dossier, wij hebben de zaak nagelopen, en het formulier laat zien
+ * waaróm elk gegeven nodig is. Wat niet nodig is in deze zaak, wordt ook niet
+ * gevraagd - `bepaalDossiereisen` bepaalt dat per zaak.
+ */
 const ZELF_IN_TE_VULLEN = [
   ['naam', 'Naam', 'text'],
   ['telefoon', 'Telefoonnummer', 'tel'],
@@ -501,6 +514,9 @@ const ZELF_IN_TE_VULLEN = [
   ['postcode', 'Postcode', 'text'],
   ['woonplaats', 'Woonplaats', 'text'],
   ['geboortedatum', 'Geboortedatum', 'date'],
+  ['bsn', 'Burgerservicenummer', 'text'],
+  ['iban', 'IBAN', 'text'],
+  ['kenmerk', 'Kenmerk of zaaknummer', 'text'],
 ];
 
 function aanvulformulier(dossier, alles = false) {

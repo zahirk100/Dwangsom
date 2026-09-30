@@ -35,43 +35,59 @@ const code = funnel.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''
 const start = fs.readFileSync(path.join(WORTEL, 'public/start.html'), 'utf8');
 
 test('de uitslag noemt de betekenis, niet alleen het aantal dagen', () => {
-  assert.match(funnel, /dagen? langer/);
-  assert.ok(!/dagen'} geleden/.test(code), 'het kale "dagen geleden" hoort vertaald te zijn');
+  assert.match(funnel, /langer dan in je brief/);
+  assert.ok(!/geleden/.test(code), 'het kale "dagen geleden" hoort vertaald te zijn');
 });
 
 test('de datum en de betekenis staan naast elkaar', () => {
-  assert.match(funnel, /feitrij__vak/);
-  assert.match(start, /\.feitrij \{/);
+  // Twee vakken naast elkaar, niet één lopende zin: dit is het moment waarop
+  // iemand moet zien dat wij zijn brief echt gelezen hebben.
+  assert.match(funnel, /class: 'feiten'/);
+  assert.match(funnel, /Datum in de brief/);
+  assert.match(funnel, /Jouw situatie/);
+  assert.match(start, /\.feiten \{/);
   assert.match(start, /grid-template-columns: 1fr 1fr/);
 });
 
-test('er staat een zin boven de vervolgvragen', () => {
-  // Zonder deze verandert het gevoel van "ze hebben mijn zaak uitgezocht"
-  // naar "oké, nu begint alsnog een formulier".
-  assert.match(funnel, /aanvulkop/);
-  assert.match(funnel, /alleen nog een paar dingen/);
+test('de vervolgvragen beginnen met wat wij al gelezen hebben', () => {
+  // Zonder dat verandert het gevoel van "ze hebben mijn zaak uitgezocht" naar
+  // "oké, nu begint alsnog een formulier". Het aanvulscherm laat daarom eerst
+  // zien wat de brief opleverde, en vraagt dan pas.
+  assert.match(funnel, /function toonWatWijLazen/);
+  assert.match(start, /Dit hebben wij uit je brief gehaald/);
+  assert.match(funnel, /function uitJeBrieven/,
+    'wat al uit de brief bleek, hoort een bevestiging te zijn en geen vraag');
 });
 
+/** Alle knopteksten die de bezoeker te zien krijgt, uit de pagina en uit de code. */
+function knopteksten() {
+  const uitPagina = [...start.matchAll(/<button[^>]*>([^<]{3,})<\/button>/g)].map((m) => m[1].trim());
+  const uitCode = [
+    ...code.matchAll(/knop knop--(?:primair|zacht|stil|keuze)[^']*'[^)]*?\}, '([^']{3,})'\)/g),
+    ...code.matchAll(/textContent = '([^']{3,})';/g),
+    ...code.matchAll(/\{ label: '([^']+)'/g),
+  ].map((m) => m[1]);
+  return [...uitPagina, ...uitCode];
+}
+
 test('de knoppen gebruiken geen juridische termen', () => {
-  const knoppen = [...code.matchAll(/knopVerder\.textContent = '([^']+)'/g)].map((m) => m[1]);
-  assert.ok(knoppen.length >= 3, `verwacht meerdere knopteksten, kreeg ${knoppen.length}`);
+  // "Naar de machtiging" en "Ingebrekestelling versturen" zijn precies de
+  // woorden die wij horen te vertalen; daarvoor komt iemand hier.
+  const knoppen = knopteksten();
+  assert.ok(knoppen.length >= 8, `verwacht meerdere knopteksten, kreeg ${knoppen.length}`);
   for (const knop of knoppen) {
     assert.ok(!/machtiging|ingebrekestelling|dwangsom/i.test(knop), `"${knop}" is juridische taal`);
   }
-  assert.ok(knoppen.some((k) => /akkoord/i.test(k)), 'de stap heet in de balk "Akkoord"');
 });
 
 test('de knop belooft niet dat er nu al iets naar de instantie gaat', () => {
   // Het volgende scherm zegt dat wij de melding nog voorbereiden, dus
-  // "machtigen en indienen" was een verwachtingsbreuk. "Bezig met indienen…"
-  // mag wel: dat gaat over het indienen van de aanvraag bij ons, en het is
-  // een laadtoestand die de klant een halve seconde ziet.
-  const knoppen = [...code.matchAll(/knopVerder\.textContent = '([^']+)'/g)]
-    .map((m) => m[1])
-    .filter((k) => !/^Bezig met/.test(k));
-  for (const knop of knoppen) {
-    assert.ok(!/indienen/i.test(knop), `"${knop}" belooft dat er nu iets wordt ingediend`);
+  // "indienen" is een verwachtingsbreuk: er gaat op dat moment nog niets weg.
+  for (const knop of knopteksten().filter((k) => !/^Bezig met/.test(k))) {
+    assert.ok(!/indienen|versturen naar/i.test(knop),
+      `"${knop}" belooft dat er nu iets wordt verstuurd`);
   }
+  assert.match(start, /Er gaat nu nog niets naar de instantie/);
 });
 
 test('"Ingebrekestelling versturen" wordt vertaald voor de klant', () => {
@@ -89,7 +105,9 @@ test('de zaak wordt met één vaste korte vorm benoemd', () => {
 });
 
 test('het kostenblok is een afspraak, geen kostenopgave met aftreksom', () => {
-  assert.match(funnel, /Onze afspraak met jou/);
+  // Een aftreksom vlak voor de handtekening zet een verliesanker neer bij een
+  // bedrag dat de klant op dat moment nog niet heeft.
+  assert.match(start, /Onze kostenafspraak/);
   assert.ok(!/kostensom__rij--af/.test(code), 'de aftreksom hoort weg te zijn');
   assert.ok(!/function kostenSom/.test(code));
   assert.match(funnel, /voor het behandelen van je zaak/);
@@ -109,25 +127,28 @@ test('de twee gevallen staan als vraag met antwoord', () => {
   assert.match(code, /voor het behandelen van je zaak/);
 });
 
-test('het blok belooft geen melding als die nog niet is vastgesteld', () => {
-  // Is de uitslag onvolledig of onbekend, dan staat er nog helemaal niet
+test('het aanbod belooft geen melding als die nog niet is vastgesteld', () => {
+  // Is de uitslag onvolledig of geblokkeerd, dan staat er nog helemaal niet
   // vást dat er een melding moet. "Wij regelen nu de melding" is dan een
   // toezegging die wij op dat moment niet kunnen waarmaken. Daarom hoort de
   // neutrale zin de terugvaloptie te zijn, niet die melding.
-  const blok = /const watWijNuDoen = \{[\s\S]*?\}\[uitkomst\][\s\S]*?;/.exec(code)[0];
+  const blok = /function watWijDoenBij[\s\S]*?\n\}/.exec(code)[0];
   const terugval = blok.split('}[uitkomst]')[1];
   assert.ok(!/regelen nu de melding/.test(terugval),
     'de terugvaloptie belooft een melding die nog niet is vastgesteld');
   assert.match(terugval, /zoeken uit welke stap er nodig is/);
-  assert.match(blok, /UITKOMST\.INGEBREKESTELLING_NODIG\]: `Wij regelen nu de melding/);
+  assert.match(blok, /INGEBREKESTELLING_NODIG\]: `Wil je dat wij \$\{orgaan\} officieel/);
+  assert.match(blok, /TERMIJN_LOOPT\]: `Wij houden de datum in de gaten/,
+    'bij een lopende termijn regelen wij nu niets');
 });
 
 test('de instantie krijgt geen hoofdletter midden in een zin', () => {
-  // instantieInEenZin() geeft "je gemeente"; met een hoofdletter erop werd
-  // dat "bij Je gemeente".
-  const blok = /function rendereKosten\(\)[\s\S]*?\n\}/.exec(code)[0];
-  assert.ok(!/metHoofdletter\(instantieInEenZin/.test(blok),
+  // orgaanNaam() geeft "je gemeente"; met een hoofdletter erop werd dat
+  // "bij Je gemeente".
+  const blok = /function kostenblok\([\s\S]*?\n\}/.exec(code)[0];
+  assert.ok(!/metHoofdletter\(orgaanNaam/.test(blok),
     'hier staat de instantie steeds midden in een zin');
+  assert.match(blok, /\$\{orgaan\} rechtstreeks aan jou betaald/);
 });
 
 test('er staat nergens "beslissen over je ...-beslissing"', () => {
@@ -154,10 +175,15 @@ test('vlak voor de handtekening staat de geruststelling opnieuw', () => {
   assert.match(funnel, /veranderen daarmee niets aan wat je hebt aangevraagd/);
 });
 
-test('de regel onder het vinkje noemt de afspraak ondubbelzinnig', () => {
-  assert.match(start, /id="akkoord-tarief"/);
-  assert.match(funnel, /akkoord-tarief/);
-  assert.match(funnel, /Geen vergoeding is € 0/);
+test('de regel bij het vinkje noemt de afspraak ondubbelzinnig', () => {
+  // Hier bevestigt de klant de afspraak juridisch; dan telt ondubbelzinnigheid
+  // boven een prettige formulering. En de voorwaarden waar hij naar verwijst,
+  // moeten aanklikbaar zijn.
+  assert.match(start, /id="akkoord-tekst"/);
+  assert.match(funnel, /akkoord-tekst/);
+  assert.match(funnel, /Ik betaal alleen als ik een vergoeding voor het wachten krijg/);
+  assert.match(funnel, /pas als dat geld binnen is/);
+  assert.match(start, /href="\/voorwaarden"/);
 });
 
 test('na afloop staat er wat de klant zelf nog moet doen', () => {
@@ -183,9 +209,11 @@ test('uiterlijkOp slaat het weekend over', () => {
 });
 
 test('de conclusie herhaalt wat de klant zelf heeft ingevuld', () => {
+  // "De beslistermijn lijkt verstreken" wist hij al vanaf de kop; dat hij
+  // daarom nú iets kan doen, is de conclusie waar hij op wacht.
   assert.match(funnel, /Je kunt nu in actie komen/);
-  assert.match(funnel, /Je gaf aan dat je \$\{nogNiets/);
-  assert.match(funnel, /stellen wij de melding aan \$\{orgaan\} voor je op/);
+  assert.match(funnel, /Je gaf aan dat je \$\{nogNiets\.join/);
+  assert.match(funnel, /had \$\{orgaan\} uiterlijk \$\{einddatum\} moeten beslissen/);
 });
 
 test('de funnel spreekt de klant met je aan, niet met u', () => {

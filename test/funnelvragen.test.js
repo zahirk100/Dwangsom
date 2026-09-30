@@ -1,88 +1,79 @@
 /**
- * De funnel vraagt niet twee keer wat al uit de brief kwam. Dat mag alleen
- * niet betekenen dat een fout onzichtbaar wordt: een nummer dat bij het woord
- * "burgerservicenummer" staat, is niet altijd een burgerservicenummer. Wordt
- * zo'n waarde later door de server afgekeurd, dan zit de aanvrager met een
- * melding over een veld dat nergens op het scherm staat. Precies dat gebeurde.
+ * Wat de funnel nog vraagt - en vooral wat niet meer.
+ *
+ * De aanvraag vroeg eerder adres, geboortedatum, burgerservicenummer en
+ * rekeningnummer, op het moment dat iemand net zijn brief had laten lezen en
+ * nog niet wist of wij iets voor hem konden betekenen. Dat is omgedraaid: hier
+ * vragen wij alleen wat nodig is om de opdracht aan te nemen en contact te
+ * houden. De rest komt in het dossier, als de zaak is nagelopen.
+ *
+ * Deze toetsen bewaken twee dingen tegelijk: dat er niet méér gevraagd wordt
+ * (een bijzonder persoonsgegeven van iemand die geen klant wordt), en dat er
+ * niet minder gevraagd wordt (zonder e-mailadres kunnen wij niets laten weten).
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { teVragenVelden } from '../public/shared/funnelvragen.js';
+import { teVragenVelden, NIET_IN_DE_FUNNEL } from '../public/shared/funnelvragen.js';
+import { AANVRAAGVELDEN } from '../public/shared/dossier.js';
 
 const ids = (zaak) => teVragenVelden(zaak).map((v) => v.id);
 
-const uitDuoBrief = {
-  bestuursorgaan: 'duo',
-  herkenning: {
-    naam: 'L. Pietersen', adres: 'Hoofdweg 3', postcode: '9726 AA',
-    woonplaats: 'Groningen', bsn: '111222333',
-  },
-};
-
-test('wat uit de brief kwam, wordt niet opnieuw gevraagd', () => {
-  assert.deepEqual(ids(uitDuoBrief), ['geboortedatum', 'iban', 'email', 'telefoon']);
+test('de funnel vraagt een naam, een e-mailadres en een kenmerk', () => {
+  assert.deepEqual(ids({ bestuursorgaan: 'uwv' }), ['naam', 'email', 'kenmerk']);
 });
 
-test('een onbruikbaar burgerservicenummer uit de brief wordt alsnog gevraagd', () => {
-  const zaak = { ...uitDuoBrief, herkenning: { ...uitDuoBrief.herkenning, bsn: '123456789' } };
-  const velden = teVragenVelden(zaak);
-  const bsn = velden.find((v) => v.id === 'bsn');
-  assert.ok(bsn, 'zonder dit veld kan de aanvrager de fout niet herstellen');
-  assert.match(bsn.hulp, /geen geldig burgerservicenummer/);
+test('naam en e-mailadres zijn verplicht, het kenmerk niet', () => {
+  const velden = teVragenVelden({ bestuursorgaan: 'uwv' });
+  const verplicht = velden.filter((v) => v.verplicht).map((v) => v.id);
+  assert.deepEqual(verplicht, ['naam', 'email']);
+  assert.deepEqual(verplicht, AANVRAAGVELDEN,
+    'wat de funnel verplicht stelt en wat de server eist, hoort hetzelfde te zijn');
 });
 
-test('staat er geen nummer in de brief, dan wordt het gewoon gevraagd', () => {
-  const zaak = { bestuursorgaan: 'uwv', herkenning: { naam: 'K. Bakker' } };
-  const velden = ids(zaak);
-  assert.ok(velden.includes('bsn'));
-  // De uitleg noemt de instantie: "nodig om je bij UWV te identificeren" is
-  // een reden, "vraagt de instantie" is een frase.
-  assert.match(teVragenVelden(zaak).find((v) => v.id === 'bsn').hulp, /bij UWV/);
-});
-
-test('bij de gevoelige velden staat wat wij met het nummer doen', () => {
-  const velden = teVragenVelden({ bestuursorgaan: 'uwv', herkenning: { naam: 'K. Bakker' } });
-  const bsn = velden.find((v) => v.id === 'bsn');
-  const iban = velden.find((v) => v.id === 'iban');
-  assert.match(bsn.slot, /nooit in een e-mail/, 'hier haakt iemand anders af');
-  assert.match(iban.slot, /ontvangen jouw vergoeding niet/);
-  assert.match(iban.hulp, /door UWV rechtstreeks aan jou/);
-});
-
-test('instanties die geen burgerservicenummer vragen, krijgen dat veld niet', () => {
-  assert.ok(!ids({ bestuursorgaan: 'anders', herkenning: { naam: 'A' } }).includes('bsn'));
-  assert.ok(ids({ bestuursorgaan: 'gemeente', herkenning: { naam: 'A' } }).includes('bsn'));
-});
-
-test('een veld waarover de server klaagde, wordt afgedwongen getoond', () => {
-  const zonder = ids(uitDuoBrief);
-  assert.ok(!zonder.includes('woonplaats'), 'die stond in de brief');
-
-  const met = ids({ ...uitDuoBrief, geforceerd: ['woonplaats', 'bsn'] });
-  assert.ok(met.includes('woonplaats'));
-  assert.ok(met.includes('bsn'));
-});
-
-test('een ingevulde correctie gaat voor op wat uit de brief kwam', () => {
-  const zaak = {
-    ...uitDuoBrief,
-    herkenning: { ...uitDuoBrief.herkenning, bsn: '123456789' },
-    contact: { bsn: '111222333' },
-  };
-  assert.ok(!ids(zaak).includes('bsn'), 'de aanvrager heeft het al rechtgezet');
-});
-
-test('een onbruikbaar rekeningnummer wordt als zodanig benoemd', () => {
-  const zaak = { ...uitDuoBrief, contact: { iban: 'NL00BANK0000000000' } };
-  const iban = teVragenVelden(zaak).find((v) => v.id === 'iban');
-  assert.match(iban.hulp, /klopt niet/);
-});
-
-test('de vaste velden worden altijd gevraagd', () => {
-  for (const id of ['geboortedatum', 'iban', 'email', 'telefoon']) {
-    assert.ok(ids(uitDuoBrief).includes(id), `${id} hoort er altijd bij`);
+test('het burgerservicenummer wordt hier niet gevraagd, bij geen enkele instantie', () => {
+  // Dit is de kern van de wijziging. Een burgerservicenummer van iemand die
+  // nooit klant wordt, hoort niet in onze opslag te staan.
+  for (const orgaan of ['uwv', 'duo', 'svb', 'gemeente', 'belastingdienst', '']) {
+    assert.ok(!ids({ bestuursorgaan: orgaan }).includes('bsn'), `bsn wordt gevraagd bij ${orgaan}`);
   }
-  assert.equal(teVragenVelden(uitDuoBrief).find((v) => v.id === 'telefoon').verplicht, false);
+});
+
+test('adres, geboortedatum en rekeningnummer worden hier evenmin gevraagd', () => {
+  const gevraagd = new Set(ids({ bestuursorgaan: 'uwv' }));
+  for (const id of NIET_IN_DE_FUNNEL) {
+    assert.ok(!gevraagd.has(id), `${id} hoort pas in het dossier gevraagd te worden`);
+  }
+});
+
+test('wat uit de brief kwam, staat alvast ingevuld', () => {
+  // Nooit twee keer vragen wat wij al weten: dat blijft.
+  const velden = teVragenVelden({
+    bestuursorgaan: 'duo',
+    herkenning: { naam: 'L. Pietersen', kenmerk: 'DUO-99887' },
+  });
+  assert.equal(velden.find((v) => v.id === 'naam').waarde, 'L. Pietersen');
+  assert.equal(velden.find((v) => v.id === 'kenmerk').waarde, 'DUO-99887');
+  assert.equal(velden.find((v) => v.id === 'email').waarde, '', 'dat weten wij nog niet');
+});
+
+test('wat de aanvrager zelf invulde gaat vóór wat wij uit de brief lazen', () => {
+  const velden = teVragenVelden({
+    herkenning: { naam: 'Uit de brief' },
+    contact: { naam: 'Zelf ingetypt' },
+  });
+  assert.equal(velden.find((v) => v.id === 'naam').waarde, 'Zelf ingetypt');
+});
+
+test('het kenmerkveld noemt de instantie waar het vandaan komt', () => {
+  assert.match(teVragenVelden({ bestuursorgaan: 'uwv' })[2].label, /UWV/);
+  assert.match(teVragenVelden({ bestuursorgaan: 'duo' })[2].label, /DUO/);
+});
+
+test('een veld waarover de server klaagde, wordt afgedwongen verplicht', () => {
+  // Anders krijgt de aanvrager een foutmelding over iets wat hij mocht
+  // overslaan.
+  const velden = teVragenVelden({ geforceerd: ['kenmerk'] });
+  assert.equal(velden.find((v) => v.id === 'kenmerk').verplicht, true);
 });
