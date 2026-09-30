@@ -31,6 +31,17 @@ export const GEBEURTENISSEN = {
   'funnel-gegevens': 'Gegevens ingevuld',
   'funnel-akkoord': 'Machtiging getekend',
   aanvraag: 'Aanvraag ingediend',
+  // De doodlopende schermen. Zonder deze vier is elk vertrek tussen "brief
+  // geüpload" en "uitslag getoond" hetzelfde gat in de trechter, terwijl het
+  // vier verschillende problemen zijn met vier verschillende oplossingen: een
+  // brief die niet te lezen was is werk aan de tekstherkenning, een storing is
+  // werk aan de techniek, "nog niet te laat" is werk aan de advertentie die de
+  // verkeerde mensen trekt, en wie het zelf gaat regelen heeft de uitslag
+  // gekregen maar ons niet nodig gevonden.
+  'funnel-onleesbaar': 'Brief was niet te lezen',
+  'funnel-op-tijd': 'Nog niet te laat',
+  'funnel-storing': 'Er ging technisch iets mis',
+  'funnel-zelf': 'Gaat het zelf regelen',
   // Geen bezoekersgedrag maar een testknop, en daarom apart gehouden: deze
   // telt niet mee in de trechter, in de bronnen of in de pagina's. Hij
   // beantwoordt één vraag, namelijk of een melding vanuit een browser de
@@ -42,6 +53,16 @@ export const GEBEURTENISSEN = {
 
 /** Gebeurtenissen die wel geteld worden maar niet over bezoekers gaan. */
 export const BUITEN_DE_TRECHTER = ['diagnose'];
+
+/**
+ * Waarom iemand niet verder kwam.
+ *
+ * Bewust geen stap in de trechter: dit zijn zijwegen, geen fasen. Ze horen
+ * ook niet bij elkaar op te tellen tot het verlies van een stap, want iemand
+ * kan een onleesbare brief hebben en het daarna alsnog met een tweede brief
+ * proberen.
+ */
+export const AFHAAKREDENEN = ['funnel-onleesbaar', 'funnel-op-tijd', 'funnel-storing', 'funnel-zelf'];
 
 /**
  * De bronnen, en hoe je uit een bezoek bepaalt welke het is.
@@ -185,6 +206,9 @@ export function overzicht(ruw) {
     perPagina,
     diagnoses,
     trechter: trechterVan(totalen),
+    redenen: AFHAAKREDENEN.map((id) => ({
+      id, label: GEBEURTENISSEN[id], aantal: totalen[id] || 0,
+    })),
     trechterPerBron,
     stappen: TRECHTERSTAPPEN.map((id) => ({ id, label: GEBEURTENISSEN[id] })),
   };

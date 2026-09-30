@@ -6,7 +6,9 @@ Allow: /
 # Achter een inlog. Hier valt niets te indexeren en het kost alleen
 # verzoeken aan onze kant.
 Disallow: /beheer
+Disallow: /cijfers
 Disallow: /mijn
+Disallow: /diagnose
 Disallow: /api/
 
 Sitemap: https://nubeslist.nl/sitemap.xml

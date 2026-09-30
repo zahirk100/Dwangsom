@@ -96,6 +96,31 @@ if (existsSync(VOORBEELDEN)) {
   console.log(`  ${'voorbeelden/'.padEnd(26)} ${brieven.length} brieven`);
 }
 
+/*
+  /aanvraag als echt bestand.
+
+  Dit is het adres waar elke advertentie op uitkomt, en het was het enige
+  adres van de site zonder eigen bestand: de server besliste per verzoek welke
+  funnel erbij hoorde. Dat werkt zolang elk verzoek langs de server komt.
+  Komt het niet, omdat de hosting public/ rechtstreeks uitlevert, dan bestaat
+  juist dát adres niet en loopt al het advertentieverkeer op een 404 - terwijl
+  de landingspagina ernaast het prima doet, want dat is wel een bestand.
+
+  De keuze tussen de twee funnels staat in de omgeving en die is hier al
+  bekend, dus hij kan net zo goed nu gemaakt worden. Eén bestand minder om
+  aan te nemen dat het goed gaat.
+*/
+const FUNNELBESTAND = (process.env.FUNNEL || 'nieuw') === 'klassiek'
+  ? 'aanvraag-klassiek.html'
+  : 'start.html';
+// /aanvraag-nieuw is het tweede adres van dezelfde funnel; het staat in de
+// README, dus het hoort ook zonder server te werken.
+for (const naam of ['aanvraag.html', 'aanvraag-nieuw.html']) {
+  copyFileSync(path.join(PUBLIEK, naam === 'aanvraag.html' ? FUNNELBESTAND : 'start.html'),
+    path.join(PUBLIEK, naam));
+  console.log(`  ${naam.padEnd(26)} kopie van ${naam === 'aanvraag.html' ? FUNNELBESTAND : 'start.html'}`);
+}
+
 writeFileSync(path.join(PUBLIEK, 'robots.txt'), robotsTxt());
 console.log(`  ${'robots.txt'.padEnd(26)} ${robotsTxt().length} tekens`);
 const sitemap = sitemapXml(inSitemap);

@@ -17,7 +17,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { overzicht, trechterVan, TRECHTERSTAPPEN, veld, GEBEURTENISSEN } from '../src/meting.js';
+import {
+  overzicht, trechterVan, TRECHTERSTAPPEN, AFHAAKREDENEN, veld, GEBEURTENISSEN,
+} from '../src/meting.js';
 import { controleOverzicht, maakControle } from '../src/controles.js';
 
 const funnel = fs.readFileSync(new URL('../public/assets/funnel.js', import.meta.url), 'utf8');
@@ -41,6 +43,39 @@ test('elke stap van de trechter wordt ook echt afgevuurd', () => {
   for (const stap of TRECHTERSTAPPEN) {
     assert.ok(afgevuurd.has(stap), `"${stap}" staat in de trechter maar wordt nergens gemeten`);
   }
+});
+
+/**
+ * Dezelfde afspraak voor de doodlopende schermen.
+ *
+ * Een reden die niemand afvuurt, staat altijd op nul, en dan lijkt het alsof
+ * er nooit een brief onleesbaar was. Dat is erger dan geen cijfer, want het
+ * ziet eruit als een antwoord.
+ */
+test('elke afhaakreden wordt ook echt afgevuurd', () => {
+  const tabel = /const MEETSTAP = \{[\s\S]*?\};/.exec(funnel);
+  const uitTabel = new Set([...tabel[0].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]));
+  for (const reden of AFHAAKREDENEN) {
+    assert.ok(uitTabel.has(reden), `"${reden}" wordt nergens gemeten`);
+    assert.ok(GEBEURTENISSEN[reden], `"${reden}" staat niet in de lijst met gebeurtenissen`);
+  }
+});
+
+test('een afhaakreden is geen stap in de trechter', () => {
+  // Zouden ze in de trechter staan, dan zouden de percentages niet meer
+  // kloppen: iemand kan een onleesbare brief hebben en het daarna met een
+  // tweede brief alsnog halen.
+  for (const reden of AFHAAKREDENEN) {
+    assert.ok(!TRECHTERSTAPPEN.includes(reden), `"${reden}" hoort geen trechterstap te zijn`);
+  }
+  const uit = overzicht([{ dag: '2026-09-30', tellingen: {
+    [veld('bezoek', 'meta-ads')]: 50,
+    [veld('funnel-brief', 'meta-ads')]: 12,
+    [veld('funnel-onleesbaar', 'meta-ads')]: 5,
+  } }]);
+  assert.deepEqual(uit.redenen.find((r) => r.id === 'funnel-onleesbaar'),
+    { id: 'funnel-onleesbaar', label: GEBEURTENISSEN['funnel-onleesbaar'], aantal: 5 });
+  assert.ok(uit.trechter.every((r) => r.stap !== 'funnel-onleesbaar'));
 });
 
 test('de trechter zegt hoeveel mensen er op elke stap wegliepen', () => {

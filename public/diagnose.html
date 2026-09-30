@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Werkt de site? | NuBeslist</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .blad { max-width: 760px; margin: 0 auto; padding: 28px 16px 70px; }
+  .inleiding { color: var(--tekst-zacht); max-width: 58ch; }
+
+  .proef {
+    display: grid; grid-template-columns: 26px 1fr; gap: 4px 12px;
+    padding: 16px 0; border-top: 1px solid var(--rand);
+  }
+  .proef:first-of-type { border-top: 0; }
+  .proef__teken {
+    grid-row: span 3; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-size: .9rem; font-weight: 700; color: #fff;
+  }
+  .proef--bezig .proef__teken { background: var(--grijs-600); }
+  .proef--goed  .proef__teken { background: var(--groen-600); }
+  .proef--fout  .proef__teken { background: var(--rood-600); }
+  .proef--let-op .proef__teken { background: var(--oranje-600); }
+  .proef__naam { font-weight: 600; }
+  .proef__uitslag { font-size: .94rem; }
+  .proef--fout .proef__uitslag { color: var(--rood-600); }
+  .proef--let-op .proef__uitslag { color: var(--oranje-600); }
+  .proef__wat-nu {
+    font-size: .9rem; color: var(--tekst-zacht); background: var(--papier);
+    border-radius: var(--radius-klein); padding: 10px 12px; margin-top: 2px;
+  }
+  .proef__wat-nu code {
+    background: #fff; border: 1px solid var(--rand); border-radius: 5px;
+    padding: 1px 5px; font-size: .88em;
+  }
+
+  .oordeel {
+    margin: 0 0 26px; padding: 16px 18px; border-radius: var(--radius);
+    border: 1px solid var(--rand); background: var(--papier); font-weight: 600;
+  }
+  .oordeel--goed { border-color: var(--groen-600); color: var(--groen-600); background: var(--groen-100); }
+  .oordeel--fout { border-color: var(--rood-600); color: var(--rood-600); background: var(--rood-100); }
+
+  .opnieuw {
+    margin-top: 24px; padding: 10px 16px; border-radius: 10px;
+    border: 1px solid var(--blauw-600); background: var(--vlak); color: var(--blauw-600);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .opnieuw:hover:not(:disabled) { background: var(--blauw-600); color: #fff; }
+
+  @media (max-width: 520px) {
+    .proef { grid-template-columns: 22px 1fr; }
+    .proef__teken { width: 22px; height: 22px; font-size: .8rem; }
+  }
+</style>
+</head>
+<body>
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="NuBeslist, naar de startpagina">
+      <span class="merk__woord">NuBeslist<span class="merk__punt" aria-hidden="true"></span></span>
+      <span class="label-chip" style="margin-left:6px">Diagnose</span>
+    </a>
+    <nav id="balk-nav">
+      <a class="nav-secundair" href="/cijfers">Cijfers</a>
+      <a class="nav-secundair" href="/">Naar de site</a>
+    </nav>
+  </div>
+</header>
+
+<main class="blad">
+  <h1>Werkt de site?</h1>
+  <p class="inleiding">
+    Deze pagina loopt van buitenaf na of de site doet wat hij moet doen, in
+    dezelfde volgorde als een bezoeker hem tegenkomt. Hij is bedoeld voor het
+    moment waarop de cijfers leeg blijven terwijl er wel op advertenties wordt
+    geklikt: dan staat hier welk deel van de keten het niet doet.
+  </p>
+
+  <div id="oordeel" class="oordeel">Bezig met nakijken&hellip;</div>
+  <div id="proeven"></div>
+
+  <button type="button" class="opnieuw" id="opnieuw">Opnieuw nakijken</button>
+
+  <p class="inleiding" style="margin-top:30px">
+    Deze pagina staat niet in de sitemap en wordt niet geïndexeerd. Er wordt
+    niets van een bezoeker vastgelegd; de enige melding die verstuurd wordt is
+    de testmelding hieronder, en die telt apart van de bezoekerscijfers.
+  </p>
+</main>
+
+<script type="module" src="/assets/diagnose.js"></script>
+</body>
+</html>

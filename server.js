@@ -1361,6 +1361,9 @@ const PAGINAS = {
   '/aanvraag-klassiek': 'aanvraag-klassiek.html',
   '/beheer': 'beheer.html',
   '/cijfers': 'cijfers.html',
+  // Zelfcontrole van de keten. Bewust zonder login bereikbaar: hij is juist
+  // bedoeld voor het moment waarop de rest het niet doet.
+  '/diagnose': 'diagnose.html',
   '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
   '/contact': 'contact.html',

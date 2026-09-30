@@ -227,9 +227,19 @@ const SCHERMEN = {
   },
 };
 
-/** Welke meting en welke controlestap bij een scherm horen. */
+/**
+ * Welke meting en welke controlestap bij een scherm horen.
+ *
+ * De doodlopende schermen staan er ook in, en dat is het halve punt. Zonder
+ * die vier is elk vertrek tussen "brief geüpload" en "uitslag getoond"
+ * hetzelfde gat in de trechter, terwijl er vier heel verschillende dingen
+ * gebeurd kunnen zijn. Wat je eraan moet doen verschilt per geval, dus moet
+ * je ze uit elkaar kunnen houden.
+ */
 const MEETSTAP = {
   uitslag: 'funnel-uitslag', gegevens: 'funnel-gegevens', toestemming: 'funnel-akkoord',
+  onleesbaar: 'funnel-onleesbaar', 'beslissing-binnen': 'funnel-op-tijd',
+  storing: 'funnel-storing', zelf: 'funnel-zelf',
 };
 const CONTROLESTAP = { uitslag: 'uitslag', gegevens: 'gegevens', toestemming: 'akkoord' };
 const gemeten = new Set();

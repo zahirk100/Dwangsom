@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laat je brief bekijken bij NuBeslist</title>
+<meta name="description" content="Maak een foto of upload je brief van UWV, DUO, de SVB of je gemeente. Wij controleren gratis of de instantie te laat is en wat je kunt doen.">
+<link rel="canonical" href="https://nubeslist.nl/aanvraag">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NuBeslist">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:url" content="https://nubeslist.nl/aanvraag">
+<meta property="og:title" content="Laat je brief bekijken">
+<meta property="og:description" content="Maak een foto of upload je brief. Wij controleren gratis of de instantie te laat is en wat je kunt doen.">
+<meta property="og:image" content="https://nubeslist.nl/deelkaart.png">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+/*
+  De aanvraag is één taak, geen website.
+
+  Daarom heeft deze pagina geen menu en geen voetregel met uitstapjes: alleen
+  het merk, een weg terug, en de kaart waar je mee bezig bent. Alles wat hier
+  afleidt, kost iemand die net een foto van zijn brief heeft gemaakt precies
+  op het verkeerde moment zijn aandacht.
+
+  De opbouw is overal hetzelfde: een stappenbalk boven, een kaart in het
+  midden, en rechts een smalle kolom met één geruststelling die bij de stap
+  hoort. Die kolom schuift op een telefoon onder de kaart.
+*/
+
+/* ------------------------------------------------------------- balk ---- */
+.kopbalk { background: #fff; border-bottom: 1px solid var(--rand); }
+.kopbalk__in {
+  max-width: 1240px; margin: 0 auto; padding: 22px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+}
+.kopbalk .merk__woord { font-size: 1.55rem; }
+.kopbalk__terug { font-weight: 600; font-size: .98rem; color: var(--blauw-900); }
+
+/* -------------------------------------------------------- stappenbalk --- */
+.reis { max-width: 1240px; margin: 0 auto; padding: 30px 24px 0; }
+.stappen {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  list-style: none; margin: 0 0 26px; padding: 0;
+}
+.stappen li { display: flex; align-items: center; gap: 10px; }
+.stappen li::after {
+  content: ""; width: 34px; height: 1px; background: var(--rand-sterk); flex: none;
+}
+.stappen li:last-child::after { display: none; }
+.stap__bol {
+  display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%;
+  font-size: .8rem; font-weight: 700; flex: none;
+  background: #fff; color: var(--grijs-600); border: 1.5px solid var(--rand-sterk);
+}
+.stap__naam { font-size: .95rem; color: var(--tekst-zacht); }
+.stappen li[data-stand="klaar"] .stap__bol { background: #dff0e7; color: #1c6b50; border-color: #b4ddca; }
+.stappen li[data-stand="bezig"] .stap__bol { background: #1a6b52; color: #fff; border-color: #1a6b52; }
+.stappen li[data-stand="bezig"] .stap__naam { color: #1a6b52; font-weight: 700; }
+
+/* --------------------------------------------------- kaart en zijkolom -- */
+.werkblad {
+  max-width: 1240px; margin: 0 auto; padding: 0 24px 90px;
+  display: grid; grid-template-columns: minmax(0, 790px) 300px; gap: 40px; align-items: start;
+}
+.kaartblad {
+  background: #fff; border: 1px solid var(--rand); border-radius: 18px;
+  padding: 42px 46px 46px; box-shadow: 0 10px 34px rgba(11, 18, 80, .05);
+}
+/* Een streep bovenop zegt zonder woorden wat voor scherm dit is. */
+.kaartblad--goed { border-top: 4px solid #1a6b52; border-radius: 18px; }
+.kaartblad--uitslag { border-top: 4px solid #4f7abb; border-radius: 18px; }
+
+.zijkolom { padding-left: 26px; border-left: 2px solid var(--rand); }
+.zijkolom__teken {
+  display: grid; place-items: center; width: 62px; height: 62px; border-radius: 15px;
+  background: var(--blauw-100); margin-bottom: 22px;
+}
+.zijkolom h2 { font-size: 1.1rem; margin: 0 0 12px; }
+.zijkolom p { font-size: .96rem; color: var(--tekst-zacht); line-height: 1.6; margin: 0 0 12px; }
+
+/* ------------------------------------------------------ in de kaart ---- */
+.terugpijl { display: inline-block; font-weight: 600; font-size: .96rem; margin-bottom: 22px; }
+.bovenkop {
+  font-size: .8rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: #5a7bab; margin: 0 0 12px;
+}
+.kaartblad h1 { font-size: clamp(28px, 3.2vw, 38px); line-height: 1.15; margin: 0; letter-spacing: -.02em; }
+.kaartblad > p { font-size: 1.08rem; color: var(--tekst-zacht); line-height: 1.6; margin: 18px 0 0; }
+.kaartblad h2 { font-size: 1.25rem; margin: 30px 0 10px; }
+.knoprij { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
+.knoprij .knop { font-size: 1.02rem; }
+
+/* Een rustig blok met uitleg of een waarschuwing. */
+.blok { border-radius: 12px; padding: 20px 22px; margin-top: 24px; font-size: 1.02rem; line-height: 1.6; }
+.blok--info { background: #eaf2fb; color: var(--blauw-800); }
+.blok--geld { background: #fdf4e4; border: 1px solid #ecd9b4; }
+.blok--geld strong { display: block; font-size: 1.08rem; margin-bottom: 8px; }
+.blok--nuaanzet { background: #e8f4ed; border-left: 4px solid #1a6b52; }
+.blok--nuaanzet .bovenkop { color: #1a6b52; }
+.blok--nuaanzet h3 { font-size: 1.35rem; margin: 0 0 8px; }
+.blok--nuaanzet p { margin: 0 0 6px; color: var(--tekst-zacht); }
+.blok--nuaanzet p.jij { color: var(--tekst); font-weight: 700; margin: 10px 0 0; }
+
+/* Een genummerde uitleg van wat er gebeurt. */
+.wat { list-style: none; counter-reset: wat; margin: 26px 0 0; padding: 0; display: grid; gap: 22px; }
+.wat li { counter-increment: wat; display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
+.wat li::before {
+  content: counter(wat) "."; font-size: 1rem; color: var(--tekst-zacht); padding-top: 2px;
+}
+.wat b { grid-column: 2; font-size: 1.08rem; font-weight: 600; }
+/* Zonder deze regel belandt de uitleg in de smalle nummerkolom en breekt hij
+   per woord af: het nummer, de kop en de uitleg zijn drie losse kinderen van
+   dezelfde grid. */
+.wat li > span { grid-column: 2; font-size: .98rem; color: var(--tekst-zacht); margin-top: 4px; line-height: 1.5; }
+/* Variant met een bol ervoor, voor "wij doen dit voor je". */
+.wat--bol li::before {
+  content: counter(wat); display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; background: #eef3fa; color: var(--blauw-800); font-size: .92rem;
+  font-weight: 700; padding: 0;
+}
+.wat--bol { gap: 26px; }
+.wat--bol li { position: relative; }
+.wat--bol li:not(:last-child)::after {
+  content: ""; position: absolute; left: 15px; top: 36px; bottom: -22px; width: 1px; background: var(--rand);
+}
+
+/* De samenvatting voor de toestemming. */
+.samenvatting { margin: 26px 0 0; }
+.samenvatting > div { padding: 18px 0; border-top: 1px solid var(--rand); }
+.samenvatting > div:first-child { border-top: 0; padding-top: 0; }
+.samenvatting dt { font-size: .92rem; color: var(--tekst-zacht); margin: 0 0 6px; }
+.samenvatting dd { margin: 0; font-size: 1.06rem; line-height: 1.5; }
+
+/* Het rekenvoorbeeld met de verdeelbalk. */
+.verdeling { margin-top: 18px; }
+.verdeling__jij { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+.verdeling__ons { font-size: .98rem; color: var(--tekst-zacht); margin-top: 4px; }
+.verdeelbalk { display: flex; height: 13px; border-radius: 999px; overflow: hidden; margin-top: 16px; }
+.verdeelbalk span:first-child { background: var(--blauw-900); }
+.verdeelbalk span:last-child { background: #dda94f; }
+.verdeling__voetnoot { font-size: .9rem; color: var(--tekst-zacht); margin-top: 12px; }
+
+/* De uitgelichte zin uit de brief. */
+.briefcitaat {
+  margin-top: 24px; padding: 22px 24px; background: #fdfaf0; border-left: 4px solid #4f7abb;
+  border-radius: 0 12px 12px 0;
+}
+.briefcitaat .bovenkop { color: #6b7a9a; }
+.briefcitaat blockquote { margin: 0; font-size: 1.15rem; line-height: 1.55; }
+.briefcitaat mark { background: #fbe7bb; color: inherit; padding: 1px 5px; border-radius: 3px; }
+.briefcitaat p { font-size: .94rem; color: var(--tekst-zacht); margin: 14px 0 0; line-height: 1.55; }
+.feiten { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 26px;
+  padding-top: 22px; border-top: 1px solid var(--rand); }
+.feiten dt { font-size: .92rem; color: var(--tekst-zacht); margin: 0 0 6px; }
+.feiten dd { margin: 0; font-size: 1.12rem; font-weight: 700; }
+
+/* De uploadkaart. */
+.kiesvak {
+  margin-top: 26px; padding: 30px 28px; background: #e9f5ee; border-radius: 14px; text-align: center;
+  transition: outline-color .15s;
+}
+.kiesvak.sleep { outline: 3px solid var(--actie); outline-offset: 3px; }
+.kiesvak__beeld { display: block; width: min(300px, 80%); margin: 0 auto 18px; }
+.kiesvak .knop { width: 100%; max-width: 420px; font-size: 1.05rem; padding: 16px 20px; }
+.kiesvak__onder { font-size: .95rem; color: #3f6a58; margin: 14px 0 0; line-height: 1.5; }
+.kiesvak__grens { font-size: .9rem; color: #4b7263; margin: 6px 0 0; }
+
+/* De gekozen bestanden. */
+.bestanden { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 12px; }
+.bestanden:empty { display: none; }
+.bestand {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 14px; align-items: center;
+  padding: 13px 15px; border: 1px solid var(--rand); border-radius: 12px; background: #fafbfe;
+}
+.bestand__duim {
+  position: relative; display: grid; place-items: center; width: 56px; height: 72px; overflow: hidden;
+  border: 1px solid var(--rand-sterk); border-radius: 6px; background: #fff; padding: 0;
+  font-size: .82rem; font-weight: 700; color: var(--blauw-900); text-decoration: none;
+}
+.bestand__duim img { width: 100%; height: 100%; object-fit: contain; }
+.bestand__duim span {
+  position: absolute; left: 0; right: 0; bottom: 0; background: var(--blauw-900); color: #fff;
+  font-size: .68rem; text-align: center; padding: 2px;
+}
+.bestand__naam { font-size: .98rem; font-weight: 600; overflow-wrap: anywhere; }
+.bestand__over { font-size: .88rem; color: var(--tekst-zacht); margin-top: 4px; }
+.bestand__weg {
+  min-height: 42px; padding: 8px 12px; border: 1px solid var(--rand-sterk); border-radius: 9px;
+  background: #fff; color: var(--blauw-900); font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer;
+}
+
+/* De handtekening. Ongewijzigd gebleven, alleen opnieuw ingekleurd. */
+.handtekeningvak {
+  margin-top: 10px; border: 2px dashed var(--rand-sterk); border-radius: 12px; background: #fff;
+  position: relative; touch-action: none;
+}
+.handtekeningvak canvas { display: block; width: 100%; height: 170px; border-radius: 12px; }
+.handtekeningvak__hint {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  color: var(--grijs-600); font-size: .95rem;
+}
+.handtekeningvak.getekend .handtekeningvak__hint { display: none; }
+.handtekening-rij { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+
+/* De uitklappers. */
+details.uitklap { margin-top: 22px; border-top: 1px solid var(--rand); border-bottom: 1px solid var(--rand); }
+details.uitklap summary {
+  list-style: none; cursor: pointer; padding: 17px 2px; font-weight: 600; font-size: 1.02rem;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+}
+details.uitklap summary::-webkit-details-marker { display: none; }
+details.uitklap summary::after { content: "⌄"; font-size: 1.2rem; color: var(--grijs-600); }
+details.uitklap[open] summary::after { content: "⌃"; }
+details.uitklap .binnen { padding: 0 2px 20px; color: var(--tekst-zacht); line-height: 1.6; }
+details.uitklap .binnen p { margin: 0 0 12px; }
+details.uitklap .binnen p:last-child { margin-bottom: 0; }
+
+/* Antwoordknoppen bij een vraag: één tik, geen uitklaplijst. */
+.keuzes--rij { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.knop--keuze {
+  background: #fff; color: var(--tekst); border: 1.5px solid var(--rand-sterk);
+  padding: 11px 22px; font-size: .98rem; font-weight: 600; border-radius: 10px;
+}
+.knop--keuze:hover { border-color: var(--actie); color: var(--actie-donker); }
+.knop--keuze-aan {
+  background: var(--actie-zacht); border-color: var(--actie); color: #0b635a;
+  box-shadow: inset 0 0 0 1px var(--actie);
+}
+
+/* Alleen voor een schermlezer. */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.subtiel { color: var(--tekst-zacht); }
+
+.verborgen { display: none !important; }
+.voetnoot { max-width: 1240px; margin: 0 auto; padding: 0 24px 60px; font-size: .88rem; color: var(--tekst-zacht); }
+
+@media (max-width: 1040px) {
+  .werkblad { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  .zijkolom { padding-left: 0; padding-top: 24px; border-left: 0; border-top: 2px solid var(--rand); }
+  .zijkolom__teken { display: none; }
+}
+@media (max-width: 680px) {
+  .kopbalk__in { padding: 16px 18px; }
+  .kopbalk .merk__woord { font-size: 1.3rem; }
+  .kopbalk__terug { font-size: .9rem; }
+  .reis, .werkblad, .voetnoot { padding-left: 18px; padding-right: 18px; }
+  .reis { padding-top: 22px; }
+  .stappen { gap: 7px; margin-bottom: 20px; }
+  .stappen li { gap: 7px; }
+  .stappen li::after { width: 14px; }
+  .stap__naam { font-size: .84rem; }
+  .kaartblad { padding: 26px 20px 30px; border-radius: 14px; }
+  .kaartblad h1 { font-size: 27px; }
+  .kaartblad > p { font-size: 1rem; }
+  .knoprij { flex-direction: column; align-items: stretch; }
+  .knoprij .knop { width: 100%; }
+  .feiten { grid-template-columns: 1fr; gap: 16px; }
+  .kiesvak { padding: 22px 16px; }
+  .bestand { grid-template-columns: 48px minmax(0, 1fr); }
+  .bestand__duim { width: 48px; height: 60px; }
+  .bestand__weg { grid-column: 2; justify-self: start; }
+}
+@media (max-width: 380px) {
+  .stappen li::after { display: none; }
+  .stap__naam { font-size: .78rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="kopbalk">
+  <div class="kopbalk__in">
+    <a class="merk" href="/" aria-label="NuBeslist, naar de startpagina">
+      <span class="merk__woord">NuBeslist<span class="merk__punt" aria-hidden="true"></span></span>
+    </a>
+    <a class="kopbalk__terug" href="/">Terug naar de website</a>
+  </div>
+</header>
+
+<div class="reis">
+  <ol class="stappen" id="stappen" aria-label="Waar je bent"></ol>
+</div>
+
+<main class="werkblad">
+  <div id="kaart" class="kaartblad" tabindex="-1">
+
+    <!-- ============================================ 1. je brief kiezen -->
+    <section data-scherm="kiezen">
+      <p class="bovenkop">Gratis briefcontrole</p>
+      <h1>Laat je brief bekijken</h1>
+      <p id="kiezen-onder">Kies de brief waarin staat wanneer de instantie beslist. Je mag meerdere brieven of pagina&rsquo;s toevoegen.</p>
+
+      <div class="kiesvak" id="kiesvak">
+        <div class="kiesvak__beeld" id="kiesvak-beeld" aria-hidden="true"><svg class="scene-svg" style="display:block;width:100%;height:auto" viewBox="0 0 412 240" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><ellipse cx="210" cy="222" rx="178" ry="12" fill="#B9DDD1"/><rect x="42" y="13" width="119" height="209" rx="22" fill="#102252"/><rect x="50" y="24" width="103" height="187" rx="15" fill="#F4FBF8"/><path d="M84 31h35" stroke="#102252" stroke-width="6" stroke-linecap="round"/><rect x="68" y="61" width="69" height="104" rx="3" fill="white" stroke="#9DBBD5" stroke-width="1.5"/><path d="M80 79h35M80 93h45M80 105h41M80 130h45M80 142h34" stroke="#BED1E6" stroke-width="4" stroke-linecap="round"/><rect x="77" y="112" width="40" height="8" rx="2" fill="#9BD1BD"/><path d="M61 72v-20h20M142 72v-20h-20M61 155v20h20M142 155v20h-20" stroke="#087F72" stroke-width="2.5" stroke-linecap="round"/><circle cx="101" cy="190" r="10" fill="#087F72"/><text x="205" y="127" text-anchor="middle" fill="#31516B" font-family="Figtree, sans-serif" font-size="19">of</text><path d="M260 54h82l28 29v122q0 9-9 9h-101q-9 0-9-9V63q0-9 9-9Z" fill="white" stroke="#264870" stroke-width="2.5"/><path d="M342 54v29h28" fill="#CEE2F5" stroke="#264870" stroke-width="2.5" stroke-linejoin="round"/><rect x="269" y="97" width="84" height="32" rx="5" fill="#D4EBE2"/><text x="311" y="119" text-anchor="middle" fill="#0B1250" font-family="Figtree, sans-serif" font-size="21" font-weight="800">PDF</text><path d="M271 149h78M271 163h62M271 178h73" stroke="#BED1E6" stroke-width="5" stroke-linecap="round"/></svg></div>
+        <button type="button" class="knop knop--primair" id="knop-kiezen">Maak een foto of kies een bestand</button>
+        <input type="file" id="bestand" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,image/gif,image/bmp,image/tiff,.heic,.heif,.pdf,application/pdf" multiple hidden>
+        <p class="kiesvak__onder">Na je keuze gaan we direct verder. Je kunt meerdere pagina&rsquo;s tegelijk kiezen.</p>
+        <p class="kiesvak__grens" id="kiesvak-grens"></p>
+      </div>
+
+      <ul class="bestanden" id="bestanden" aria-label="Gekozen bestanden"></ul>
+      <div id="kiezen-melding"></div>
+
+      <details class="uitklap">
+        <summary>Welke brief kan ik gebruiken?</summary>
+        <div class="binnen">
+          <p>Kies de ontvangstbevestiging of een brief waarin de instantie een nieuwe datum noemt. Heb je al gemeld dat je te lang wacht? Voeg die brief of e-mail ook toe.</p>
+          <p>Weet je het niet zeker? Kies ze dan allemaal. Wij zoeken uit welke datum geldt; dat hoef jij niet te weten.</p>
+        </div>
+      </details>
+
+      <div class="knoprij">
+        <button type="button" class="knop knop--zacht" id="knop-voorbeeldbrief">Probeer met een voorbeeldbrief</button>
+      </div>
+      <p class="kiesvak__grens" style="margin-top:14px">Gratis controle. We sturen niets naar de instantie.</p>
+      <p style="font-size:.96rem"><a href="/privacy" target="_blank" rel="noopener">Wat gebeurt er met mijn brief?</a></p>
+
+      <details class="uitklap">
+        <summary>Brief niet digitaal? Plak de tekst</summary>
+        <div class="binnen">
+          <div class="veld">
+            <textarea id="plaktekst" rows="6" placeholder="Plak hier de tekst van je brief, met de datum waarop je een beslissing zou krijgen."></textarea>
+            <button type="button" class="knop knop--zacht knop--klein" id="knop-plak" style="margin-top:10px">Deze tekst gebruiken</button>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ================================================= wij lezen hem -->
+    <section data-scherm="lezen" class="verborgen">
+      <p class="bovenkop">Automatische controle</p>
+      <h1 id="lezen-kop">Je bestanden staan klaar</h1>
+      <p id="lezen-onder">Wij lezen de datums uit je brief en leggen uit wat ze betekenen.</p>
+      <ol class="wat">
+        <li><b>Tekst en datums lezen</b><span>Uit je gekozen brief of brieven.</span></li>
+        <li><b>De situatie controleren</b><span>Ontbreekt er iets? Dan stellen we je een vraag.</span></li>
+        <li><b>Je uitslag uitleggen</b><span>Je ziet wat de brief betekent en wat je kunt doen.</span></li>
+      </ol>
+      <p class="blok blok--info" id="lezen-stand" role="status" aria-live="polite">Wij lezen je brief&hellip;</p>
+    </section>
+
+    <!-- ================================================== 2. aanvullen -->
+    <section data-scherm="aanvullen" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="kiezen">&larr; Terug</a>
+      <p class="bovenkop">Nog een paar vragen</p>
+      <h1>Klopt dit?</h1>
+      <p>Dit hebben wij uit je brief gehaald. Controleer het even; aanpassen kan.</p>
+      <div id="uitbrief"></div>
+      <div id="aanvullen"></div>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" id="knop-naar-uitslag">Bekijk mijn uitslag</button>
+      </div>
+    </section>
+
+    <!-- ======================================== 2. er ontbreekt nog iets -->
+    <section data-scherm="meer-info" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="aanvullen">&larr; Terug</a>
+      <p class="bovenkop">Meer informatie nodig</p>
+      <h1>We hebben nog een brief of antwoord nodig</h1>
+      <p id="meerinfo-onder">We weten nog niet zeker wanneer de instantie had moeten beslissen.</p>
+      <div class="blok blok--info">
+        <strong style="display:block; margin-bottom:8px">Wat ontbreekt?</strong>
+        <span id="meerinfo-wat">Heb je na deze brief een nieuwe datum of beslissing gekregen?</span>
+      </div>
+      <p>Kijk of je een recentere brief hebt. Je hoeft de juiste datum niet zelf uit te zoeken.</p>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" data-erbij>Een brief toevoegen</button>
+        <button type="button" class="knop knop--zacht" data-terug="aanvullen">Zelf de vragen beantwoorden</button>
+      </div>
+    </section>
+
+    <!-- ============================================ 2. foto niet te lezen -->
+    <section data-scherm="onleesbaar" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="kiezen">&larr; Terug</a>
+      <p class="bovenkop">Nieuwe foto nodig</p>
+      <h1>Deze brief is nog niet goed te lezen</h1>
+      <p id="onleesbaar-onder">Maak een nieuwe foto waarop de hele pagina scherp te zien is.</p>
+      <div class="blok blok--info" id="onleesbaar-hint">Leg de brief plat, zorg voor voldoende licht en fotografeer de hele pagina. Controleer of de tekst scherp is.</div>
+      <p>Je andere bestanden blijven behouden.</p>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" data-terug="kiezen">Bestanden bekijken en aanpassen</button>
+      </div>
+    </section>
+
+    <!-- ========================================== 2. beslissing al binnen -->
+    <section data-scherm="beslissing-binnen" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="aanvullen">&larr; Terug</a>
+      <p class="bovenkop">Je situatie is veranderd</p>
+      <h1>De beslissing is al binnen</h1>
+      <p>Heb je vóór de beslissing al aan de instantie gemeld dat je te lang wachtte?</p>
+      <p>Voeg de beslissing toe. Heb je eerder een melding gestuurd? Voeg die brief of e-mail ook toe. Beide datums zijn nodig om te bekijken of er nog een vergoeding mogelijk is.</p>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" data-erbij>Deze brieven toevoegen</button>
+        <button type="button" class="knop knop--zacht" data-terug="aanvullen">Terug naar de vraag</button>
+      </div>
+    </section>
+
+    <!-- =========================================== 2. controle mislukte -->
+    <section data-scherm="storing" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="kiezen">&larr; Terug</a>
+      <p class="bovenkop">Controle onderbroken</p>
+      <h1>De controle is niet afgerond</h1>
+      <p id="storing-onder">Er is nog geen uitslag. Je bestanden staan er nog.</p>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" id="knop-opnieuw">Opnieuw proberen</button>
+        <button type="button" class="knop knop--zacht" data-terug="kiezen">Terug naar mijn bestanden</button>
+      </div>
+    </section>
+
+    <!-- ==================================================== 3. je uitslag -->
+    <section data-scherm="uitslag" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="aanvullen">&larr; Terug</a>
+      <div id="uitslag"></div>
+    </section>
+
+    <!-- ============================================= opdracht 1. je keuze -->
+    <section data-scherm="hulp" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="uitslag">&larr; Terug</a>
+      <p class="bovenkop">Hulp bij jouw volgende stap</p>
+      <h1>Wij nemen het regelwerk over</h1>
+      <p id="hulp-onder">Wil je dat wij officieel laten weten dat je nog op een beslissing wacht? Wij regelen de melding en houden daarna het vervolg bij.</p>
+      <ol class="wat wat--bol">
+        <li><b>Wij maken en versturen de melding</b><span>Je hoeft zelf geen brief te schrijven. We versturen de melding pas als jij toestemming hebt gegeven.</span></li>
+        <li><b>Wij volgen de reactie</b><span id="hulp-volgen">We houden bij wanneer de instantie moet reageren en laten je weten wat de volgende stap is.</span></li>
+      </ol>
+      <h2>Wat hoef jij nog te doen?</h2>
+      <p style="margin-top:6px">Je controleert hierna je gegevens en geeft toestemming. Hebben we later iets nodig? Dan hoor je dat van ons.</p>
+      <p style="font-size:.96rem">Je aanvraag of bezwaar zelf verandert hierdoor niet.</p>
+      <div id="hulp-kosten"></div>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" id="knop-regel">Ja, regel de melding voor mij</button>
+        <button type="button" class="knop knop--zacht" data-scherm-heen="zelf">Ik wil het zelf regelen</button>
+      </div>
+      <p style="font-size:.94rem">Eerst controleer je je gegevens en geef je je toestemming. Er gaat nu nog niets naar de instantie.</p>
+    </section>
+
+    <!-- ========================================== opdracht: zelf regelen -->
+    <section data-scherm="zelf" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="hulp">&larr; Terug</a>
+      <p class="bovenkop">Je eigen keuze</p>
+      <h1>Je kunt het ook zelf regelen</h1>
+      <p>Je hoeft NuBeslist niet in te schakelen.</p>
+      <p id="zelf-onder">Bewaar je brieven en controleer welke datum voor jouw situatie geldt.</p>
+      <div class="blok blok--info" id="zelf-uitleg"></div>
+      <div class="knoprij">
+        <button type="button" class="knop knop--zacht" data-terug="hulp">Toch onze hulp bekijken</button>
+      </div>
+    </section>
+
+    <!-- ========================================= opdracht 2. je gegevens -->
+    <section data-scherm="gegevens" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="hulp">&larr; Terug</a>
+      <p class="bovenkop">Je gegevens</p>
+      <h1>Wie mogen we helpen?</h1>
+      <p>We vragen alleen wat we nu nodig hebben om je op de hoogte te houden.</p>
+      <div id="gegevensvelden"></div>
+      <p style="font-size:.96rem" id="gegevens-slot">We vragen hier geen burgerservicenummer, rekeningnummer of medische informatie.</p>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" id="knop-naar-toestemming">Bekijk mijn gegevens en toestemming</button>
+        <button type="button" class="knop knop--zacht" data-terug="hulp">Terug</button>
+      </div>
+    </section>
+
+    <!-- ======================================== opdracht 3. toestemming -->
+    <section data-scherm="toestemming" class="verborgen">
+      <a class="terugpijl" href="#" data-terug="gegevens">&larr; Terug</a>
+      <p class="bovenkop">Controleer je keuze</p>
+      <h1>Dit gaan wij voor je doen</h1>
+      <p>Lees de samenvatting voordat je toestemming geeft.</p>
+      <dl class="samenvatting" id="samenvatting"></dl>
+      <p><a href="#" data-terug="gegevens">Gegevens aanpassen</a></p>
+      <div id="toestemming-kosten"></div>
+
+      <h2>Je handtekening</h2>
+      <p style="margin-top:6px; font-size:.98rem" id="machtigingtekst"></p>
+      <div class="handtekeningvak" id="handtekeningvak">
+        <canvas id="handtekening" width="1100" height="340" aria-label="Teken hier je handtekening"></canvas>
+        <div class="handtekeningvak__hint">Teken hier met je vinger of muis</div>
+      </div>
+      <div class="handtekening-rij">
+        <button type="button" class="knop knop--stil knop--klein" id="knop-wissen">Opnieuw</button>
+        <span class="subtiel" style="font-size:.88rem">Wij leggen datum en tijd vast bij je handtekening.</span>
+      </div>
+      <p class="veld__fout verborgen" data-fout="handtekening"></p>
+
+      <div class="veld" style="margin-top:22px">
+        <div class="keuzes">
+          <label class="keuze"><input type="checkbox" id="akkoord">
+            <span class="keuze__tekst"><span id="akkoord-tekst"></span>
+              <span class="keuze__uitleg">Lees de <a href="/voorwaarden" target="_blank" rel="noopener">algemene voorwaarden</a> en de <a href="/privacy" target="_blank" rel="noopener">privacyverklaring</a>.</span></span></label>
+        </div>
+        <p class="veld__fout verborgen" data-fout="akkoord"></p>
+      </div>
+
+      <div id="indien-fout"></div>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" id="knop-indienen">Opdracht bevestigen</button>
+        <button type="button" class="knop knop--zacht" data-terug="gegevens">Terug</button>
+      </div>
+    </section>
+
+    <!-- ============================================ na 1. de bevestiging -->
+    <section data-scherm="bevestiging" class="verborgen">
+      <p class="bovenkop">Bevestiging</p>
+      <h1>Zo bevestigen we je opdracht</h1>
+      <p id="bevestiging-onder"></p>
+      <div class="blok blok--nuaanzet">
+        <h3 id="bevestiging-volgende">Volgende stap: NuBeslist</h3>
+        <p id="bevestiging-uitleg">Eerst controleren we de gegevens en maken we de melding. Je ziet apart wanneer die is verstuurd.</p>
+      </div>
+      <p class="subtiel" style="font-size:.9rem; margin-top:22px">Je referentienummer</p>
+      <div style="font-size:1.5rem; font-weight:800; letter-spacing:.02em" id="referentie"></div>
+      <div id="bevestiging-aanvullen"></div>
+      <div class="knoprij">
+        <button type="button" class="knop knop--primair" data-scherm-heen="voortgang">Bekijk mijn dossier</button>
+      </div>
+    </section>
+
+    <!-- =============================================== na 2. de voortgang -->
+    <section data-scherm="voortgang" class="verborgen">
+      <p class="bovenkop">Jouw dossier</p>
+      <h1>Je weet wie er aan zet is</h1>
+      <p id="voortgang-onder"></p>
+      <div class="blok blok--nuaanzet">
+        <p class="bovenkop" style="margin-bottom:6px">Nu aan zet</p>
+        <h3 id="voortgang-wie">NuBeslist</h3>
+        <p id="voortgang-status"></p>
+        <p class="jij" id="voortgang-jij">Jouw actie: nu niets.</p>
+      </div>
+      <ol class="wat" id="voortgang-stappen"></ol>
+      <div id="voortgang-zelf"></div>
+      <details class="uitklap" id="kostenafspraak">
+        <summary>Onze kostenafspraak</summary>
+        <div class="binnen" id="kostenafspraak-binnen"></div>
+      </details>
+      <div class="knoprij" id="voortgang-knoppen"></div>
+    </section>
+
+  </div>
+
+  <aside class="zijkolom" id="zijkolom">
+    <div class="zijkolom__teken" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#24347f" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6M8 13h8M8 17h6"/>
+      </svg>
+    </div>
+    <h2 id="zij-kop"></h2>
+    <div id="zij-tekst"></div>
+  </aside>
+</main>
+
+<p class="voetnoot">NuBeslist is geen overheidsinstantie. De uitkomst is een inschatting en geen juridisch advies.</p>
+
+<script type="module" src="/assets/meting.js"></script>
+<script type="module" src="/assets/funnel.js"></script>
+</body>
+</html>

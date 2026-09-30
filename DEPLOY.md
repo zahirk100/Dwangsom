@@ -100,28 +100,43 @@ Ontbreekt die, dan weigert de runtime de hele module en faalt elk verzoek — oo
 dat naar de startpagina, met `500 FUNCTION_INVOCATION_FAILED`. `server.js`
 exporteert daarom onderaan een handler als default. Een test bewaakt dat.
 
+### Werkt de site wel, maar blijven de cijfers leeg?
+
+Open **`/diagnose`**. Die pagina loopt de keten van buitenaf na en zegt per
+schakel of hij het doet: is er een API, blijft de opslag bestaan, bestaat de
+pagina waar de advertenties op uitkomen, laden de meetscripts, en komt een
+melding echt aan. Hij werkt ook als er verder niets werkt, want hij is zelf
+een gewoon bestand.
+
+Dit is de eerste plek om te kijken als er wel op advertenties wordt geklikt en
+er geen verkeer in `/cijfers` verschijnt. Precies dat is hier misgegaan, en het
+was van de site af niet te zien: pagina's zijn echte bestanden en die doen het
+ook zonder serverfunctie, dus alles zag er normaal uit terwijl er niets werd
+geteld.
+
+De twee oorzaken waar hij op wijst:
+
+- **Geen API.** Op Vercel worden alleen bestanden in `api/` een functie. Staat
+  `api/[...pad].js` er niet, dan geeft elk adres onder `/api/` een 404 en werkt
+  behalve het tellen ook het lezen van een brief en het indienen van een
+  aanvraag niet.
+- **Vluchtige opslag.** Zonder `KV_REST_API_URL` en `KV_REST_API_TOKEN` (of de
+  Upstash-varianten) telt de applicatie in het werkgeheugen van een serverloze
+  functie. Zodra die afkoelt, staat alles weer op nul. `/diagnose` en het blok
+  bovenaan `/cijfers` zeggen allebei of dit speelt.
+
 ### Krijg je "500 FUNCTION_INVOCATION_FAILED"?
 
-Dat betekent dat de serverloze functie niet opstartte. Het project gebruikt nu
-de standaardopzet van Vercel zonder bouwstap: `public/` is de statische map,
-`api/` bevat de functies, en `vercel.json` regelt alleen `cleanUrls` en de
-rewrite van `/api/*`. Blijft de fout staan, zoek dan gericht:
+Dat betekent dat de serverloze functie niet opstartte.
 
 1. **Controleer de projectinstellingen.** *Settings → Build and Deployment*:
-   Build Command, Output Directory en Install Command horen allemaal op de
-   standaardwaarde te staan, zonder override. Er is geen bouwstap nodig.
-2. **Open `/statisch.txt`.** Zie je tekst, dan werkt de statische hosting.
-   Krijg je een fout of 404, dan wordt `public/` niet als statische map
-   gebruikt en zit het in de Output Directory.
-3. **Open `/api/ping`.** Dat bestand heeft geen enkele import en kan dus niet
-   falen door de applicatie. Het toont de Node-versie, de omgevingsvariabelen
-   en laadt daarna elke module los van elkaar, met per module `ok` of `FOUT`.
-   Faalt ook `/api/ping`, dan start geen enkele functie op en ligt het aan het
-   project, niet aan de code.
-4. De volledige stacktrace staat in Vercel onder het tabblad **Logs** van de
+   Build Command, Output Directory en Install Command horen op de
+   standaardwaarde te staan, zonder override.
+2. **Open `/diagnose`.** Laadt die pagina, dan werkt de statische hosting en
+   zit het probleem in de functie. Laadt hij niet, dan wordt `public/` niet als
+   statische map gebruikt.
+3. De volledige stacktrace staat in Vercel onder het tabblad **Logs** van de
    deployment (of *Observability → Runtime Logs*).
-
-`api/ping.js` en `public/statisch.txt` mogen weg zodra de site draait.
 
 ### 3. Uitproberen
 

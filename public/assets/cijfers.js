@@ -409,6 +409,34 @@ function zelftest(data) {
   return vak;
 }
 
+/**
+ * Waarom mensen niet verder kwamen.
+ *
+ * De trechter zegt hoevéél er wegloopt tussen twee stappen; dit zegt waarom.
+ * Dat verschil bepaalt wat je eraan doet: een onleesbare brief is werk aan de
+ * tekstherkenning, een storing is werk aan de techniek, "nog niet te laat" is
+ * een advertentie die de verkeerde mensen trekt, en wie het zelf gaat regelen
+ * heeft zijn uitslag gekregen en ons niet nodig gevonden. Dat laatste is geen
+ * lek maar een keuze, en hoort dus ook niet als verlies te worden geteld.
+ */
+function rendereRedenen(data) {
+  const redenen = (data.redenen || []).filter((r) => r.aantal > 0);
+  if (redenen.length === 0) {
+    return el('p', { class: 'stil', tekst: 'Nog niemand is op een doodlopend scherm beland.' });
+  }
+  const max = Math.max(...redenen.map((r) => r.aantal));
+  const brief = data.totalen['funnel-brief'] || 0;
+  return rol(el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', { tekst: 'Reden' }), el('th', { tekst: 'Aantal' }),
+      el('th', { tekst: 'Van de brieven' }))),
+    el('tbody', {}, redenen.map((r) => el('tr', {},
+      el('td', { tekst: r.label }),
+      balkcel(r.aantal, max),
+      el('td', { class: brief ? '' : 'stil',
+        tekst: brief ? `${Math.round((r.aantal / brief) * 1000) / 10}%` : '\u2014' }))))));
+}
+
 async function laad() {
   inhoud.textContent = '';
   inhoud.append(el('p', { class: 'stil', tekst: 'Bezig met laden…' }));
@@ -455,6 +483,10 @@ async function laad() {
     bronkiezer(data),
     trechter.length ? rendereTrechter(trechter)
       : el('p', { class: 'stil', tekst: `Nog geen verkeer van ${bron} in deze periode.` }),
+    el('h2', { tekst: 'Waarom kwamen ze niet verder?' }),
+    el('p', { class: 'stil' }, 'De trechter zegt hoeveel mensen wegliepen, dit zegt waarom. '
+      + 'Dit zijn zijwegen en geen stappen, dus ze tellen niet op tot het verlies hierboven.'),
+    rendereRedenen(data),
     el('h2', { tekst: 'Per dag' }),
     el('p', { class: 'stil' }, bron
       ? `Alleen verkeer van ${bron}. "Afgehaakt" is het aantal bezoekers dat die dag niet tot een aanvraag kwam.`

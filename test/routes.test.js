@@ -30,19 +30,51 @@ test('elke route serveert een bestand dat ook echt bestaat', () => {
   }
 });
 
-test('een route die iets anders serveert dan zijn eigen naam, mag geen gelijknamig bestand hebben', () => {
+/**
+ * Twee wegen naar dezelfde pagina mogen niet uit elkaar lopen.
+ *
+ * Een verzoek aan /aanvraag komt langs de routetabel als de server hem
+ * afhandelt, en bij public/aanvraag.html als de hosting het bestand zelf
+ * uitlevert. Welke van de twee het wordt, hangt af van de hosting en niet van
+ * ons. Dus moeten ze hetzelfde opleveren: een gelijknamig bestand mag bestaan,
+ * maar dan alleen als kopie van wat de route serveert.
+ *
+ * Bestaat het bestand niet, dan is de route alleen bereikbaar via de server.
+ * Dat was bij /aanvraag het geval, en op een hosting die public/ rechtstreeks
+ * uitlevert bestond juist het adres niet waar alle advertenties op uitkomen.
+ */
+test('een route en een gelijknamig bestand leveren hetzelfde op', () => {
   for (const [route, bestand] of Object.entries(PAGINAS)) {
     if (route === '/') continue;
     const eigenNaam = `${route.slice(1)}.html`;
     if (eigenNaam === bestand) continue;
 
     const botsing = path.join(WORTEL, 'public', eigenNaam);
-    assert.ok(
-      !fs.existsSync(botsing),
-      `${route} hoort ${bestand} te serveren, maar public/${eigenNaam} bestaat ook. `
-      + 'Op Vercel wint dat bestand en wordt de routetabel overgeslagen.',
+    if (!fs.existsSync(botsing)) continue;
+    assert.equal(
+      fs.readFileSync(botsing, 'utf8'),
+      fs.readFileSync(path.join(WORTEL, 'public', bestand), 'utf8'),
+      `${route} serveert ${bestand}, maar public/${eigenNaam} bestaat en is anders. `
+      + 'Welke van de twee een bezoeker krijgt, hangt van de hosting af. '
+      + 'Draai `npm run build` als het een kopie hoort te zijn.',
     );
   }
+});
+
+/**
+ * Het adres waar elke advertentie op uitkomt, moet een echt bestand zijn.
+ *
+ * Zonder dat bestand is /aanvraag alleen bereikbaar als elk verzoek langs de
+ * server komt. Levert de hosting public/ rechtstreeks uit, dan krijgt al het
+ * advertentieverkeer daar een 404, terwijl de landingspagina ernaast het wel
+ * doet. Dat is van buitenaf niet te zien aan de landingspagina.
+ */
+test('/aanvraag bestaat als bestand en is de gekozen funnel', () => {
+  const bestand = path.join(WORTEL, 'public', 'aanvraag.html');
+  assert.ok(fs.existsSync(bestand),
+    'public/aanvraag.html ontbreekt; draai `npm run build`');
+  assert.equal(fs.readFileSync(bestand, 'utf8'),
+    fs.readFileSync(path.join(WORTEL, 'public', PAGINAS['/aanvraag']), 'utf8'));
 });
 
 test('de funnelschakelaar wijst naar bestaande pagina\'s', () => {
