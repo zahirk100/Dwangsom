@@ -26,7 +26,7 @@ test.after(async () => {
 const haal = (pad) => fetch(basisUrl + pad);
 const PUBLIEKE_PAGINAS = ['/', '/aanvraag', '/hoe-werkt-het', '/aanvraag-klassiek',
   '/uwv-wia', '/bijstand', '/studiefinanciering'];
-const ALLE_PAGINAS = [...PUBLIEKE_PAGINAS, '/beheer'];
+const ALLE_PAGINAS = [...PUBLIEKE_PAGINAS, '/beheer', '/cijfers'];
 
 test('de oude naam staat nergens meer in de uitgeleverde pagina\'s', async () => {
   for (const pad of ALLE_PAGINAS) {
@@ -90,6 +90,23 @@ test('het merkteken en de iconen worden uitgeleverd met het juiste type', async 
     const lijf = await antwoord.arrayBuffer();
     assert.ok(lijf.byteLength > minimum, `${pad} is verdacht klein`);
   }
+});
+
+test('het icoon en het monogram tekenen hetzelfde merk', async () => {
+  // Het tabbladicoon, het telefoonicoon en het monogram in de code komen uit
+  // één ontwerp. Wie er één bijwerkt en de rest vergeet, laat de site met twee
+  // logo's achter; dat valt pas op als iemand de app op zijn scherm zet.
+  const svg = await (await haal('/merk.svg')).text();
+  const { MONOGRAM } = await import('../src/merk.js');
+  const vormen = (bron) => [
+    /rx="(\d+)"/.exec(bron)[1],
+    /<path d="([^"]+)"/.exec(bron)[1],
+    /<circle cx="(\d+)" cy="(\d+)" r="(\d+)"/.exec(bron).slice(1, 4).join(),
+  ];
+  assert.deepEqual(vormen(MONOGRAM), vormen(svg),
+    'src/merk.js en public/merk.svg tekenen een ander merk');
+  assert.match(svg, /viewBox="0 0 1000 1000"/);
+  assert.match(MONOGRAM, /viewBox="0 0 1000 1000"/);
 });
 
 test('elke pagina wijst naar het merkteken en naar het telefoonicoon', async () => {

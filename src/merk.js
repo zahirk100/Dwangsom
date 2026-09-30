@@ -30,8 +30,8 @@ export function merklink() {
  * Alleen voor plekken waar een vierkant icoon hoort - het tabblad, de
  * telefoonknop, een gedeelde link. In de pagina zelf staat het woordmerk.
  */
-export const MONOGRAM = `<svg class="merk__teken" viewBox="0 0 64 64" role="img" aria-label="${MERKNAAM}">
-        <rect width="64" height="64" rx="14" fill="#0b1250"/>
-        <path d="M19 46V18h7l12 16.5V18h7v28h-7L26 29.5V46z" fill="#fff"/>
-        <circle cx="50.5" cy="17.5" r="3.4" fill="#4fb3f6"/>
+export const MONOGRAM = `<svg class="merk__teken" viewBox="0 0 1000 1000" role="img" aria-label="${MERKNAAM}">
+        <rect width="1000" height="1000" rx="220" fill="#0b1250"/>
+        <path d="M226.7 770V230h130.37L593.9 559.4V230h124.2v540H593.9L350.9 431.34V770z" fill="#fff"/>
+        <circle cx="782" cy="276" r="46" fill="#4fb3f6"/>
       </svg>`;

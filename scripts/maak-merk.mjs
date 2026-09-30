@@ -40,55 +40,59 @@ function afstandLijn(x, y, x1, y1, x2, y2) {
 }
 
 /**
- * Afstand tot een stuk cirkel. De hoeken lopen met de klok mee vanaf drie uur,
- * net als op het scherm, en buiten dat stuk gelden ronde uiteinden.
+ * Afstand tot de rand van een gesloten veelhoek; negatief is binnen.
+ * De N is een vlak en geen streek, dus telt ook of het punt erin ligt.
  */
-function afstandBoog(x, y, cx, cy, r, van, tot) {
-  let hoek = (Math.atan2(y - cy, x - cx) * 180) / Math.PI;
-  if (hoek < 0) hoek += 360;
-  if (hoek >= van && hoek <= tot) return Math.abs(Math.hypot(x - cx, y - cy) - r);
-  const eind = (graden) => [
-    cx + r * Math.cos((graden * Math.PI) / 180),
-    cy + r * Math.sin((graden * Math.PI) / 180),
-  ];
-  const [ax, ay] = eind(van);
-  const [bx, by] = eind(tot);
-  return Math.min(Math.hypot(x - ax, y - ay), Math.hypot(x - bx, y - by));
+function afstandVlak(x, y, punten) {
+  let dichtst = Infinity;
+  let binnen = false;
+  for (let i = 0, j = punten.length - 1; i < punten.length; j = i, i += 1) {
+    const [x1, y1] = punten[i];
+    const [x2, y2] = punten[j];
+    dichtst = Math.min(dichtst, afstandLijn(x, y, x1, y1, x2, y2));
+    const kruist = (y1 > y) !== (y2 > y)
+      && x < ((x2 - x1) * (y - y1)) / (y2 - y1) + x1;
+    if (kruist) binnen = !binnen;
+  }
+  return binnen ? -dichtst : dichtst;
 }
 
+/** De N uit het merkteken, als gesloten vorm in het vlak van 1000 bij 1000. */
+const LETTER = [
+  [226.7, 770], [226.7, 230], [357.07, 230], [593.9, 559.4], [593.9, 230],
+  [718.1, 230], [718.1, 770], [593.9, 770], [350.9, 431.34], [350.9, 770],
+];
+
 /**
- * De kleur van één punt in het merkteken, in een vierkant van 64 bij 64.
+ * De kleur van één punt in het merkteken, in een vlak van 1000 bij 1000.
  *
- * Hetzelfde beeld als public/merk.svg en als het woordmerk in de balk: de N
- * van NuBeslist in wit op diepblauw, met rechtsboven het lichtblauwe punt.
- * Het is een monogram en geen plaatje met tekst: op 32 pixels in een tabblad
- * is een letter het enige dat nog leesbaar is.
+ * Hetzelfde beeld als public/merk.svg: de N van NuBeslist in wit op diepblauw,
+ * met rechtsboven het lichtblauwe punt. Het is een monogram en geen plaatje
+ * met tekst: op 32 pixels in een tabblad is een letter het enige dat nog
+ * leesbaar is.
  *
+ * @param {number} eenheid hoeveel van dit vlak in één uitvoerpixel past; de
+ *   randen lopen over precies die breedte uit, zodat ze op elk formaat even
+ *   scherp zijn.
  * @returns {{kleur: number[], dekking: number}}
  */
-function merkteken(x, y, { kader = true } = {}) {
+function merkteken(x, y, eenheid, { kader = true } = {}) {
+  const rand = (afstand) => Math.max(0, Math.min(1, 0.5 - afstand / eenheid));
+
   let kleur = kader ? NAVY : [0, 0, 0];
-  let dekking = kader ? Math.max(0, Math.min(1, 0.5 - afstandKader(x, y, 64, 64, 14))) : 0;
+  let dekking = kader ? rand(afstandKader(x, y, 1000, 1000, 220)) : 0;
 
-  // De N: twee stijlen en de schuine streep ertussen.
-  const n = Math.min(
-    afstandLijn(x, y, 20.5, 46, 20.5, 18),
-    afstandLijn(x, y, 20.5, 18, 43.5, 46),
-    afstandLijn(x, y, 43.5, 46, 43.5, 18),
-  ) - 3.6;
-  const nDekking = Math.max(0, Math.min(1, 0.5 - n));
-  if (nDekking > 0) {
-    if (dekking === 0) { kleur = WIT; dekking = nDekking; }
-    else { kleur = mengen(kleur, WIT, nDekking / Math.max(dekking, nDekking)); dekking = Math.max(dekking, nDekking); }
-  }
+  const leg = (vorm, eigen) => {
+    const erop = rand(vorm);
+    if (erop <= 0) return;
+    if (dekking === 0) { kleur = eigen; dekking = erop; return; }
+    kleur = mengen(kleur, eigen, erop / Math.max(dekking, erop));
+    dekking = Math.max(dekking, erop);
+  };
 
+  leg(afstandVlak(x, y, LETTER), WIT);
   // Het punt rechtsboven: het accent uit het woordmerk.
-  const punt = Math.hypot(x - 50.5, y - 17.5) - 3.4;
-  const puntDekking = Math.max(0, Math.min(1, 0.5 - punt));
-  if (puntDekking > 0) {
-    if (dekking === 0) { kleur = ACCENT; dekking = puntDekking; }
-    else { kleur = mengen(kleur, ACCENT, puntDekking / Math.max(dekking, puntDekking)); dekking = Math.max(dekking, puntDekking); }
-  }
+  leg(Math.hypot(x - 782, y - 276) - 46, ACCENT);
 
   return { kleur, dekking };
 }
@@ -176,8 +180,8 @@ function naarPng(breedte, hoogte, pixels) {
 // ---------------------------------------------------------------- maken ----
 
 function icoon(maat) {
-  const schaal = 64 / maat;
-  return teken(maat, maat, (x, y) => merkteken(x * schaal, y * schaal));
+  const schaal = 1000 / maat;
+  return teken(maat, maat, (x, y) => merkteken(x * schaal, y * schaal, schaal));
 }
 
 /**
@@ -195,7 +199,8 @@ function deelkaart(breedte, hoogte) {
     const ondergrond = mengen([234, 241, 252], [255, 255, 255], Math.min(1, afstand * 1.25));
     const binnen = x >= links && x < links + maat && y >= boven && y < boven + maat;
     if (!binnen) return { kleur: ondergrond, dekking: 1 };
-    const punt = merkteken(((x - links) / maat) * 64, ((y - boven) / maat) * 64);
+    const schaal = 1000 / maat;
+    const punt = merkteken((x - links) * schaal, (y - boven) * schaal, schaal);
     return { kleur: mengen(ondergrond, punt.kleur, punt.dekking), dekking: 1 };
   });
 }

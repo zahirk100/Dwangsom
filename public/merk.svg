@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NuBeslist">
-  <rect width="64" height="64" rx="14" fill="#0b1250"/>
-  <path d="M19 46V18h7l12 16.5V18h7v28h-7L26 29.5V46z" fill="#fff"/>
-  <circle cx="50.5" cy="17.5" r="3.4" fill="#4fb3f6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="NuBeslist">
+  <rect width="1000" height="1000" rx="220" fill="#0b1250"/>
+  <path d="M226.7 770V230h130.37L593.9 559.4V230h124.2v540H593.9L350.9 431.34V770z" fill="#fff"/>
+  <circle cx="782" cy="276" r="46" fill="#4fb3f6"/>
 </svg>
