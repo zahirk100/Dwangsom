@@ -77,6 +77,37 @@ test('een klik op een advertentie is te herkennen aan de url', () => {
   assert.equal(uit('', 'www.google.com'), 'organisch');
 });
 
+/**
+ * Een link die met de hand in een gesprek is geplakt.
+ *
+ * Een advertentie die op een chatbericht uitkomt, levert geen bezoek aan de
+ * site op. Wat er daarna gebeurt wel: iemand stuurt in dat gesprek een link,
+ * en dat is de enige manier om te zien wat die gesprekken opleveren. Zonder
+ * eigen tag valt zo'n bezoek onder "sociaal" (Messenger stuurt zijn adres
+ * mee) of onder "direct" (WhatsApp stuurt niets mee), en dan is het niet te
+ * onderscheiden van iemand die het adres zelf intypte.
+ */
+test('een gesprek is een eigen kanaal, geen advertentie', () => {
+  for (const zoek of ['?bron=chat', '?bron=whatsapp', '?bron=messenger', '?bron=dm']) {
+    assert.equal(kanaal({ zoek }), 'chat', `${zoek} hoort chat te zijn`);
+  }
+  for (const verwijzer of ['www.messenger.com', 'web.whatsapp.com', 'lm.facebook.com']) {
+    assert.equal(kanaal({ verwijzer }), 'chat', `${verwijzer} hoort chat te zijn`);
+  }
+  // Een bericht op een tijdlijn is iets anders dan een gesprek.
+  assert.equal(kanaal({ verwijzer: 'l.facebook.com' }), 'sociaal');
+});
+
+test('een eigen tag wint van een parameter die het platform erop plakt', () => {
+  // Een link die je in Messenger opent, krijgt een fbclid mee terwijl er geen
+  // advertentie aan te pas kwam. Zonder deze regel telt elk gesprek als
+  // advertentie en lijkt de advertentie te werken terwijl het gesprek werkte.
+  assert.equal(kanaal({ zoek: '?bron=chat&fbclid=IwAR0' }), 'chat');
+  assert.equal(kanaal({ zoek: '?bron=whatsapp&fbclid=IwAR0' }), 'chat');
+  // Maar een tag die wél een advertentie noemt, blijft een advertentie.
+  assert.equal(kanaal({ zoek: '?bron=meta&fbclid=IwAR0' }), 'meta-ads');
+});
+
 test('een medium dat zegt dat het geen advertentie is, wint van de rest', () => {
   // Een fbclid blijft aan een link plakken als iemand hem doorstuurt. Staat er
   // dan een eigen tag bij die zegt dat het een nieuwsbrief is, dan is dat het

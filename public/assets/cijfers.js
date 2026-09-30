@@ -377,8 +377,10 @@ function klokregel(data) {
   const gevuld = Object.keys(uren).filter((u) => uren[u] > 0).sort();
   if (gevuld.length === 0) {
     return statusregel('Laatste verkeer', 'Vandaag nog niets binnengekomen', 'let-op',
-      'Loopt er een advertentie, open dan je eigen site via de advertentielink en '
-      + 'ververs deze pagina. Beweegt dit niet mee, dan komt het verkeer niet aan.');
+      'Sturen je advertenties mensen naar een gesprek in plaats van naar de site, dan '
+      + 'hoort hier weinig te staan en klopt dat. Gaat er wel een advertentie naar de '
+      + 'site, open die link dan zelf en ververs deze pagina: beweegt dit niet mee, dan '
+      + 'komt het verkeer niet aan.');
   }
 
   const laatste = gevuld[gevuld.length - 1];

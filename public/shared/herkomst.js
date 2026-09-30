@@ -24,6 +24,7 @@ export const BRONNEN = [
   'meta-ads',     // betaald via Meta: Facebook en Instagram
   'google-ads',   // betaald via Google, inclusief YouTube
   'andere-ads',   // betaald elders: TikTok, Microsoft, LinkedIn
+  'chat',         // uit een gesprek: Messenger, WhatsApp, Instagram Direct
   'organisch',    // via een zoekmachine, onbetaald
   'sociaal',      // via een bericht of profiel, onbetaald
   'direct',       // rechtstreeks ingetypt, of vanaf de site zelf
@@ -39,8 +40,18 @@ const KLIKMERKEN = [
   [/^(ttclid|msclkid|twclid|li_fat_id|epik|sccid)$/, 'andere-ads'],
 ];
 
-/** Namen waarmee mensen hun eigen campagnes taggen. */
+/**
+ * Namen waarmee mensen hun eigen campagnes taggen.
+ *
+ * `chat` staat vooraan omdat het geen advertentie is maar een gesprek: een
+ * link die iemand met de hand in Messenger of WhatsApp plakt. Zo'n link is de
+ * enige manier om te zien wat er van die gesprekken terechtkomt. Zonder tag
+ * valt hij onder "sociaal" (Messenger stuurt zijn eigen adres mee) of onder
+ * "direct" (WhatsApp stuurt niets mee), en dan is hij niet te onderscheiden
+ * van iemand die het adres zelf intypte.
+ */
 const PLATFORMEN = [
+  [/(chat|whatsapp|messenger|^wa$|^dm$)/, 'chat'],
   [/(meta|facebook|instagram|^fb$|^ig$)/, 'meta-ads'],
   [/(google|adwords|gads|youtube)/, 'google-ads'],
   [/(tiktok|bing|microsoft|linkedin|snapchat|pinterest|twitter|^x$)/, 'andere-ads'],
@@ -49,6 +60,10 @@ const PLATFORMEN = [
 /** Verwijzers, voor wie zonder enige markering binnenkomt. */
 const VERWIJZERS = [
   [/(google|bing|duckduckgo|ecosia|yahoo|startpage|brave)\./, 'organisch'],
+  // Messenger en WhatsApp Web melden zich met hun eigen adres. Dat is geen
+  // bericht op een tijdlijn maar een gesprek, en dat is een heel ander soort
+  // bezoeker: iemand die al contact met ons heeft gehad.
+  [/(messenger\.com|^m\.me|lm\.facebook|web\.whatsapp|wa\.me)/, 'chat'],
   [/(facebook|instagram|linkedin|tiktok|reddit|youtube|twitter|t\.co|x\.com)/, 'sociaal'],
   [/nubeslist\.nl/, 'direct'],
 ];
@@ -81,7 +96,19 @@ export function kanaal({ zoek = '', verwijzer = '' } = {}) {
   const medium = lees('utm_medium');
   const eigen = lees('bron') || lees('utm_source');
 
-  // 1. De klik-parameter van het platform zelf. Die staat er alleen als er op
+  // 1. Een tag die wij er zelf op hebben gezet en die geen advertentie is,
+  //    zoals ?bron=chat op een link die met de hand in een gesprek is geplakt.
+  //    Die wint van alles wat het platform er daarna nog aan plakt: een link
+  //    die je in Messenger opent, krijgt een fbclid mee terwijl er geen
+  //    advertentie aan te pas kwam, en dan zou het gesprek als advertentie
+  //    worden geteld.
+  if (eigen && !eigen.endsWith('-ads')) {
+    const eigenKanaal = BRONNEN.includes(eigen) ? eigen
+      : (PLATFORMEN.find(([patroon]) => patroon.test(eigen)) || [])[1];
+    if (eigenKanaal && !eigenKanaal.endsWith('-ads')) return eigenKanaal;
+  }
+
+  // 2. De klik-parameter van het platform zelf. Die staat er alleen als er op
   //    een advertentie is geklikt, dus dit is het hardste bewijs dat er is.
   //    Wel pas nadat utm_medium heeft kunnen zeggen dat het onbetaald is: een
   //    fbclid blijft soms aan een link plakken als iemand hem doorstuurt.
@@ -95,7 +122,7 @@ export function kanaal({ zoek = '', verwijzer = '' } = {}) {
     } catch { /* een rare queryreeks mag niets kosten */ }
   }
 
-  // 2. Een tag die we zelf aan de advertentie hebben gehangen.
+  // 3. Een tag die we zelf aan de advertentie hebben gehangen.
   if (eigen && !ONBETAALD.test(medium)) {
     if (BRONNEN.includes(eigen)) return eigen;
     for (const [patroon, kanaalNaam] of PLATFORMEN) {
@@ -104,13 +131,13 @@ export function kanaal({ zoek = '', verwijzer = '' } = {}) {
     return BETAALD.test(medium) ? 'andere-ads' : 'overig';
   }
 
-  // 3. Een kanaal dat we zelf in de hand hebben en dat geen advertentie is.
+  // 4. Een kanaal dat we zelf in de hand hebben en dat geen advertentie is.
   //    Dat is geen "direct" bezoek: we weten precies waar het vandaan komt,
   //    het heeft alleen niets gekost.
   if (EIGEN_KANAAL.test(medium)) return 'overig';
   if (eigen && BRONNEN.includes(eigen)) return eigen;
 
-  // 4. Niets bruikbaars meegekregen: dan zegt de verwijzer het, of niemand.
+  // 5. Niets bruikbaars meegekregen: dan zegt de verwijzer het, of niemand.
   const host = String(verwijzer || '').toLowerCase();
   if (!host) return 'direct';
   for (const [patroon, kanaalNaam] of VERWIJZERS) {
