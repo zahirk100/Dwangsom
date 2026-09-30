@@ -206,6 +206,86 @@ test('bots tellen niet mee in de paginaweergaven', async () => {
   assert.equal((await tel())[sleutel] || 0, voor, 'er is een bot meegeteld');
 });
 
+/**
+ * De app-browsers van Facebook en Instagram zijn geen bots.
+ *
+ * Dit is de gevaarlijkste regel van de hele meting. De bot-zeef is er om
+ * zoekmachines en linkvoorbeelden weg te laten, maar hij kijkt naar de
+ * useragent, en die van de Facebook-app staat vol met "FBAN", "FBAV" en
+ * "FB_IAB". Eén patroon dat te ruim is, en het belangrijkste verkeer dat er
+ * is verdwijnt stilletjes uit de cijfers. Dat is niet aan iets te merken,
+ * behalve aan een kanaal dat onverklaarbaar slecht presteert.
+ */
+test('een echte app-browser van Facebook of Instagram telt gewoon mee', async () => {
+  const { isBot } = await import('../src/meting.js');
+  const echteBezoekers = {
+    'Facebook op iPhone': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 '
+      + '(KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBDV/iPhone14,3;FBMD/iPhone;FBSN/iOS;'
+      + 'FBSV/17.5;FBSS/3;FBID/phone;FBLC/nl_NL;FBOP/5]',
+    'Facebook op Android': 'Mozilla/5.0 (Linux; Android 14; SM-S911B Build/UP1A.231005.007; wv) '
+      + 'AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/125.0.6422.165 Mobile '
+      + 'Safari/537.36 [FB_IAB/FB4A;FBAV/466.0.0.39.108;]',
+    Instagram: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 '
+      + '(KHTML, like Gecko) Mobile/15E148 Instagram 336.0.0.24.90 (iPhone14,3; iOS 17_5; nl_NL)',
+    'Safari op iPhone': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 '
+      + '(KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+    'Chrome op Android': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
+      + '(KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36',
+    'Samsung Internet': 'Mozilla/5.0 (Linux; Android 13; SAMSUNG SM-G991B) AppleWebKit/537.36 '
+      + '(KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36',
+  };
+  for (const [wie, useragent] of Object.entries(echteBezoekers)) {
+    assert.equal(isBot(useragent), false, `${wie} wordt als bot weggegooid`);
+  }
+
+  // En het linkvoorbeeld van Facebook, dat wél een bot is en de pagina ophaalt
+  // zodra iemand de link deelt, hoort er juist uit.
+  assert.equal(isBot('facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'), true);
+});
+
+/**
+ * De hele weg van een Facebook-advertentie, in één toets.
+ *
+ * Klikken op een advertentie, landen met een fbclid en zonder verwijzer (de
+ * app stuurt er geen mee), en doorklikken naar de funnel. Op elk van die
+ * punten moet het bezoek onder meta-ads terechtkomen, anders lijkt het alsof
+ * de advertentie niets oplevert.
+ */
+test('een klik op een Facebook-advertentie komt overal onder meta-ads terecht', async () => {
+  const FB_APP = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 '
+    + '(KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBDV/iPhone14,3;FBSN/iOS;FBOP/5]';
+  const landing = '/uwv-te-laat?fbclid=IwAR2xKq9vNxample';
+
+  const voor = await tel();
+  const was = (sleutel) => voor[sleutel] || 0;
+
+  // Het plaatje op de landingspagina.
+  await fetch(`${basis}/api/tel`, {
+    headers: { 'user-agent': FB_APP, referer: basis + landing },
+  });
+  // Het script op diezelfde pagina. Het kanaal is daar al uitgerekend.
+  await fetch(`${basis}/api/meting`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'user-agent': FB_APP },
+    body: JSON.stringify({ g: 'bezoek', b: 'meta-ads', v: '', p: '/uwv-te-laat' }),
+  });
+  // En de funnel, waar het kanaal via de link is meegereisd.
+  await fetch(`${basis}/api/meting`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'user-agent': FB_APP },
+    body: JSON.stringify({ g: 'funnel-start', b: 'meta-ads', v: 'nubeslist.nl' }),
+  });
+
+  const na = await tel();
+  for (const sleutel of [
+    veld('paginaweergave', 'meta-ads', 'uwv-te-laat'),
+    veld('bezoek', 'meta-ads', 'uwv-te-laat'),
+    veld('funnel-start', 'meta-ads'),
+  ]) {
+    assert.equal((na[sleutel] || 0) - was(sleutel), 1, `${sleutel} is niet geteld`);
+  }
+});
+
 test('het plaatje telt niet mee in de trechter', async () => {
   // Anders zou elk bezoek dubbel geteld worden en klopt geen enkel percentage.
   await plaatje({ referer: `${basis}/uwv-wia` });
