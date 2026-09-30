@@ -427,6 +427,40 @@ function rendereUren(data) {
   el('span', { class: 'klok__tijd', tekst: v.uur }))));
 }
 
+/**
+ * Kwam er iemand uit op een adres dat niet bestaat?
+ *
+ * Dit staat bovenaan en niet ergens in een tabel, omdat het maar één ding kan
+ * betekenen als het uit een advertentie komt: de link in die advertentie
+ * klopt niet. Dan klikken mensen wel en zien ze een foutpagina, en in de
+ * cijfers eronder lijkt het alsof er niemand kwam.
+ */
+function foutpaginaregel(data) {
+  const per = data.nietGevonden || {};
+  const totaal = Object.values(per).reduce((som, n) => som + n, 0);
+  if (totaal === 0) return el('span', {});
+
+  const uitAdvertentie = Object.entries(per)
+    .filter(([bron]) => bron.endsWith('-ads'))
+    .reduce((som, [, n]) => som + n, 0);
+
+  const verdeling = Object.entries(per)
+    .sort((a, b) => b[1] - a[1])
+    .map(([bron, n]) => `${bron}: ${getal(n)}`)
+    .join(', ');
+
+  if (uitAdvertentie > 0) {
+    return statusregel('Foutpagina', `${getal(totaal)} keer (${verdeling})`, 'fout',
+      'Er komen mensen uit een advertentie op een adres dat niet bestaat. Dan klikken '
+      + 'ze wel en zien ze een foutpagina, terwijl het hieronder lijkt alsof er niemand '
+      + 'kwam. Controleer de bestemmings-url van de advertentie: die hoort te beginnen '
+      + 'met https://nubeslist.nl/ en te eindigen op een pagina die bestaat.');
+  }
+  return statusregel('Foutpagina', `${getal(totaal)} keer (${verdeling})`, 'let-op',
+    'Mensen kwamen op een adres dat niet bestaat. Niet uit een advertentie, dus dit is '
+    + 'waarschijnlijk een oude link of een typefout.');
+}
+
 function statusblok(data) {
   const vak = el('section', { class: 'status' });
   const opslag = data.opslag || {};
@@ -456,6 +490,7 @@ function statusblok(data) {
         : 'In deze hele periode is nog geen enkel bezoek geteld.')),
     tweeTellingen(data),
     klokregel(data),
+    foutpaginaregel(data),
     statusregel('Draaiende versie', `${data.versie ? data.versie.commit : '?'} op ${data.versie ? data.versie.branch : '?'}`,
       'neutraal', 'Zie je hier een oudere commit dan je verwacht, dan staat je wijziging nog niet live.'),
     zelftest(data),

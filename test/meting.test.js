@@ -337,6 +337,42 @@ test('een dag loopt van middernacht tot middernacht, Nederlandse tijd', async ()
   assert.deepEqual(reeks, ['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
 });
 
+/**
+ * Een adres dat niet bestaat, hoort geteld te worden.
+ *
+ * Dit is het enige soort bezoek dat anders volledig onzichtbaar is. Wijst een
+ * advertentie naar een verkeerd adres, dan klikken mensen wel, zien ze een
+ * foutpagina, en staat er in de cijfers dat er niemand kwam. Precies het
+ * beeld waar dit weken op is misgelopen.
+ */
+test('een foutpagina telt apart, met het kanaal erbij', async () => {
+  const sleutel = veld('niet-gevonden', 'meta-ads');
+  const voor = (await tel())[sleutel] || 0;
+  await fetch(`${basis}/api/tel?niet=1`, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Safari/604.1',
+      referer: `${basis}/uwv-te-laaat?fbclid=IwAR0typefout`,
+    },
+  });
+  assert.equal(((await tel())[sleutel] || 0) - voor, 1);
+
+  const uit = overzicht([{ dag: vandaag, tellingen: await tel() }]);
+  assert.ok(uit.nietGevonden['meta-ads'] >= 1);
+  // En hij vervuilt de bezoekcijfers niet.
+  assert.equal(uit.totalen['niet-gevonden'], undefined);
+  assert.ok(uit.trechter.every((r) => r.stap !== 'niet-gevonden'));
+});
+
+test('de foutpagina bestaat en telt zichzelf', async () => {
+  const antwoord = await fetch(`${basis}/dit-adres-bestaat-niet`);
+  assert.equal(antwoord.status, 404, 'een onbekend adres hoort 404 te geven');
+  const html = await antwoord.text();
+  assert.match(html, /Deze pagina bestaat niet/);
+  assert.match(html, /\/api\/tel\?niet=1/,
+    'zonder dit plaatje is een verkeerde advertentielink onzichtbaar');
+  assert.match(html, /href="\/aanvraag"/, 'de bezoeker moet verder kunnen');
+});
+
 test('de uren komen per dag uit het overzicht', async () => {
   const uit = overzicht([{ dag: '2026-09-30', tellingen: { 'uur|09': 3, 'uur|14': 5, 'bezoek|meta-ads': 8 } }]);
   assert.deepEqual(uit.dagen[0].uren, { '09': 3, 14: 5 });

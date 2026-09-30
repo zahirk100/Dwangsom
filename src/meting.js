@@ -32,6 +32,12 @@ export const GEBEURTENISSEN = {
   // het script stuk en zijn de bezoekcijfers te laag - en dat is precies wat
   // je niet kunt zien aan een cijfer dat gewoon wat lager is dan verwacht.
   paginaweergave: 'Pagina geladen (zonder script geteld)',
+  // Iemand kwam uit op een adres dat niet bestaat. Zonder deze teller is dat
+  // het enige soort bezoek dat volledig onzichtbaar blijft: wijst een
+  // advertentie naar een verkeerd adres, dan zie je in de cijfers alleen dat
+  // er niemand kwam, niet dat ze wel degelijk klikten en op een foutpagina
+  // belandden.
+  'niet-gevonden': 'Kwam op een pagina die niet bestaat',
   'funnel-start': 'Funnel geopend',
   'funnel-brief': 'Brief geüpload',
   'funnel-uitslag': 'Uitslag getoond',
@@ -64,7 +70,7 @@ export const GEBEURTENISSEN = {
  * `paginaweergave` telt hetzelfde bezoek als `bezoek` en zou de trechter dus
  * verdubbelen. Hij staat apart, als controlegetal.
  */
-export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave'];
+export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden'];
 
 /**
  * Waarom iemand niet verder kwam.
@@ -243,6 +249,7 @@ export function overzicht(ruw) {
   const diagnoses = {};
   const weergaven = {};
   const weergavenPerPagina = {};
+  const nietGevonden = {};
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
@@ -261,6 +268,10 @@ export function overzicht(ruw) {
       }
       if (!geldigeGebeurtenis(gebeurtenis)) continue;
       const n = Number(aantal) || 0;
+      if (gebeurtenis === 'niet-gevonden') {
+        nietGevonden[bron] = (nietGevonden[bron] || 0) + n;
+        continue;
+      }
       if (gebeurtenis === 'paginaweergave') {
         weergaven[dag] = (weergaven[dag] || 0) + n;
         if (pagina) weergavenPerPagina[pagina] = (weergavenPerPagina[pagina] || 0) + n;
@@ -300,6 +311,7 @@ export function overzicht(ruw) {
     diagnoses,
     weergaven,
     weergavenPerPagina,
+    nietGevonden,
     // Het totaal van beide manieren van tellen naast elkaar. Zie de toelichting
     // bij GEBEURTENISSEN: uit elkaar lopen betekent dat het script niet draait.
     bezoekVergelijking: {

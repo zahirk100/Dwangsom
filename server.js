@@ -459,13 +459,21 @@ async function publiekeApi(req, res, url) {
       zoek = vandaan.search;
     } catch { /* geen of een rare referer: dan tellen we hem zonder pagina */ }
 
+    // De foutpagina meldt zich apart. Welk adres het precies was, telt niet
+    // mee: dan zou iedereen met een verzonnen url zijn eigen teller kunnen
+    // aanmaken. Het kanaal is genoeg om te zien dat het uit een advertentie
+    // komt, en dat is de vraag die ertoe doet.
+    const bestaatNiet = url.searchParams.get('niet') === '1';
+
     try {
       const dag = vandaagSleutel();
-      await opslag.tel(dag, veld(
-        'paginaweergave',
-        kanaal({ zoek, verwijzer: '' }),
-        normaliseerPagina(pad, Object.keys(PAGINAS)),
-      ));
+      await opslag.tel(dag, bestaatNiet
+        ? veld('niet-gevonden', kanaal({ zoek, verwijzer: '' }))
+        : veld(
+          'paginaweergave',
+          kanaal({ zoek, verwijzer: '' }),
+          normaliseerPagina(pad, Object.keys(PAGINAS)),
+        ));
       // En het uur erbij. Hierop staat de klok van het cijferscherm: een
       // dagtotaal zegt niet of er nú iets binnenkomt, en dat is precies de
       // vraag als je twijfelt of de meting het nog doet.
@@ -1463,6 +1471,13 @@ async function verwerk(req, res) {
   if (pagina && await serveerBestand(res, PUBLIEK, pagina)) return;
   if (await serveerBestand(res, PUBLIEK, url.pathname)) return;
 
+  // Eén foutpagina voor lokaal en live. Op Vercel pakt de statische hosting
+  // public/404.html vanzelf voor een adres dat niet bestaat; hier doen we
+  // hetzelfde, zodat wat je lokaal ziet ook is wat een bezoeker krijgt. Op die
+  // pagina staat een telplaatje: een advertentie die naar een verkeerd adres
+  // wijst is anders volledig onzichtbaar, want dan zie je alleen dat er
+  // niemand kwam.
+  if (await serveerBestand(res, PUBLIEK, '404.html', { statuscode: 404 })) return;
   res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end('<!doctype html><meta charset="utf-8"><title>Niet gevonden</title>'
     + '<p style="font:16px system-ui;padding:2rem">Deze pagina bestaat niet. <a href="/">Terug naar de startpagina</a>.</p>');

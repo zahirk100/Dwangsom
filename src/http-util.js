@@ -119,7 +119,7 @@ export async function leesJsonBody(req, maxBytes = MAX_BODY_BYTES) {
  * Serveert een bestand uit een toegestane map. Pad wordt genormaliseerd en
  * gecontroleerd, zodat ../ nooit buiten de map kan wijzen.
  */
-export async function serveerBestand(res, wortel, relatiefPad, { cacheSeconden = 0 } = {}) {
+export async function serveerBestand(res, wortel, relatiefPad, { cacheSeconden = 0, statuscode = 200 } = {}) {
   const schoon = path.normalize(decodeURIComponent(relatiefPad)).replace(/^(\.\.[/\\])+/, '');
   const volledig = path.join(wortel, schoon);
   if (!volledig.startsWith(path.resolve(wortel) + path.sep) && volledig !== path.resolve(wortel)) {
@@ -134,7 +134,10 @@ export async function serveerBestand(res, wortel, relatiefPad, { cacheSeconden =
   if (!stat.isFile()) return false;
 
   const type = MIME[path.extname(volledig).toLowerCase()] || 'application/octet-stream';
-  res.writeHead(200, {
+  // Een foutpagina is een echt bestand met een echte foutcode: hij ziet er
+  // hetzelfde uit als de rest van de site, maar zoekmachines en browsers
+  // horen te weten dat het adres niet bestaat.
+  res.writeHead(statuscode, {
     'Content-Type': type,
     'Content-Length': stat.size,
     'Cache-Control': cacheSeconden > 0 ? `public, max-age=${cacheSeconden}` : 'no-cache',

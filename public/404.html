@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deze pagina bestaat niet | NuBeslist</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="/merk.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icoon-180.png">
+<link rel="stylesheet" href="/assets/stijl.css">
+<style>
+  .blad { max-width: 620px; margin: 0 auto; padding: 60px 16px 80px; }
+  .blad h1 { margin: 0 0 14px; }
+  .blad p { color: var(--tekst-zacht); max-width: 46ch; }
+  .keuzes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+</style>
+</head>
+<body>
+<header class="balk">
+  <div class="omhulsel balk__inhoud">
+    <a class="merk" href="/" aria-label="NuBeslist, naar de startpagina">
+      <span class="merk__woord">NuBeslist<span class="merk__punt" aria-hidden="true"></span></span>
+    </a>
+  </div>
+</header>
+
+<main class="blad">
+  <h1>Deze pagina bestaat niet</h1>
+  <p>
+    Het adres klopt niet, of de pagina is verplaatst. Je kunt gewoon verder:
+    hieronder staat waar de meeste mensen naartoe gaan.
+  </p>
+  <div class="keuzes">
+    <a class="knop knop--primair" href="/aanvraag">Laat je brief controleren</a>
+    <a class="knop knop--stil" href="/">Naar de startpagina</a>
+  </div>
+</main>
+
+<!--
+  Telt dat er iemand op een adres uitkwam dat niet bestaat.
+
+  Dit is het enige soort bezoek dat anders volledig onzichtbaar blijft. Wijst
+  een advertentie naar een verkeerd adres, dan komt iedereen die erop klikt
+  hier terecht, en dan zie je in de cijfers alleen dat er niemand kwam. Nu zie
+  je dat ze wel kwamen, en waar vandaan.
+-->
+<img src="/api/tel?niet=1" alt="" width="1" height="1" aria-hidden="true"
+     style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
+</body>
+</html>
