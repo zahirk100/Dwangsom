@@ -286,6 +286,65 @@ test('een klik op een Facebook-advertentie komt overal onder meta-ads terecht', 
   }
 });
 
+/**
+ * De klok van het cijferscherm.
+ *
+ * Zonder tijdstip is "werkt de meting nog" niet te beantwoorden: of het
+ * vanochtend is opgehouden of vijf minuten geleden, een dagtotaal ziet er
+ * hetzelfde uit. Met een teller per uur kun je je eigen site openen, het
+ * scherm verversen en zien of het meebeweegt.
+ */
+test('elke paginaweergave zet ook het uur in de tellers', async () => {
+  const { uurSleutel } = await import('../src/meting.js');
+  const sleutel = uurSleutel();
+  const voor = (await tel())[sleutel] || 0;
+  await fetch(`${basis}/api/tel`, {
+    headers: {
+      'user-agent': 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Safari/604.1',
+      referer: `${basis}/uwv-te-laat`,
+    },
+  });
+  assert.equal(((await tel())[sleutel] || 0) - voor, 1);
+  assert.match(sleutel, /^uur\|([01]\d|2[0-3])$/);
+});
+
+/**
+ * Wij tellen op de Nederlandse klok en niet op die van de server.
+ *
+ * Het stond eerst in UTC, en dat is twee uur naast de tijd waarin de lezer
+ * leeft. Een dag begon dan om twee uur 's nachts en een bezoek om half een
+ * 's avonds viel al op morgen. Wie deze cijfers naast die van een
+ * advertentieplatform legt, ziet dan verschillen die er niet zijn.
+ */
+test('een dag loopt van middernacht tot middernacht, Nederlandse tijd', async () => {
+  const { vandaagSleutel, uurSleutel, laatsteDagen } = await import('../src/meting.js');
+
+  // Zomertijd: twee uur voor op UTC.
+  assert.equal(vandaagSleutel(new Date('2026-06-30T22:30:00Z')), '2026-07-01',
+    'half een \'s nachts hier is al de volgende dag');
+  assert.equal(uurSleutel(new Date('2026-06-30T22:30:00Z')), 'uur|00');
+  assert.equal(uurSleutel(new Date('2026-06-30T14:07:00Z')), 'uur|16');
+
+  // Wintertijd: één uur voor.
+  assert.equal(vandaagSleutel(new Date('2026-01-15T23:30:00Z')), '2026-01-16');
+  assert.equal(uurSleutel(new Date('2026-01-15T23:30:00Z')), 'uur|00');
+
+  // En de reeks dagen slaat er geen over en telt er geen dubbel, ook niet in
+  // de week van de overgang naar wintertijd.
+  const reeks = laatsteDagen(5, new Date('2026-10-27T12:00:00Z'));
+  assert.equal(reeks.length, 5);
+  assert.equal(new Set(reeks).size, 5, 'er staat een dag dubbel in');
+  assert.deepEqual(reeks, ['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
+});
+
+test('de uren komen per dag uit het overzicht', async () => {
+  const uit = overzicht([{ dag: '2026-09-30', tellingen: { 'uur|09': 3, 'uur|14': 5, 'bezoek|meta-ads': 8 } }]);
+  assert.deepEqual(uit.dagen[0].uren, { '09': 3, 14: 5 });
+  // En het uur telt nergens als bezoeker mee.
+  assert.equal(uit.dagen[0].bezoek, 8);
+  assert.equal(uit.totalen.uur, undefined);
+});
+
 test('het plaatje telt niet mee in de trechter', async () => {
   // Anders zou elk bezoek dubbel geteld worden en klopt geen enkel percentage.
   await plaatje({ referer: `${basis}/uwv-wia` });
@@ -344,11 +403,21 @@ test('er komt niets in de opslag wat naar één bezoeker leidt', async () => {
   const tellingen = await tel();
   const alles = JSON.stringify(tellingen);
   // Elke sleutel is gebeurtenis|bron[|pagina] en elke waarde een getal.
+  //
+  // Eén uitzondering: uur|HH is de klok van het cijferscherm, een getal per uur
+  // van de dag. Die zegt wannéér er iets gebeurde en niet door wie, en er zit
+  // niets in wat naar een bezoeker leidt. Zou er ooit een sleutel bijkomen met
+  // iets van een bezoeker erin, dan valt hij hier om.
   for (const [sleutel, waarde] of Object.entries(tellingen)) {
     const delen = sleutel.split('|');
+    assert.equal(typeof waarde, 'number', `${sleutel} is geen getal`);
+    if (delen[0] === 'uur') {
+      assert.match(delen[1], /^([01]\d|2[0-3])$/, `rare uursleutel: ${sleutel}`);
+      assert.equal(delen.length, 2, `de uursleutel hoort niets meer te bevatten: ${sleutel}`);
+      continue;
+    }
     assert.ok(delen.length >= 2 && delen.length <= 3, `rare sleutel: ${sleutel}`);
     assert.ok(geldigeGebeurtenis(delen[0]), `onbekende gebeurtenis: ${delen[0]}`);
-    assert.equal(typeof waarde, 'number', `${sleutel} is geen getal`);
   }
   assert.ok(!/\d{1,3}(\.\d{1,3}){3}/.test(alles), 'er staat een ip-adres in');
   assert.ok(!alles.includes('@'), 'er staat een e-mailadres in');

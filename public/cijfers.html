@@ -89,6 +89,20 @@
     .status__uitleg { grid-column: 1; }
   }
 
+  /* De dag in staafjes van een uur. Klein gehouden: het is een hartslag en
+     geen grafiek, je hoeft er maar één ding aan te zien. */
+  .klok { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end;
+          margin: 4px 0 8px; }
+  .klok__uur { display: grid; justify-items: center; gap: 3px; align-content: end; }
+  .klok__staaf { width: 100%; max-width: 22px; background: var(--blauw-600); border-radius: 3px; }
+  .klok__uur--leeg .klok__staaf { background: var(--rand); }
+  .klok__getal { font-size: .66rem; font-variant-numeric: tabular-nums; color: var(--tekst-zacht);
+                 min-height: .9em; }
+  .klok__tijd { font-size: .62rem; color: var(--tekst-zacht); font-variant-numeric: tabular-nums; }
+  @media (max-width: 620px) {
+    .klok { grid-template-columns: repeat(12, 1fr); gap: 3px 4px; row-gap: 10px; }
+  }
+
   /* Leegmaken is onomkeerbaar, dus ziet de knop er ook zo uit. */
   .leegmaken { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
   .leegmaken input {

@@ -356,6 +356,77 @@ function tweeTellingen(data) {
     + 'script draait bij vrijwel iedereen.');
 }
 
+/**
+ * De klok: wanneer kwam er voor het laatst iets binnen?
+ *
+ * Dit is het antwoord op de enige vraag die telt als je twijfelt of de meting
+ * werkt. Een dagtotaal geeft dat antwoord niet: of het nu vanochtend om acht
+ * uur is opgehouden of vijf minuten geleden, het staartje van de dag ziet er
+ * hetzelfde uit. Met een tijdstip erbij kun je je eigen site openen, hier
+ * verversen, en zien of het getal meebeweegt.
+ *
+ * De tellers staan in Nederlandse tijd, dus hier valt niets om te rekenen.
+ */
+function urenVandaag(data) {
+  const vandaag = (data.dagen || []).find((d) => d.dag === data.vandaag);
+  return (vandaag && vandaag.uren) || {};
+}
+
+function klokregel(data) {
+  const uren = urenVandaag(data);
+  const gevuld = Object.keys(uren).filter((u) => uren[u] > 0).sort();
+  if (gevuld.length === 0) {
+    return statusregel('Laatste verkeer', 'Vandaag nog niets binnengekomen', 'let-op',
+      'Loopt er een advertentie, open dan je eigen site via de advertentielink en '
+      + 'ververs deze pagina. Beweegt dit niet mee, dan komt het verkeer niet aan.');
+  }
+
+  const laatste = gevuld[gevuld.length - 1];
+  const nuUur = Number(data.uur);
+  const verschil = Number.isNaN(nuUur) ? null : nuUur - Number(laatste);
+  const geleden = verschil === null ? ''
+    : (verschil <= 0 ? 'Dat is het uur waar we nu in zitten.'
+      : (verschil === 1 ? 'Dat is het afgelopen uur.' : `Dat is ${verschil} uur geleden.`));
+
+  return statusregel('Laatste verkeer',
+    `${laatste}:00 tot ${laatste}:59, ${getal(uren[laatste])} pagina\u2019s geladen`,
+    verschil !== null && verschil > 3 ? 'let-op' : 'goed',
+    `${geleden} Open je eigen site via de advertentielink en ververs deze pagina: `
+    + 'dit hoort dan mee te bewegen.');
+}
+
+/**
+ * De dag in staafjes van een uur.
+ *
+ * Hiermee zie je een advertentie aanslaan terwijl hij loopt, en zie je meteen
+ * of het stilvalt op een moment dat je dat niet verwacht.
+ */
+function rendereUren(data) {
+  const uren = urenVandaag(data);
+  const totaal = Object.values(uren).reduce((som, n) => som + n, 0);
+  if (totaal === 0) {
+    return el('p', { class: 'stil', tekst: 'Vandaag nog geen pagina geladen.' });
+  }
+  const max = Math.max(...Object.values(uren));
+
+  const vakken = [];
+  for (let u = 0; u < 24; u += 1) {
+    const naam = String(u).padStart(2, '0');
+    vakken.push({ uur: naam, aantal: uren[naam] || 0 });
+  }
+
+  return el('div', { class: 'klok' }, vakken.map((v) => el('div', {
+    class: `klok__uur${v.aantal ? '' : ' klok__uur--leeg'}`,
+    title: `${v.uur}:00 tot ${v.uur}:59: ${v.aantal}`,
+  },
+  el('span', {
+    class: 'klok__staaf',
+    style: `height:${v.aantal ? Math.max(6, Math.round((v.aantal / max) * 46)) : 2}px`,
+  }),
+  el('span', { class: 'klok__getal', tekst: v.aantal || '' }),
+  el('span', { class: 'klok__tijd', tekst: v.uur }))));
+}
+
 function statusblok(data) {
   const vak = el('section', { class: 'status' });
   const opslag = data.opslag || {};
@@ -384,6 +455,7 @@ function statusblok(data) {
         ? `Het laatste bezoek dat is geteld was op ${dagLabel(laatste.dag)}.`
         : 'In deze hele periode is nog geen enkel bezoek geteld.')),
     tweeTellingen(data),
+    klokregel(data),
     statusregel('Draaiende versie', `${data.versie ? data.versie.commit : '?'} op ${data.versie ? data.versie.branch : '?'}`,
       'neutraal', 'Zie je hier een oudere commit dan je verwacht, dan staat je wijziging nog niet live.'),
     zelftest(data),
@@ -524,6 +596,10 @@ async function laad() {
     bronkiezer(data),
     trechter.length ? rendereTrechter(trechter)
       : el('p', { class: 'stil', tekst: `Nog geen verkeer van ${bron} in deze periode.` }),
+    el('h2', { tekst: 'Vandaag, per uur' }),
+    el('p', { class: 'stil' }, 'Wanneer de pagina\u2019s geladen zijn, in Nederlandse tijd. '
+      + 'Hiermee zie je een advertentie aanslaan terwijl hij loopt.'),
+    rendereUren(data),
     el('h2', { tekst: 'Waarom kwamen ze niet verder?' }),
     el('p', { class: 'stil' }, 'De trechter zegt hoeveel mensen wegliepen, dit zegt waarom. '
       + 'Dit zijn zijwegen en geen stappen, dus ze tellen niet op tot het verlies hierboven.'),

@@ -43,7 +43,7 @@ import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 import { kennispaginas } from './src/kennispagina.js';
 import {
   geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
-  laatsteDagen, overzicht, isBot, GEBEURTENISSEN,
+  laatsteDagen, overzicht, isBot, uurSleutel, huidigUur, GEBEURTENISSEN,
 } from './src/meting.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -460,11 +460,16 @@ async function publiekeApi(req, res, url) {
     } catch { /* geen of een rare referer: dan tellen we hem zonder pagina */ }
 
     try {
-      await opslag.tel(vandaagSleutel(), veld(
+      const dag = vandaagSleutel();
+      await opslag.tel(dag, veld(
         'paginaweergave',
         kanaal({ zoek, verwijzer: '' }),
         normaliseerPagina(pad, Object.keys(PAGINAS)),
       ));
+      // En het uur erbij. Hierop staat de klok van het cijferscherm: een
+      // dagtotaal zegt niet of er nú iets binnenkomt, en dat is precies de
+      // vraag als je twijfelt of de meting het nog doet.
+      await opslag.tel(dag, uurSleutel());
     } catch (err) {
       console.error('[meting] plaatje tellen mislukt:', err.message);
     }
@@ -1017,6 +1022,7 @@ async function beheerApi(req, res, url) {
       },
       nu: new Date().toISOString(),
       vandaag: vandaagSleutel(),
+      uur: huidigUur(),
       ...overzicht(ruw),
     });
   }

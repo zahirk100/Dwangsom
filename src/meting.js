@@ -125,9 +125,55 @@ export function veld(gebeurtenis, bron, pagina = '') {
   return pagina ? `${gebeurtenis}|${bron}|${pagina}` : `${gebeurtenis}|${bron}`;
 }
 
-/** 'YYYY-MM-DD' van vandaag, in UTC. */
+/**
+ * De klok waarop wij tellen: die van de lezer.
+ *
+ * Alles hier stond eerst in UTC, en dat is twee uur naast de Nederlandse tijd
+ * (in de winter één). Een dag begon dan om twee uur 's nachts en een bezoek om
+ * half een 's avonds viel al op morgen. Wie deze cijfers naast die van een
+ * advertentieplatform legt, ziet dan verschillen die er niet zijn en gaat
+ * terecht aan de rest twijfelen.
+ *
+ * Intl kent de zomertijd, dus dit klopt ook in de weken rond de overgang.
+ */
+const TIJDZONE = 'Europe/Amsterdam';
+
+function deel(vorm, nu) {
+  return Object.fromEntries(vorm.formatToParts(nu).map((p) => [p.type, p.value]));
+}
+
+const DAGVORM = new Intl.DateTimeFormat('nl-NL', {
+  timeZone: TIJDZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+});
+const UURVORM = new Intl.DateTimeFormat('nl-NL', {
+  timeZone: TIJDZONE, hour: '2-digit', hour12: false,
+});
+
+/** 'YYYY-MM-DD' van vandaag, in Nederlandse tijd. */
 export function vandaagSleutel(nu = new Date()) {
-  return nu.toISOString().slice(0, 10);
+  const d = deel(DAGVORM, nu);
+  return `${d.year}-${d.month}-${d.day}`;
+}
+
+/** Het uur van nu, 00 tot en met 23, in Nederlandse tijd. */
+export function huidigUur(nu = new Date()) {
+  return String(Number(deel(UURVORM, nu).hour) % 24).padStart(2, '0');
+}
+
+/**
+ * De teller van het uur waarin iets gebeurde, in UTC.
+ *
+ * Eén getal per uur per dag, dus vierentwintig tellers extra. Waarom dat de
+ * moeite waard is: een dagtotaal beantwoordt niet de vraag die je stelt als je
+ * twijfelt of de meting het doet. Die vraag is "komt er nú iets binnen", en
+ * daar heb je een klok voor nodig. Met een staafje per uur zie je een
+ * advertentie aanslaan terwijl hij loopt, en zie je meteen of het stilvalt.
+ *
+ * Nederlandse tijd, net als de dagsleutel, zodat de twee bij elkaar horen en
+ * het scherm niets meer hoeft om te rekenen.
+ */
+export function uurSleutel(nu = new Date()) {
+  return `uur|${huidigUur(nu)}`;
 }
 
 /** Is dit een gebeurtenis die wij tellen? */
@@ -141,7 +187,9 @@ export function geldigeGebeurtenis(naam) {
 export function laatsteDagen(dagen, nu = new Date()) {
   const uit = [];
   for (let i = dagen - 1; i >= 0; i--) {
-    uit.push(new Date(nu.getTime() - i * 86400000).toISOString().slice(0, 10));
+    // Een etmaal terugrekenen en dan pas naar de Nederlandse datum kijken.
+    // Andersom zou de dag van de zomertijdovergang dubbel of niet voorkomen.
+    uit.push(vandaagSleutel(new Date(nu.getTime() - i * 86400000)));
   }
   return uit;
 }
@@ -203,9 +251,14 @@ export function overzicht(ruw) {
     const perDag = { dag };
     for (const stap of TRECHTERSTAPPEN) perDag[stap] = 0;
     perDag.bronnen = {};
+    perDag.uren = {};
 
     for (const [sleutel, aantal] of Object.entries(tellingen || {})) {
       const [gebeurtenis, bron, pagina] = sleutel.split('|');
+      if (gebeurtenis === 'uur') {
+        perDag.uren[bron] = (perDag.uren[bron] || 0) + (Number(aantal) || 0);
+        continue;
+      }
       if (!geldigeGebeurtenis(gebeurtenis)) continue;
       const n = Number(aantal) || 0;
       if (gebeurtenis === 'paginaweergave') {
