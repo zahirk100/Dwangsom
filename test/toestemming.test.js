@@ -93,6 +93,43 @@ test('er gaat nooit iets over de persoon of de zaak mee', () => {
   }
 });
 
+/**
+ * Alles moet als standaardgebeurtenis binnenkomen.
+ *
+ * Een aangepaste gebeurtenis is in Advertentiebeheer bijna waardeloos: je kunt
+ * er niet op bieden en niet op optimaliseren. Twee dingen maken er een
+ * aangepaste van, en allebei worden ze hier afgevangen: trackCustom gebruiken,
+ * en een naam die Meta niet kent.
+ */
+test('er wordt nooit trackCustom gebruikt', () => {
+  // De uitleg mag het woord noemen; het gaat erom dat de code het niet doet.
+  const code = script.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert.ok(!/trackCustom/.test(code),
+    'trackCustom maakt er per definitie een aangepaste gebeurtenis van');
+  const aanroepen = code.match(/fbq\('(track|trackCustom|trackSingle)[^']*'/g) || [];
+  assert.deepEqual([...new Set(aanroepen)], ["fbq('track'"],
+    'er hoort maar één manier van versturen te zijn');
+});
+
+test('alleen namen die Meta als standaard kent, worden verstuurd', () => {
+  const lijst = /const STANDAARDGEBEURTENISSEN = \[([^\]]*)\]/.exec(script);
+  assert.ok(lijst, 'er hoort een gesloten lijst met gebeurtenissen te staan');
+  const namen = lijst[1].match(/'([^']+)'/g).map((n) => n.replace(/'/g, ''));
+  assert.deepEqual(namen, ['PageView', 'Lead', 'CompleteRegistration', 'Contact']);
+
+  // En een naam die er niet in staat, gaat niet alsnog de deur uit.
+  assert.match(script, /if \(!STANDAARDGEBEURTENISSEN\.includes\(naam\)\) \{[\s\S]*?return null;/);
+});
+
+test('zonder testcode gaat er geen enkel extra veld mee', () => {
+  // Een standaard gebeurtenis met een veld dat Meta niet kent, komt binnen met
+  // een waarschuwing. Zonder META_TEST_EVENT_CODE hoort de custom data dus
+  // precies leeg te zijn.
+  assert.match(script, /const gegevens = testcode \? \{ test_event_code: testcode \} : \{\};/);
+  assert.match(script, /testcode = String\(instellingen\.META_TEST_EVENT_CODE \|\| ''\)\.trim\(\);/,
+    'een lege of ontbrekende omgevingsvariabele hoort een lege string te geven');
+});
+
 test('elke gebeurtenis krijgt een eigen nummer', () => {
   // Zodat dezelfde gebeurtenis straks ook via de Conversions API kan komen
   // zonder dat Meta hem twee keer telt.

@@ -237,12 +237,41 @@ async function haalInstellingen() {
 let actief = false;
 let testcode = '';
 
+/**
+ * De vier gebeurtenissen die wij kennen, en meer worden het er niet.
+ *
+ * Alleen namen die Meta zelf als standaard herkent. Staat er iets anders in,
+ * dan maakt Meta er een "aangepaste gebeurtenis" van, en daar kun je niet op
+ * bieden en niet op optimaliseren. Een typefout wordt op die manier een stille
+ * fout die je pas weken later in Advertentiebeheer terugziet.
+ *
+ * Daarom is dit een gesloten lijst en geen vrije tekst: een naam die er niet
+ * in staat, wordt niet verstuurd.
+ */
+const STANDAARDGEBEURTENISSEN = ['PageView', 'Lead', 'CompleteRegistration', 'Contact'];
+
 export function metaGebeurtenis(naam) {
   if (!actief) return null;
+  if (!STANDAARDGEBEURTENISSEN.includes(naam)) {
+    // Bewust niet alsnog versturen: liever geen gebeurtenis dan een aangepaste.
+    console.warn(`[meta] "${naam}" is geen standaardgebeurtenis en wordt niet verstuurd`);
+    return null;
+  }
+
   const id = gebeurtenisId();
   try {
-    // test_event_code hoort bij de custom data; staat hij niet ingesteld, dan
-    // gaat er helemaal geen tweede argument mee.
+    // Altijd fbq('track', ...), nooit trackCustom: dat laatste maakt er per
+    // definitie een aangepaste gebeurtenis van.
+    //
+    // De derde waarde is de custom data en die blijft leeg. Een standaard
+    // gebeurtenis met een veld dat Meta niet kent, komt in Advertentiebeheer
+    // binnen met een waarschuwing en wordt daar als aangepast behandeld.
+    //
+    // De enige uitzondering is test_event_code, en alleen als die in de
+    // omgeving staat. Dat veld hoort eigenlijk bij de Conversions API en niet
+    // bij de pixel; het is dus precies het soort veld dat Meta niet verwacht.
+    // Haal META_TEST_EVENT_CODE weg zodra je klaar bent met testen, dan is de
+    // gebeurtenis weer helemaal standaard.
     const gegevens = testcode ? { test_event_code: testcode } : {};
     window.fbq('track', naam, gegevens, { eventID: id });
   } catch { /* een meting mag nooit iets op het scherm kosten */ }
