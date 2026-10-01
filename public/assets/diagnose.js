@@ -238,6 +238,82 @@ async function proefMeting() {
   }
 }
 
+/**
+ * 6. Kan de pixel van Meta hier überhaupt aankomen?
+ *
+ * Als er in Advertentiebeheer niets binnenkomt, zijn er drie heel verschillende
+ * oorzaken en die zien er aan die kant allemaal hetzelfde uit: de pixel staat
+ * niet ingesteld, deze bezoeker gaf geen toestemming, of het apparaat blokkeert
+ * Facebook. Die laatste is de stille: advertentieblokkers en de
+ * trackingbescherming van telefoons houden het script tegen, en dan gebeurt er
+ * niets zonder dat er iets te zien is.
+ *
+ * Deze proef stuurt met opzet GEEN gebeurtenis. Hij kijkt alleen of het script
+ * van Meta bereikbaar is, zodat je eigen cijfers niet vervuild raken met
+ * testverkeer.
+ */
+async function proefPixel() {
+  let instellingen = {};
+  try {
+    const antwoord = await haal('/api/instellingen', { headers: { Accept: 'application/json' } });
+    if (antwoord.ok) instellingen = await antwoord.json();
+  } catch { /* dan weten we het niet, dat komt hieronder terug */ }
+
+  const id = String(instellingen.META_PIXEL_ID || '').trim();
+  if (!id) {
+    toonProef('De Meta Pixel', 'let-op', 'Staat niet ingesteld.',
+      metCode('Zonder ', { code: 'META_PIXEL_ID' }, ' in de omgevingsvariabelen komt er geen '
+        + 'pixel en wordt er ook geen toestemming gevraagd. Dat is prima als je hem niet wilt; '
+        + 'wil je hem wel, zet die variabele dan en deploy opnieuw.'));
+    return;
+  }
+
+  // Heeft deze bezoeker op dit apparaat ja gezegd?
+  let keuze = null;
+  try {
+    const ruw = window.localStorage.getItem('nb-toestemming');
+    if (ruw) keuze = (JSON.parse(ruw) || {}).antwoord || null;
+  } catch { /* privevenster: dan is er geen keuze bewaard */ }
+
+  // Is het script van Meta hier te bereiken? Alleen laden, niets versturen.
+  const bereikbaar = await new Promise((klaar) => {
+    const proef = document.createElement('script');
+    proef.async = true;
+    proef.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    const af = (uitslag) => { proef.remove(); klaar(uitslag); };
+    proef.onload = () => af(true);
+    proef.onerror = () => af(false);
+    setTimeout(() => af(false), 8000);
+    document.head.append(proef);
+  });
+
+  if (!bereikbaar) {
+    toonProef('De Meta Pixel', 'fout',
+      'Het script van Facebook is op dit apparaat niet te laden.',
+      'Dit apparaat of deze browser blokkeert Facebook: een advertentieblokker, een '
+      + 'blokkerende dns, of de trackingbescherming van je telefoon. Er wordt dan niets '
+      + 'naar Meta verstuurd en in Advertentiebeheer blijft het leeg, terwijl er aan de '
+      + 'site niets mis is. Probeer het op een ander apparaat of in een andere browser '
+      + 'voordat je verder zoekt.');
+    return;
+  }
+
+  if (keuze !== 'ja') {
+    toonProef('De Meta Pixel', 'let-op',
+      keuze === 'nee'
+        ? 'Ingesteld en bereikbaar, maar jij hebt hier geweigerd.'
+        : 'Ingesteld en bereikbaar, maar jij hebt hier nog niets gekozen.',
+      'Zonder jouw akkoord wordt er van dit apparaat niets naar Meta gestuurd. Ga naar de '
+      + 'site, klik op Akkoord en kom hier terug.');
+    return;
+  }
+
+  toonProef('De Meta Pixel', 'goed',
+    'Ingesteld, bereikbaar, en jij gaf hier toestemming.',
+    'Gebeurtenissen vanaf dit apparaat horen in Advertentiebeheer te verschijnen. Dat kan '
+    + 'tot een halfuur duren, en kijk of de gekozen periode vandaag wel bevat.');
+}
+
 // ------------------------------------------------------------------ ronde ---
 
 async function kijkNa() {
@@ -251,6 +327,7 @@ async function kijkNa() {
   await proefFunnel();
   await proefScripts();
   await proefMeting();
+  await proefPixel();
 
   const fouten = proeven.querySelectorAll('.proef--fout').length;
   const letOp = proeven.querySelectorAll('.proef--let-op').length;
