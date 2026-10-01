@@ -160,6 +160,10 @@ function bouwBanner(opKeuze) {
     knop.addEventListener('click', () => {
       const antwoord = knop.getAttribute('data-antwoord');
       bewaarKeuze(antwoord);
+      // Onze eigen teller, zodat te zien is welk deel van de bezoekers voor
+      // Meta zichtbaar is. Dit is een getal per dag en verder niets; het staat
+      // los van de pixel en gaat nergens heen.
+      if (window.nbMeet) window.nbMeet('toestemming', { b: antwoord });
       vak.remove();
       opKeuze(antwoord);
     });

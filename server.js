@@ -447,7 +447,12 @@ async function publiekeApi(req, res, url) {
     try { body = await leesJsonBody(req); } catch { return stuurLeeg(res); }
     const gebeurtenis = String((body && body.g) || '');
     if (!geldigeGebeurtenis(gebeurtenis)) return stuurLeeg(res);
-    const bron = normaliseerBron(body.b, body.v);
+    // Bij de keuze over de cookie staat in het bronveld het antwoord en niet
+    // het kanaal. Ook dat gaat door een vaste lijst: alles wat geen ja of nee
+    // is, komt er niet in.
+    const bron = gebeurtenis === 'toestemming'
+      ? (String(body.b || '') === 'ja' ? 'ja' : 'nee')
+      : normaliseerBron(body.b, body.v);
     const pagina = gebeurtenis === 'bezoek'
       ? normaliseerPagina(body.p, Object.keys(PAGINAS))
       : '';

@@ -43,6 +43,11 @@ export const GEBEURTENISSEN = {
   // dit telt het aan de serverkant, met de reden erbij, zodat te zien is of
   // het aan het bestand lag of aan ons.
   'upload-mislukt': 'Brief kon niet gelezen worden',
+  // Wie er ja of nee zei tegen de cookie van Meta. In het bronveld staat het
+  // antwoord. Hiermee weet je welk deel van je bezoekers voor Meta zichtbaar
+  // is: zegt de helft nee, dan ziet Meta de helft van je aanvragen niet en
+  // moet je de cijfers daar met dat in je hoofd lezen.
+  toestemming: 'Keuze over de cookie van Meta',
   'funnel-start': 'Funnel geopend',
   'funnel-brief': 'Brief geüpload',
   'funnel-uitslag': 'Uitslag getoond',
@@ -75,7 +80,8 @@ export const GEBEURTENISSEN = {
  * `paginaweergave` telt hetzelfde bezoek als `bezoek` en zou de trechter dus
  * verdubbelen. Hij staat apart, als controlegetal.
  */
-export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden', 'upload-mislukt'];
+export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden',
+  'upload-mislukt', 'toestemming'];
 
 /**
  * Waarom iemand niet verder kwam.
@@ -256,6 +262,7 @@ export function overzicht(ruw) {
   const weergavenPerPagina = {};
   const nietGevonden = {};
   const mislukteUploads = {};
+  const toestemming = {};
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
@@ -276,6 +283,10 @@ export function overzicht(ruw) {
       const n = Number(aantal) || 0;
       if (gebeurtenis === 'niet-gevonden') {
         nietGevonden[bron] = (nietGevonden[bron] || 0) + n;
+        continue;
+      }
+      if (gebeurtenis === 'toestemming') {
+        toestemming[bron] = (toestemming[bron] || 0) + n;
         continue;
       }
       if (gebeurtenis === 'upload-mislukt') {
@@ -325,6 +336,7 @@ export function overzicht(ruw) {
     weergavenPerPagina,
     nietGevonden,
     mislukteUploads,
+    toestemming,
     // Het totaal van beide manieren van tellen naast elkaar. Zie de toelichting
     // bij GEBEURTENISSEN: uit elkaar lopen betekent dat het script niet draait.
     bezoekVergelijking: {

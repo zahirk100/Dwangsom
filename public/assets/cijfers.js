@@ -463,6 +463,28 @@ function foutpaginaregel(data) {
     + 'waarschijnlijk een oude link of een typefout.');
 }
 
+/**
+ * Hoeveel bezoekers gaven toestemming voor de cookie van Meta?
+ *
+ * Dit getal bepaalt hoe je de cijfers in Meta moet lezen. Zegt de helft nee,
+ * dan ziet Meta de helft van je aanvragen niet, en lijkt elke advertentie
+ * half zo goed als hij is. Onze eigen cijfers hieronder tellen wel iedereen:
+ * daar is geen toestemming voor nodig, want daar gaat niets heen en wordt
+ * niets op het apparaat gezet.
+ */
+function toestemmingsregel(data) {
+  const per = data.toestemming || {};
+  const ja = per.ja || 0;
+  const nee = per.nee || 0;
+  if (ja + nee === 0) return el('span', {});
+  const deel = Math.round((ja / (ja + nee)) * 1000) / 10;
+  return statusregel('Toestemming voor Meta', `${getal(ja)} ja, ${getal(nee)} nee (${deel}%)`,
+    deel >= 50 ? 'goed' : 'let-op',
+    `Meta ziet ongeveer ${deel}% van je bezoekers. De cijfers hieronder tellen `
+    + 'iedereen, ook wie nee zei: daar is geen toestemming voor nodig. Reken de '
+    + 'getallen in Advertentiebeheer dus niet één op één door.');
+}
+
 function statusblok(data) {
   const vak = el('section', { class: 'status' });
   const opslag = data.opslag || {};
@@ -493,6 +515,7 @@ function statusblok(data) {
     tweeTellingen(data),
     klokregel(data),
     foutpaginaregel(data),
+    toestemmingsregel(data),
     statusregel('Draaiende versie', `${data.versie ? data.versie.commit : '?'} op ${data.versie ? data.versie.branch : '?'}`,
       'neutraal', 'Zie je hier een oudere commit dan je verwacht, dan staat je wijziging nog niet live.'),
     zelftest(data),

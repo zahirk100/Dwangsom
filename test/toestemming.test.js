@@ -184,6 +184,57 @@ test('op pagina\'s die iets over iemand verklappen komt de pixel niet', () => {
   assert.match(script, /if \(!overal && gevoeligePagina\(\)\) return;/);
 });
 
+// ------------------------------------------------ onze eigen telling ------
+
+/**
+ * Onze eigen cijfers blijven buiten de toestemming staan.
+ *
+ * Dat is geen slordigheid maar het hele punt: er wordt geteld, er gaat niets
+ * naar een ander bedrijf en er wordt niets op het apparaat gezet of gelezen.
+ * Daar is geen toestemming voor nodig, en zou je het er wel achter zetten dan
+ * raak je de helft van je cijfers kwijt zonder dat iemand er iets mee opschiet.
+ */
+test('de eigen telling staat los van de toestemmingsvraag', async () => {
+  const meting = await (await haal('/assets/meting.js')).text();
+  // Het woord mag in de uitleg staan; waar het om gaat is dat de code er niet
+  // op wacht en er niet naar kijkt.
+  const zonderUitleg = meting.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  for (const afhankelijkheid of ['nb-toestemming', 'localStorage', 'nbMeta', 'fbq']) {
+    assert.ok(!zonderUitleg.includes(afhankelijkheid),
+      `meting.js hangt af van ${afhankelijkheid}; dan telt hij niet meer voor iedereen`);
+  }
+  assert.match(meting, /meet\('bezoek'\)/, 'elke pagina telt een bezoek, hoe de keuze ook uitvalt');
+
+  // En de pagina laadt allebei de scripts, los van elkaar.
+  const html = await (await haal('/uwv-te-laat')).text();
+  assert.match(html, /assets\/meting\.js/);
+  assert.match(html, /assets\/toestemming\.js/);
+});
+
+test('het antwoord op de vraag wordt geteld, maar alleen ja of nee', async () => {
+  const { veld } = await import('../src/meting.js');
+  const melden = (b) => fetch(`${basis}/api/meting`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ g: 'toestemming', b }),
+  });
+  await melden('ja');
+  await melden('nee');
+  // Iets anders dan ja hoort als nee te tellen en nooit een eigen teller te
+  // krijgen: deze route staat open.
+  await melden('<script>');
+  const { opslag } = await import('../server.js');
+  const { vandaagSleutel } = await import('../src/meting.js');
+  const tellingen = await opslag.tellingen(vandaagSleutel());
+  assert.equal(tellingen[veld('toestemming', 'ja')], 1);
+  assert.equal(tellingen[veld('toestemming', 'nee')], 2);
+  for (const sleutel of Object.keys(tellingen)) {
+    if (sleutel.startsWith('toestemming|')) {
+      assert.match(sleutel, /^toestemming\|(ja|nee)$/, `rare sleutel: ${sleutel}`);
+    }
+  }
+});
+
 // ------------------------------------------------- waar de events vandaan --
 
 test('de funnel meldt alleen de naam van de gebeurtenis', async () => {
