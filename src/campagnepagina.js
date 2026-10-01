@@ -39,7 +39,7 @@ import { fileURLToPath } from 'node:url';
 
 import { tarief } from '../public/shared/tarief.js';
 import { TARIEF, HERSTELTERMIJN_DAGEN } from '../public/shared/dwangsom.js';
-import { organisatiegegevens } from './organisatie.js';
+import { organisatiegegevens, whatsappLink } from './organisatie.js';
 import { MERKNAAM } from './merk.js';
 import {
   HERKENNING, MELDING, UITKOMST_BESLISSING, UITKOMST_VERGOEDING, GERUSTSTELLING,
@@ -230,10 +230,39 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
 .hero-media{grid-area:visual;min-width:0;align-self:start}.hero-media .result{grid-area:auto}
 @media(max-width:620px){.hero-media{display:contents}.hero-media .result{grid-area:example}.process-main .send-step{row-gap:0}}
 
+
+/* --- WhatsApp ------------------------------------------------------------
+   Twee knoppen, met opzet niet even hard. De knop onder het uploadvak is een
+   alternatief voor wie liever praat dan uploadt; hij staat er netjes naast en
+   vecht niet met de hoofdknop. De zwevende knop is er alleen op een telefoon,
+   want daar staat WhatsApp ook. */
+.wa-naast{display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:13px 16px;
+ border:1px solid #BFE9CF;border-radius:14px;background:#F2FCF6;color:#0B1250;
+ text-decoration:none;font-size:15px;line-height:1.4;transition:background .15s,border-color .15s}
+.wa-naast svg{flex:none}
+.wa-naast svg path{fill:#25D366}
+.wa-naast strong{display:block;font-weight:800}
+.wa-naast:hover{background:#E6F8EE;border-color:#8FD9AE}
+.wa-naast:focus-visible{outline:3px solid #25D366;outline-offset:2px}
+
+.wa-zweef{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+ z-index:40;display:none;align-items:center;gap:8px;padding:13px 18px;border-radius:999px;
+ background:#25D366;color:#fff;text-decoration:none;font-weight:800;font-size:15px;
+ box-shadow:0 6px 20px rgba(11,18,80,.22)}
+.wa-zweef svg path{fill:#fff}
+.wa-zweef:focus-visible{outline:3px solid #0B1250;outline-offset:3px}
+@media(max-width:860px){.wa-zweef{display:inline-flex}}
+/* De vraag over cookies staat onderin over de hele breedte; zolang die er is,
+   zou de zwevende knop eroverheen liggen. */
+body:has(.nb-toestemming) .wa-zweef{display:none}
+
 `;
 
 /* De iconen. Eén keer beschreven, overal hergebruikt. */
 const ico = {
+  // Het merkteken van WhatsApp, zodat de knop meteen herkenbaar is. Zonder
+  // icoon leest "appen" als een gewone link en wordt hij overgeslagen.
+  whatsapp: (kleur = '#fff') => `<svg width="22" height="22" viewBox="0 0 24 24" fill="${kleur}" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.07-.13-.27-.2-.57-.35z"/><path d="M12.04 2.4c-5.3 0-9.6 4.3-9.6 9.6 0 1.69.44 3.34 1.29 4.8L2.4 21.6l4.95-1.29a9.56 9.56 0 0 0 4.69 1.2h.01c5.29 0 9.6-4.3 9.6-9.6s-4.31-9.51-9.61-9.51zm0 17.37h-.01c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.16.83.84-3.08-.2-.32a7.96 7.96 0 0 1-1.22-4.26c0-4.4 3.58-7.98 7.99-7.98 2.13 0 4.14.83 5.65 2.34a7.94 7.94 0 0 1 2.34 5.65c0 4.41-3.59 7.99-7.98 7.99z"/></svg>`,
   upload: (kleur = '#fff') => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${kleur}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4m0 0-4 4m4-4 4 4"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>`,
   vink: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B1250" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E8EDF7" stroke="none"/><path d="m7.5 12.5 3 3 6-6.5"/></svg>`,
   vinkje: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>`,
@@ -315,8 +344,9 @@ export function campagneHtml(env = process.env) {
 
   // Contact. Wat niet is ingevuld, wordt niet getoond: liever geen knop dan
   // een knop die nergens heen gaat of naar een nummer dat geen WhatsApp heeft.
-  const whatsapp = String(env.WHATSAPP_NUMMER || '').replace(/[^0-9]/g, '');
-  const waLink = whatsapp ? `https://wa.me/${whatsapp}` : '';
+  // Het eerste bericht staat er alvast in: wie op zo'n knop drukt staat anders
+  // voor een leeg veld en moet zelf bedenken hoe hij begint.
+  const waLink = whatsappLink('Hoi, ik wil graag weten of UWV te laat is', env);
   const email = bedrijf.email;
   const kvkLink = bedrijf.kvk
     ? `https://www.kvk.nl/zoeken/?source=all&amp;q=${encodeURIComponent(bedrijf.kvk)}`
@@ -541,6 +571,8 @@ ${mailLink ? `    ${mailLink}` : ''}
     <span id="pick-more" hidden>+ Nog een brief of pagina toevoegen</span></button>
    <input id="file" type="file" accept="image/*,application/pdf,.pdf,.heic,.heif" multiple hidden>
    <p class="upload-format" id="file-format">Een foto of pdf is genoeg · tot 5 bestanden<span class="desk"> · slepen kan ook</span></p>
+   ${waLink ? `<a class="wa-naast" href="${waLink}" target="_blank" rel="noopener">
+    ${ico.whatsapp()}<span><strong>Liever even appen?</strong> Stuur ons een WhatsApp-bericht</span></a>` : ''}
    <details class="later" id="later"><summary>Ik heb mijn brief nu niet bij de hand</summary>
     <p>Bewaar deze pagina en pak je brief erbij wanneer het jou uitkomt. Een foto of pdf is genoeg.</p>
     <p><a href="${CAMPAGNE_PAD}">nubeslist.nl${CAMPAGNE_PAD}</a></p></details>
@@ -637,6 +669,7 @@ ${contactRegel ? `   <p class="alt">Nog een vraag? ${contactRegel}.</p>` : ''}
 </dialog>
 
 <a id="verder" href="${BESTEMMING}" hidden aria-hidden="true" tabindex="-1">Verder</a>
+${waLink ? `<a class="wa-zweef" href="${waLink}" target="_blank" rel="noopener" aria-label="Stuur ons een WhatsApp-bericht">${ico.whatsapp()}<span>Appen</span></a>` : ''}
 
 <script type="module" src="/assets/meting.js"></script>
 <script type="module" src="/assets/toestemming.js"></script>

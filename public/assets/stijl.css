@@ -345,3 +345,23 @@ table.tabel tbody tr:hover { background: var(--blauw-50); }
 .veld__reden { font-size: .84rem; color: var(--tekst-zacht); margin: 4px 0 8px; }
 .veld__reden:empty { display: none; }
 
+
+/* ------------------------------------------------------------- whatsapp -- */
+/* De zwevende knop, alleen op een telefoon. Daar staat WhatsApp ook, en daar
+   is hij het verschil tussen "ik zoek het later wel uit" en een gesprek. Op
+   een groot scherm zou hij alleen in de weg zitten.
+
+   De vraag over cookies staat onderin over de hele breedte; zolang die er is,
+   zou deze knop eroverheen liggen. */
+.wa-zweef {
+  position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 40; display: none; align-items: center; gap: 8px;
+  padding: 13px 18px; border-radius: 999px;
+  background: #25d366; color: #fff; text-decoration: none;
+  font-weight: 800; font-size: .95rem;
+  box-shadow: 0 6px 20px rgba(11, 18, 80, .22);
+}
+.wa-zweef svg path { fill: #fff; }
+.wa-zweef:focus-visible { outline: 3px solid var(--tekst); outline-offset: 3px; }
+@media (max-width: 860px) { .wa-zweef { display: inline-flex; } }
+body:has(.nb-toestemming) .wa-zweef { display: none; }

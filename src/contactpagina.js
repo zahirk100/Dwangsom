@@ -13,7 +13,7 @@
  * kaart te tonen.
  */
 
-import { organisatiegegevens } from './organisatie.js';
+import { organisatiegegevens, whatsappLink, whatsappLeesbaar } from './organisatie.js';
 import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, kruimelSchema, metSchema } from './seo.js';
 import { KENNISLINKS } from './kennispagina.js';
@@ -56,18 +56,20 @@ function kanaal({ icoon, kop, regel, href, actie, extern = false }) {
  */
 export function contactHtml(env = process.env) {
   const bedrijf = organisatiegegevens(env);
-  const whatsapp = String(env.WHATSAPP_NUMMER || '').replace(/[^0-9]/g, '');
+  const waLink = whatsappLink('Hoi, ik heb een vraag over mijn brief', env);
+  const waNummer = whatsappLeesbaar(env);
   const titel = 'Contact opnemen met NuBeslist';
   const omschrijving = 'Een vraag over je brief, over een lopende zaak of over onze kosten? '
     + 'Zo bereik je ons, en dit zijn onze bedrijfsgegevens.';
 
   const kanalen = [];
-  if (whatsapp) {
+  if (waLink) {
     kanalen.push(kanaal({
       icoon: 'praat',
-      kop: 'WhatsApp',
-      regel: 'De snelste manier. Je krijgt antwoord van een mens, geen chatbot.',
-      href: `https://wa.me/${whatsapp}`,
+      kop: `WhatsApp ${veilig(waNummer)}`,
+      regel: 'De snelste manier. Je krijgt antwoord van een mens, geen chatbot. '
+        + 'Je kunt ook een foto van je brief sturen.',
+      href: waLink,
       actie: 'Stel je vraag via WhatsApp',
       extern: true,
     }));

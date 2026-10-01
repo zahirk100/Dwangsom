@@ -237,13 +237,45 @@ test('het uploadvak stuurt niets naar UWV en geeft de uitkomst door aan de funne
 });
 
 test('contactknoppen staan er alleen als er ook een adres achter zit', () => {
+  // Het e-mailadres komt uit de omgeving: staat het er niet, dan geen knop.
   const zonder = html({});
-  assert.ok(!/WhatsApp/.test(zonder), 'geen whatsappknop zonder nummer');
   assert.ok(!/mailto:/.test(zonder), 'geen mailknop zonder adres');
 
   const met = html({ WHATSAPP_NUMMER: '+31 6 12345678', BEDRIJF_EMAIL: 'info@nubeslist.nl' });
   assert.match(met, /https:\/\/wa\.me\/31612345678/);
   assert.match(met, /mailto:info@nubeslist\.nl/);
+});
+
+/**
+ * De WhatsApp-knoppen op de advertentielanding.
+ *
+ * Het nummer heeft een vaste waarde, net als de merknaam: een vergeten
+ * omgevingsvariabele zou anders stilletjes het kanaal van de site halen waar
+ * mensen juist op binnenkomen. Wie hem echt weg wil, zet WHATSAPP_NUMMER leeg.
+ */
+test('de landing heeft een appknop naast het uploadvak en een zwevende knop', () => {
+  const h = html({});
+  assert.match(h, /class="wa-naast"/, 'de knop naast het uploadvak ontbreekt');
+  assert.match(h, /Liever even appen\?<\/strong> Stuur ons een WhatsApp-bericht/);
+  assert.match(h, /class="wa-zweef"/, 'de zwevende knop ontbreekt');
+
+  // Allebei naar hetzelfde gesprek, met het eerste bericht er alvast in.
+  const links = [...h.matchAll(/href="(https:\/\/wa\.me\/[^"]*)"/g)].map((m) => m[1]);
+  assert.ok(links.length >= 3, `er horen meerdere appknoppen te staan, gevonden: ${links.length}`);
+  for (const link of links) {
+    assert.match(link, /^https:\/\/wa\.me\/31628227291\?text=/);
+  }
+  assert.ok(links.some((l) => l.includes('UWV%20te%20laat%20is')),
+    'het eerste bericht hoort over de UWV-brief te gaan');
+});
+
+test('zonder nummer verdwijnen de appknoppen helemaal', () => {
+  // De enige manier om ze uit te zetten, en dan ook echt allemaal.
+  // Alleen naar de opmaak kijken: de stijlregels mogen blijven staan, die
+  // kosten niets en een ongebruikte selector doet niemand kwaad.
+  const opmaak = html({ WHATSAPP_NUMMER: ' ' }).replace(/<style[\s\S]*?<\/style>/g, '');
+  assert.ok(!/wa\.me/.test(opmaak), 'er staat nog een appknop op de pagina');
+  assert.ok(!/class="wa-(zweef|naast)"/.test(opmaak), 'er staat nog een lege appknop in de opmaak');
 });
 
 test('de pagina wordt meegebouwd en is als pad bereikbaar', async () => {

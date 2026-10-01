@@ -121,6 +121,32 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
 .hero-media{grid-area:visual;min-width:0;align-self:start}.hero-media .result{grid-area:auto}
 @media(max-width:620px){.hero-media{display:contents}.hero-media .result{grid-area:example}.process-main .send-step{row-gap:0}}
 
+
+/* --- WhatsApp ------------------------------------------------------------
+   Twee knoppen, met opzet niet even hard. De knop onder het uploadvak is een
+   alternatief voor wie liever praat dan uploadt; hij staat er netjes naast en
+   vecht niet met de hoofdknop. De zwevende knop is er alleen op een telefoon,
+   want daar staat WhatsApp ook. */
+.wa-naast{display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:13px 16px;
+ border:1px solid #BFE9CF;border-radius:14px;background:#F2FCF6;color:#0B1250;
+ text-decoration:none;font-size:15px;line-height:1.4;transition:background .15s,border-color .15s}
+.wa-naast svg{flex:none}
+.wa-naast svg path{fill:#25D366}
+.wa-naast strong{display:block;font-weight:800}
+.wa-naast:hover{background:#E6F8EE;border-color:#8FD9AE}
+.wa-naast:focus-visible{outline:3px solid #25D366;outline-offset:2px}
+
+.wa-zweef{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+ z-index:40;display:none;align-items:center;gap:8px;padding:13px 18px;border-radius:999px;
+ background:#25D366;color:#fff;text-decoration:none;font-weight:800;font-size:15px;
+ box-shadow:0 6px 20px rgba(11,18,80,.22)}
+.wa-zweef svg path{fill:#fff}
+.wa-zweef:focus-visible{outline:3px solid #0B1250;outline-offset:3px}
+@media(max-width:860px){.wa-zweef{display:inline-flex}}
+/* De vraag over cookies staat onderin over de hele breedte; zolang die er is,
+   zou de zwevende knop eroverheen liggen. */
+body:has(.nb-toestemming) .wa-zweef{display:none}
+
 </style>
 <script type="application/ld+json">
 {
@@ -397,7 +423,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
    <div class="org-contact" id="contact">
     <h4>Je kunt ons bereiken</h4>
     <p>Een vraag of iets overleggen? Neem gerust contact op.</p>
-
+    <div><a class="clink" href="https://wa.me/31628227291?text=Hoi%2C%20ik%20wil%20graag%20weten%20of%20UWV%20te%20laat%20is" target="_blank" rel="noopener">Stel je vraag via WhatsApp</a></div>
 
     <p class="small">We reageren op werkdagen binnen 1 werkdag.</p>
    </div>
@@ -445,6 +471,8 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
     <span id="pick-more" hidden>+ Nog een brief of pagina toevoegen</span></button>
    <input id="file" type="file" accept="image/*,application/pdf,.pdf,.heic,.heif" multiple hidden>
    <p class="upload-format" id="file-format">Een foto of pdf is genoeg · tot 5 bestanden<span class="desk"> · slepen kan ook</span></p>
+   <a class="wa-naast" href="https://wa.me/31628227291?text=Hoi%2C%20ik%20wil%20graag%20weten%20of%20UWV%20te%20laat%20is" target="_blank" rel="noopener">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.07-.13-.27-.2-.57-.35z"/><path d="M12.04 2.4c-5.3 0-9.6 4.3-9.6 9.6 0 1.69.44 3.34 1.29 4.8L2.4 21.6l4.95-1.29a9.56 9.56 0 0 0 4.69 1.2h.01c5.29 0 9.6-4.3 9.6-9.6s-4.31-9.51-9.61-9.51zm0 17.37h-.01c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.16.83.84-3.08-.2-.32a7.96 7.96 0 0 1-1.22-4.26c0-4.4 3.58-7.98 7.99-7.98 2.13 0 4.14.83 5.65 2.34a7.94 7.94 0 0 1 2.34 5.65c0 4.41-3.59 7.99-7.98 7.99z"/></svg><span><strong>Liever even appen?</strong> Stuur ons een WhatsApp-bericht</span></a>
    <details class="later" id="later"><summary>Ik heb mijn brief nu niet bij de hand</summary>
     <p>Bewaar deze pagina en pak je brief erbij wanneer het jou uitkomt. Een foto of pdf is genoeg.</p>
     <p><a href="/uwv-te-laat">nubeslist.nl/uwv-te-laat</a></p></details>
@@ -522,7 +550,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
    <h2>Je UWV-brief laten controleren?</h2>
    <p>Gratis controle. Je zit nergens aan vast.</p>
    <a class="btn" href="#upload"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4m0 0-4 4m4-4 4 4"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg> Controleer mijn UWV-brief</a>
-
+   <p class="alt">Nog een vraag? <a href="https://wa.me/31628227291?text=Hoi%2C%20ik%20wil%20graag%20weten%20of%20UWV%20te%20laat%20is" target="_blank" rel="noopener">Stel je vraag via WhatsApp</a>.</p>
   </div>
  </div>
 </div></section>
@@ -531,7 +559,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
 <footer><div class="fin"><div class="fgrid">
  <div class="brand"><img class="logo" src="/assets/woordmerk-wit.svg" alt="NuBeslist" width="124" height="28"><p>NuBeslist is een onafhankelijk Nederlands bedrijf. We zijn geen onderdeel van UWV of de overheid.</p></div>
  <div class="c-bedrijf"><h4>Bedrijfsgegevens</h4></div>
- <div class="c-contact"><h4>Contact</h4><div class="fi" style="color:#AEB7DE">We reageren op werkdagen binnen 1 werkdag.</div></div>
+ <div class="c-contact"><h4>Contact</h4><a class="fi" href="https://wa.me/31628227291?text=Hoi%2C%20ik%20wil%20graag%20weten%20of%20UWV%20te%20laat%20is" target="_blank" rel="noopener"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9D3F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.5-4.3A8.5 8.5 0 1 1 20.5 11.6z"/><path d="M9 8.5c.3 2.6 2.4 5 5.5 6l1.3-1.3-2-1-.9.8a5 5 0 0 1-2.3-2.3l.8-.9-1-2z"/></svg> Stel je vraag via WhatsApp</a><div class="fi" style="color:#AEB7DE">We reageren op werkdagen binnen 1 werkdag.</div></div>
  <div class="c-info"><h4>Informatie</h4><ul class="fl"><li><a href="/privacy" target="_blank" rel="noopener">Privacyverklaring</a></li><li><a href="/voorwaarden" target="_blank" rel="noopener">Algemene voorwaarden</a></li><li><a href="#kosten">Kosten van onze hulp</a></li></ul></div>
 </div><div class="fbar"><div>© 2026 NuBeslist</div><div><a href="#top">Terug naar boven ↑</a></div></div></div></footer>
 
@@ -541,6 +569,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
 </dialog>
 
 <a id="verder" href="/aanvraag?instantie=uwv&amp;van=uwv-te-laat" hidden aria-hidden="true" tabindex="-1">Verder</a>
+<a class="wa-zweef" href="https://wa.me/31628227291?text=Hoi%2C%20ik%20wil%20graag%20weten%20of%20UWV%20te%20laat%20is" target="_blank" rel="noopener" aria-label="Stuur ons een WhatsApp-bericht"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.07-.13-.27-.2-.57-.35z"/><path d="M12.04 2.4c-5.3 0-9.6 4.3-9.6 9.6 0 1.69.44 3.34 1.29 4.8L2.4 21.6l4.95-1.29a9.56 9.56 0 0 0 4.69 1.2h.01c5.29 0 9.6-4.3 9.6-9.6s-4.31-9.51-9.61-9.51zm0 17.37h-.01c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.16.83.84-3.08-.2-.32a7.96 7.96 0 0 1-1.22-4.26c0-4.4 3.58-7.98 7.99-7.98 2.13 0 4.14.83 5.65 2.34a7.94 7.94 0 0 1 2.34 5.65c0 4.41-3.59 7.99-7.98 7.99z"/></svg><span>Appen</span></a>
 
 <script type="module" src="/assets/meting.js"></script>
 <script type="module" src="/assets/toestemming.js"></script>

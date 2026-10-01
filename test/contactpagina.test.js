@@ -28,12 +28,29 @@ const MET_ALLES = {
 
 test('zonder gegevens in de omgeving staan er geen lege of doodlopende knoppen', () => {
   const html = contactHtml({});
-  assert.ok(!/WhatsApp/.test(html), 'geen whatsappknop zonder nummer');
   assert.ok(!/mailto:/.test(html), 'geen mailknop zonder adres');
   assert.ok(!/tel:/.test(html), 'geen telefoonknop zonder nummer');
   assert.ok(!/KvK-nummer/.test(html), 'geen lege rij in de bedrijfsgegevens');
   // Maar de pagina blijft bruikbaar: het eigen dossier staat er altijd.
   assert.match(html, /Naar mijn dossier/);
+});
+
+/**
+ * Het WhatsApp-nummer staat er altijd, met een vaste waarde eronder.
+ *
+ * Dit is het kanaal waar de advertenties op uitkomen. Een vergeten
+ * omgevingsvariabele zou het stilletjes van de site halen, en dat merk je pas
+ * als er een week niemand meer appt.
+ */
+test('het whatsappnummer staat op de contactpagina, ook zonder omgeving', () => {
+  const html = contactHtml({});
+  assert.match(html, /https:\/\/wa\.me\/31628227291\?text=/);
+  assert.match(html, /WhatsApp 06 28 22 72 91/, 'het nummer hoort leesbaar in beeld te staan');
+
+  // En leegzetten haalt hem weg, zonder een halve knop achter te laten.
+  const zonder = contactHtml({ WHATSAPP_NUMMER: ' ' });
+  assert.ok(!/wa\.me/.test(zonder));
+  assert.ok(!/WhatsApp/.test(zonder));
 });
 
 test('met gegevens in de omgeving staan ze er allemaal, en kloppen de links', () => {
