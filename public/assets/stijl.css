@@ -344,3 +344,4 @@ table.tabel tbody tr:hover { background: var(--blauw-50); }
 .veld__vereist { font-weight: 400; font-size: .85rem; color: var(--tekst-zacht); }
 .veld__reden { font-size: .84rem; color: var(--tekst-zacht); margin: 4px 0 8px; }
 .veld__reden:empty { display: none; }
+

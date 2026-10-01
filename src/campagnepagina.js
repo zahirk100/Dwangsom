@@ -539,7 +539,7 @@ ${mailLink ? `    ${mailLink}` : ''}
    <button class="btn upload-choose" type="button" id="pick" aria-controls="file" aria-describedby="file-format file-error">
     <span id="pick-empty"><span class="desk">${ico.document} Kies een foto of pdf</span><span class="mobo">Maak een foto of kies een bestand</span></span>
     <span id="pick-more" hidden>+ Nog een brief of pagina toevoegen</span></button>
-   <input id="file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,image/gif,image/bmp,image/tiff,.heic,.heif,.pdf,application/pdf" multiple hidden>
+   <input id="file" type="file" accept="image/*,application/pdf,.pdf,.heic,.heif" multiple hidden>
    <p class="upload-format" id="file-format">Een foto of pdf is genoeg · tot 5 bestanden<span class="desk"> · slepen kan ook</span></p>
    <details class="later" id="later"><summary>Ik heb mijn brief nu niet bij de hand</summary>
     <p>Bewaar deze pagina en pak je brief erbij wanneer het jou uitkomt. Een foto of pdf is genoeg.</p>
@@ -639,6 +639,7 @@ ${contactRegel ? `   <p class="alt">Nog een vraag? ${contactRegel}.</p>` : ''}
 <a id="verder" href="${BESTEMMING}" hidden aria-hidden="true" tabindex="-1">Verder</a>
 
 <script type="module" src="/assets/meting.js"></script>
+<script type="module" src="/assets/toestemming.js"></script>
 <!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
 <img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/campagne.js"></script>

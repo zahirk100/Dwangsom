@@ -284,6 +284,14 @@ function toon(naam) {
   // scherm nooit oude inhoud laten zien van een eerdere doorloop.
   if (VOORBEREID[naam]) VOORBEREID[naam]();
 
+  // Naar Meta, als de bezoeker daar toestemming voor gaf. Alleen de naam van
+  // de gebeurtenis: geen zaaktype, geen instantie, geen bedrag. "Lead" plus
+  // "wia" zou Meta vertellen dat deze persoon arbeidsongeschikt is.
+  if (naam === 'uitslag' && !gemeten.has('meta-lead')) {
+    gemeten.add('meta-lead');
+    if (window.nbMeta) window.nbMeta('Lead');
+  }
+
   if (MEETSTAP[naam] && !gemeten.has(MEETSTAP[naam])) {
     gemeten.add(MEETSTAP[naam]);
     meet(MEETSTAP[naam]);
@@ -1251,6 +1259,10 @@ async function verzend() {
       return;
     }
     meet('aanvraag');
+    // De machtiging is getekend en de opdracht is aangekomen. Pas hier, niet
+    // bij het tekenen zelf: een handtekening die niet verstuurd raakt is geen
+    // aanmelding.
+    if (window.nbMeta) window.nbMeta('CompleteRegistration');
     zaak.referentie = data.referentie || (data.aanvraag && data.aanvraag.referentie) || '';
     zaak.dossier = data.aanvraag || null;
     tekenBevestiging();

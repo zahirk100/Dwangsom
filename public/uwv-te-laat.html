@@ -443,7 +443,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
    <button class="btn upload-choose" type="button" id="pick" aria-controls="file" aria-describedby="file-format file-error">
     <span id="pick-empty"><span class="desk"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg> Kies een foto of pdf</span><span class="mobo">Maak een foto of kies een bestand</span></span>
     <span id="pick-more" hidden>+ Nog een brief of pagina toevoegen</span></button>
-   <input id="file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,image/gif,image/bmp,image/tiff,.heic,.heif,.pdf,application/pdf" multiple hidden>
+   <input id="file" type="file" accept="image/*,application/pdf,.pdf,.heic,.heif" multiple hidden>
    <p class="upload-format" id="file-format">Een foto of pdf is genoeg · tot 5 bestanden<span class="desk"> · slepen kan ook</span></p>
    <details class="later" id="later"><summary>Ik heb mijn brief nu niet bij de hand</summary>
     <p>Bewaar deze pagina en pak je brief erbij wanneer het jou uitkomt. Een foto of pdf is genoeg.</p>
@@ -543,6 +543,7 @@ footer{padding:62px 0 0;background:var(--navy);color:#E3E9F8;font-size:15px}.fin
 <a id="verder" href="/aanvraag?instantie=uwv&amp;van=uwv-te-laat" hidden aria-hidden="true" tabindex="-1">Verder</a>
 
 <script type="module" src="/assets/meting.js"></script>
+<script type="module" src="/assets/toestemming.js"></script>
 <!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
 <img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/campagne.js"></script>

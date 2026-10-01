@@ -587,6 +587,46 @@ function rendereRedenen(data) {
         tekst: brief ? `${Math.round((r.aantal / brief) * 1000) / 10}%` : '\u2014' }))))));
 }
 
+/**
+ * Waar het misging bij het uploaden van een brief.
+ *
+ * De reden staat erbij omdat elke reden om iets anders vraagt: een bestand dat
+ * te groot is vraagt om een andere grens, een brief die niet te lezen was om
+ * een betere uitleg bij het fotograferen, en een storing om werk aan de
+ * techniek. "Te druk" betekent dat onze eigen snelheidsgrens in de weg zit.
+ */
+const UPLOADREDENEN = {
+  'te-groot': 'Bestand te groot of verbinding brak af',
+  'te-druk': 'Geweigerd door onze eigen snelheidsgrens',
+  onleesbaar: 'Tekst kwam er niet uit',
+  storing: 'Storing bij het lezen',
+  onbekend: 'Onbekende reden',
+};
+
+function rendereUploads(data) {
+  const rijen = Object.entries(data.mislukteUploads || {})
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (rijen.length === 0) {
+    return el('p', { class: 'stil', tekst: 'Geen enkele brief is mislukt.' });
+  }
+  const max = Math.max(...rijen.map(([, n]) => n));
+  const gelukt = data.totalen['funnel-brief'] || 0;
+  const totaal = rijen.reduce((som, [, n]) => som + n, 0);
+  const pogingen = gelukt + totaal;
+  return el('div', {},
+    el('p', { class: 'stil', tekst: pogingen
+      ? `${getal(totaal)} van de ${getal(pogingen)} pogingen ging mis `
+        + `(${Math.round((totaal / pogingen) * 1000) / 10}%).`
+      : '' }),
+    rol(el('table', {},
+      el('thead', {}, el('tr', {},
+        el('th', { tekst: 'Reden' }), el('th', { tekst: 'Aantal' }))),
+      el('tbody', {}, rijen.map(([reden, n]) => el('tr', {},
+        el('td', { tekst: UPLOADREDENEN[reden] || reden }),
+        balkcel(n, max)))))));
+}
+
 async function laad() {
   inhoud.textContent = '';
   inhoud.append(el('p', { class: 'stil', tekst: 'Bezig met laden…' }));
@@ -637,6 +677,10 @@ async function laad() {
     el('p', { class: 'stil' }, 'Wanneer de pagina\u2019s geladen zijn, in Nederlandse tijd. '
       + 'Hiermee zie je een advertentie aanslaan terwijl hij loopt.'),
     rendereUren(data),
+    el('h2', { tekst: 'Mislukte uploads' }),
+    el('p', { class: 'stil' }, 'Brieven die de server wel bereikten maar niet gelezen konden '
+      + 'worden. Dit is de serverkant; het scherm van de bezoeker telt apart hieronder.'),
+    rendereUploads(data),
     el('h2', { tekst: 'Waarom kwamen ze niet verder?' }),
     el('p', { class: 'stil' }, 'De trechter zegt hoeveel mensen wegliepen, dit zegt waarom. '
       + 'Dit zijn zijwegen en geen stappen, dus ze tellen niet op tot het verlies hierboven.'),

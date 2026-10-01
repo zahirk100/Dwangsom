@@ -38,6 +38,11 @@ export const GEBEURTENISSEN = {
   // er niemand kwam, niet dat ze wel degelijk klikten en op een foutpagina
   // belandden.
   'niet-gevonden': 'Kwam op een pagina die niet bestaat',
+  // Een brief die de server niet binnenkreeg of niet kon lezen. De funnel
+  // meldt zelf al dat iemand op het scherm "onleesbaar" of "storing" belandde;
+  // dit telt het aan de serverkant, met de reden erbij, zodat te zien is of
+  // het aan het bestand lag of aan ons.
+  'upload-mislukt': 'Brief kon niet gelezen worden',
   'funnel-start': 'Funnel geopend',
   'funnel-brief': 'Brief geüpload',
   'funnel-uitslag': 'Uitslag getoond',
@@ -70,7 +75,7 @@ export const GEBEURTENISSEN = {
  * `paginaweergave` telt hetzelfde bezoek als `bezoek` en zou de trechter dus
  * verdubbelen. Hij staat apart, als controlegetal.
  */
-export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden'];
+export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden', 'upload-mislukt'];
 
 /**
  * Waarom iemand niet verder kwam.
@@ -250,6 +255,7 @@ export function overzicht(ruw) {
   const weergaven = {};
   const weergavenPerPagina = {};
   const nietGevonden = {};
+  const mislukteUploads = {};
   const dagen = [];
 
   for (const { dag, tellingen } of ruw) {
@@ -270,6 +276,12 @@ export function overzicht(ruw) {
       const n = Number(aantal) || 0;
       if (gebeurtenis === 'niet-gevonden') {
         nietGevonden[bron] = (nietGevonden[bron] || 0) + n;
+        continue;
+      }
+      if (gebeurtenis === 'upload-mislukt') {
+        // Hier staat in het bronveld de reden en niet het kanaal: welke kant
+        // het misging is wat je moet weten om er iets aan te doen.
+        mislukteUploads[bron] = (mislukteUploads[bron] || 0) + n;
         continue;
       }
       if (gebeurtenis === 'paginaweergave') {
@@ -312,6 +324,7 @@ export function overzicht(ruw) {
     weergaven,
     weergavenPerPagina,
     nietGevonden,
+    mislukteUploads,
     // Het totaal van beide manieren van tellen naast elkaar. Zie de toelichting
     // bij GEBEURTENISSEN: uit elkaar lopen betekent dat het script niet draait.
     bezoekVergelijking: {

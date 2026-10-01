@@ -304,7 +304,7 @@ details.uitklap .binnen p:last-child { margin-bottom: 0; }
       <div class="kiesvak" id="kiesvak">
         <div class="kiesvak__beeld" id="kiesvak-beeld" aria-hidden="true"><svg class="scene-svg" style="display:block;width:100%;height:auto" viewBox="0 0 412 240" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><ellipse cx="210" cy="222" rx="178" ry="12" fill="#B9DDD1"/><rect x="42" y="13" width="119" height="209" rx="22" fill="#102252"/><rect x="50" y="24" width="103" height="187" rx="15" fill="#F4FBF8"/><path d="M84 31h35" stroke="#102252" stroke-width="6" stroke-linecap="round"/><rect x="68" y="61" width="69" height="104" rx="3" fill="white" stroke="#9DBBD5" stroke-width="1.5"/><path d="M80 79h35M80 93h45M80 105h41M80 130h45M80 142h34" stroke="#BED1E6" stroke-width="4" stroke-linecap="round"/><rect x="77" y="112" width="40" height="8" rx="2" fill="#9BD1BD"/><path d="M61 72v-20h20M142 72v-20h-20M61 155v20h20M142 155v20h-20" stroke="#087F72" stroke-width="2.5" stroke-linecap="round"/><circle cx="101" cy="190" r="10" fill="#087F72"/><text x="205" y="127" text-anchor="middle" fill="#31516B" font-family="Figtree, sans-serif" font-size="19">of</text><path d="M260 54h82l28 29v122q0 9-9 9h-101q-9 0-9-9V63q0-9 9-9Z" fill="white" stroke="#264870" stroke-width="2.5"/><path d="M342 54v29h28" fill="#CEE2F5" stroke="#264870" stroke-width="2.5" stroke-linejoin="round"/><rect x="269" y="97" width="84" height="32" rx="5" fill="#D4EBE2"/><text x="311" y="119" text-anchor="middle" fill="#0B1250" font-family="Figtree, sans-serif" font-size="21" font-weight="800">PDF</text><path d="M271 149h78M271 163h62M271 178h73" stroke="#BED1E6" stroke-width="5" stroke-linecap="round"/></svg></div>
         <button type="button" class="knop knop--primair" id="knop-kiezen">Maak een foto of kies een bestand</button>
-        <input type="file" id="bestand" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,image/gif,image/bmp,image/tiff,.heic,.heif,.pdf,application/pdf" multiple hidden>
+        <input type="file" id="bestand" accept="image/*,application/pdf,.pdf,.heic,.heif" multiple hidden>
         <p class="kiesvak__onder">Na je keuze gaan we direct verder. Je kunt meerdere pagina&rsquo;s tegelijk kiezen.</p>
         <p class="kiesvak__grens" id="kiesvak-grens"></p>
       </div>
@@ -565,6 +565,7 @@ details.uitklap .binnen p:last-child { margin-bottom: 0; }
 <p class="voetnoot">NuBeslist is geen overheidsinstantie. De uitkomst is een inschatting en geen juridisch advies.</p>
 
 <script type="module" src="/assets/meting.js"></script>
+<script type="module" src="/assets/toestemming.js"></script>
 <!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
 <img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/funnel.js"></script>

@@ -222,6 +222,14 @@ async function publiekeApi(req, res, url) {
     return stuurJson(res, 200, {
       TARIEF_PERCENTAGE: process.env.TARIEF_PERCENTAGE || '',
       TARIEF_VAST: process.env.TARIEF_VAST || '',
+      // De Meta Pixel. Het nummer is geen geheim (het staat in elke pagina die
+      // hem laadt), maar het hoort niet in de code: dan staat het vast in elke
+      // omgeving, ook in een testomgeving waar je niets naar Meta wilt sturen.
+      // Staat er niets ingesteld, dan komt er geen pixel en geen
+      // toestemmingsvraag.
+      META_PIXEL_ID: process.env.META_PIXEL_ID || '',
+      META_TEST_EVENT_CODE: process.env.META_TEST_EVENT_CODE || '',
+      META_PIXEL_OVERAL: process.env.META_PIXEL_OVERAL || '',
     });
   }
 
@@ -235,18 +243,60 @@ async function publiekeApi(req, res, url) {
   }
 
   if (url.pathname === '/api/brief' && req.method === 'POST') {
+    /**
+     * Een mislukte upload vastleggen.
+     *
+     * Zonder dit is "mensen haken af bij het uploaden" een gat in de trechter
+     * en verder niets. Met de reden erbij is het een lijstje waar je iets aan
+     * kunt doen: een bestand dat te groot is vraagt om een andere grens, een
+     * mislukte tekstherkenning om een betere uitleg bij het fotograferen, en
+     * een storing om werk aan de techniek.
+     *
+     * Er gaat niets van de brief of van de persoon in de teller: alleen de
+     * reden. In het logboek staat daarnaast de bestandssoort en hoe groot het
+     * was, want juist die twee verklaren de meeste mislukkingen.
+     */
+    const meldMislukt = async (reden, extra = {}) => {
+      console.warn('[brief] lezen mislukt:', JSON.stringify({ reden, ...extra }));
+      try {
+        await opslag.tel(vandaagSleutel(), veld('upload-mislukt', reden));
+      } catch (err) {
+        console.error('[meting] mislukte upload tellen mislukt:', err.message);
+      }
+    };
+
     const limiet = briefBegrenzer.controleer(clientIp(req));
     if (!limiet.toegestaan) {
+      // Ook dit is een bezoeker die niet verder kwam. Loopt deze teller op,
+      // dan zit onze eigen grens in de weg en niet het bestand.
+      await meldMislukt('te-druk');
       return stuurFout(res, 429, 'Te veel brieven vanaf dit adres. Probeer het later opnieuw.');
     }
-    const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+
+    let body;
+    try {
+      body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+    } catch (err) {
+      // Hier komt een bestand terecht dat te groot was of onderweg afbrak.
+      // Vaak een foto rechtstreeks uit de camera van een nieuwe telefoon.
+      await meldMislukt('te-groot', { melding: err.message });
+      return stuurFout(res, err.statuscode || 400,
+        'Dit bestand is te groot of de verbinding brak af. Probeer een foto van '
+        + 'één pagina tegelijk, of stuur de brief als pdf.');
+    }
+
     const gelezen = await leesBrief(body);
     if (!gelezen.gelukt) {
+      await meldMislukt(gelezen.soort || 'onbekend', {
+        soort: String(body.soort || '').slice(0, 40),
+        bytes: typeof body.data === 'string' ? body.data.length : 0,
+      });
       return stuurJson(res, 422, { fout: gelezen.reden, soort: gelezen.soort, hint: gelezen.hint });
     }
 
     const herkenning = herkenBrief(gelezen.tekst);
     if (!herkenning.leesbaar) {
+      await meldMislukt('onleesbaar', { tekens: gelezen.tekst.length });
       return stuurJson(res, 422, { fout: herkenning.reden });
     }
 
