@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { kiesOpslag } from './opslag.js';
 import { DOSSIERSOORT } from '../public/shared/dwangsom.js';
 import { maakControle, werkControleBij, verlopen, bewaardagen, MAX_CONTROLES } from './controles.js';
+import { vandaagSleutel } from './meting.js';
 
 /**
  * Bakken die geen gevraagd stuk zijn en dus niets afvinken.
@@ -139,7 +140,10 @@ export class Store {
     // open staat. Blijft samenwerken met zoeken en de overige filters.
     const actieNodig = actie === 'nodig';
     if (actieNodig) {
-      const vandaag = new Date().toISOString().slice(0, 10);
+      // De Nederlandse dag, niet de dag in Londen: tussen middernacht en twee
+      // uur 's nachts verschillen die, en dan valt een dossier dat vandaag aan
+      // de beurt is van de werklijst af.
+      const vandaag = vandaagSleutel();
       resultaat = resultaat.filter((a) => a.actiedatum && a.actiedatum <= vandaag
         && !['toegekend', 'afgewezen', 'afgesloten'].includes(a.status));
     }
@@ -331,7 +335,7 @@ export class Store {
    * Wijzigt de invoer, dan verandert ook de berekening - en daarmee mogelijk
    * het soort dossier en de datum die bewaakt wordt.
    */
-  async werkDossierBij(id, { contact, invoer, rapport, door, toelichting, gewijzigd = [] }) {
+  async werkDossierBij(id, { contact, invoer, rapport, status, door, toelichting, gewijzigd = [] }) {
     const aanvraag = await this.vind(id);
     if (!aanvraag) return null;
     const nu = new Date().toISOString();
@@ -352,6 +356,19 @@ export class Store {
           tekst: `Dossier verplaatst van ${labelVoorSoort(oudeSoort)} naar ${labelVoorSoort(aanvraag.soort)}.`,
         });
       }
+    }
+
+    // De status mag meeschuiven met wat er gebeurd is. Dat is geen gemak maar
+    // noodzaak: een dossier met de verkeerde status komt niet op de werklijst
+    // terug, en dan ligt het stil tot iemand er toevallig langsloopt.
+    if (status && status !== aanvraag.status && isGeldigeStatus(status)) {
+      const oude = aanvraag.status;
+      aanvraag.status = status;
+      aanvraag.historie.push({
+        op: nu,
+        door: door || 'beheerder',
+        tekst: `Status van ${labelVoorStatus(oude)} naar ${labelVoorStatus(status)}.`,
+      });
     }
 
     // Alleen loggen als er iets te melden valt. Anders vult een paar keer

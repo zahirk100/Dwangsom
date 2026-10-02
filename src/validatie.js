@@ -4,7 +4,7 @@
  */
 
 import { parseDatum, vandaag } from '../public/shared/datum.js';
-import { zoekZaaktype } from '../public/shared/catalogus.js';
+import { zoekZaaktype, BESTUURSORGANEN } from '../public/shared/catalogus.js';
 import { berekenDwangsom } from '../public/shared/dwangsom.js';
 import { AANVRAAGVELDEN, CONTACTVELDEN, bepaalDossiereisen, stukkenVanKlant } from '../public/shared/dossier.js';
 import { bsnKlopt, ibanKlopt, normaliseerBsn, normaliseerIban } from '../public/shared/identiteit.js';
@@ -185,6 +185,12 @@ const BIJ_TE_WERKEN_CONTACT = [
 ];
 
 const BIJ_TE_WERKEN_INVOER = [
+  // Instantie en soort zaak horen hier ook bij. Een dossier dat uit een
+  // gesprek komt, heeft ze nog niet; ze komen uit de brief die een
+  // behandelaar erbij hangt, en zonder deze twee velden valt er niets te
+  // rekenen en weet de machtiging niet eens of er een burgerservicenummer bij
+  // hoort.
+  'bestuursorgaan', 'zaaktype',
   'organisatienaam', 'basisdatum', 'termijnBekend', 'termijnEinddatum',
   'verdaagd', 'verdagingEinddatum', 'opschortingDagen',
   'ingebrekeGesteld', 'ingebrekestellingDatum', 'ingebrekestellingDoorOns',
@@ -218,7 +224,22 @@ export function valideerBijwerking(aanvraag = {}, body = {}) {
   for (const veld of BIJ_TE_WERKEN_INVOER) {
     if (!(veld in ruweInvoer)) continue;
     const huidig = (aanvraag.invoer || {})[veld];
-    if (['termijnBekend', 'verdaagd', 'ingebrekeGesteld', 'ingebrekestellingDoorOns', 'besluitGenomen'].includes(veld)) {
+    if (veld === 'bestuursorgaan') {
+      const gevraagd = tekst(ruweInvoer[veld], 40);
+      if (gevraagd && !BESTUURSORGANEN.some((b) => b.id === gevraagd)) {
+        fouten.bestuursorgaan = 'Deze instantie kennen wij niet.';
+        continue;
+      }
+      invoer[veld] = gevraagd;
+    } else if (veld === 'zaaktype') {
+      const gevraagd = tekst(ruweInvoer[veld], 40);
+      const soort = zoekZaaktype(gevraagd);
+      if (gevraagd && !soort) {
+        fouten.zaaktype = 'Dit soort zaak kennen wij niet.';
+        continue;
+      }
+      invoer[veld] = soort ? soort.id : '';
+    } else if (['termijnBekend', 'verdaagd', 'ingebrekeGesteld', 'ingebrekestellingDoorOns', 'besluitGenomen'].includes(veld)) {
       invoer[veld] = Boolean(ruweInvoer[veld]);
     } else if (veld === 'opschortingDagen') {
       const dagen = Number(ruweInvoer[veld]);

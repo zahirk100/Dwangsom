@@ -2,7 +2,7 @@
 
 import { euro } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
-import { labelBestuursorgaan } from '/shared/catalogus.js';
+import { labelBestuursorgaan, zoekZaaktype } from '/shared/catalogus.js';
 import { maskeerBsn, toonIban } from '/shared/identiteit.js';
 
 const inloggenVak = document.getElementById('inloggen');
@@ -1044,29 +1044,251 @@ async function werkBij(id, body, foutVak) {
  * worden vastgelegd? Zonder dit blijft een dossier hangen: de behandelaar
  * verstuurt wel een ingebrekestelling, maar het systeem weet daar niets van.
  */
+/**
+ * De brief erin hangen en hem meteen laten lezen.
+ *
+ * Dit was de omslachtigste stap van het hele proces: de behandelaar tikte de
+ * datums met de hand over uit een pdf in een ander venster. Nu gaat het
+ * bestand in één keer het dossier in én door dezelfde tekstherkenning die de
+ * aanvrager op de site gebruikt.
+ *
+ * Wat eruit komt wordt niet meteen opgeslagen. Er verschijnt eerst wat er
+ * gevonden is en wat de zaak dan zou worden; pas op "overnemen" verandert er
+ * iets. Een datum die een berekening stuurt, hoort niet buiten iemand om in een
+ * dossier te komen.
+ */
+function briefInlezenBlok(a) {
+  const houder = el('div', {});
+  const uitslag = el('div', {});
+  const invoer = el('input', {
+    type: 'file', accept: 'image/*,application/pdf,.pdf,.heic,.heif',
+    class: 'verborgen-invoer',
+  });
+  const knop = el('button', { class: 'knop knop--primair knop--klein', type: 'button' },
+    '\u2191 Brief erin hangen en laten lezen');
+  knop.addEventListener('click', () => invoer.click());
+
+  invoer.addEventListener('change', async () => {
+    const bestand = invoer.files && invoer.files[0];
+    if (!bestand) return;
+    invoer.value = '';
+    uitslag.textContent = '';
+    knop.disabled = true;
+    knop.textContent = 'Bezig met lezen\u2026';
+    try {
+      const bytes = new Uint8Array(await bestand.arrayBuffer());
+      let ruw = '';
+      for (let i = 0; i < bytes.length; i += 8192) ruw += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      const data = await api(`/api/beheer/aanvragen/${a.id}/brief-lezen`, {
+        method: 'POST',
+        body: JSON.stringify({
+          bestandsnaam: bestand.name, mediaType: bestand.type, data: btoa(ruw),
+        }),
+      });
+      actieveAanvraag = data.aanvraag;
+      uitslag.append(gelezenBrief(a, data));
+    } catch (err) {
+      uitslag.append(el('div', { class: 'melding melding--fout' },
+        el('strong', { tekst: err.message }),
+        el('p', { tekst: 'Je kunt de datums ook met de hand invullen onder Zaak.' })));
+    } finally {
+      knop.disabled = false;
+      knop.textContent = '\u2191 Brief erin hangen en laten lezen';
+    }
+  });
+
+  houder.append(invoer, knop, uitslag);
+  return houder;
+}
+
+/** Wat de brief opleverde, en wat de zaak daarmee wordt. */
+function gelezenBrief(a, data) {
+  const voorstel = data.voorstel || {};
+  const voorstelContact = data.voorstelContact || {};
+  const velden = Object.keys(voorstel);
+  const contactvelden = Object.keys(voorstelContact);
+  const proef = data.proefrapport || {};
+  const vak = el('div', { style: 'margin-top:12px' });
+
+  if (velden.length === 0 && contactvelden.length === 0) {
+    vak.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', { tekst: 'De brief is opgeslagen, maar leverde niets nieuws op' }),
+      el('p', { tekst: 'Er stond niets in wat het dossier nog niet wist, of de tekst was niet '
+        + 'te lezen. Vul de datums hieronder met de hand in onder Zaak.' })));
+    return vak;
+  }
+
+  const LABEL = {
+    bestuursorgaan: 'Instantie', organisatienaam: 'Naam instantie', zaaktype: 'Soort zaak',
+    basisdatum: 'Datum aanvraag', termijnBekend: 'Beslisdatum stond in de brief',
+    termijnEinddatum: 'Uiterste beslisdatum', verdaagd: 'Termijn verdaagd',
+    verdagingEinddatum: 'Nieuwe beslisdatum', besluitGenomen: 'Besluit genomen',
+    besluitDatum: 'Datum besluit', ingebrekeGesteld: 'Al in gebreke gesteld',
+    ingebrekestellingDatum: 'Datum ingebrekestelling',
+  };
+  // Een code als 'uwv-ww' zegt een behandelaar niets; hier hoort te staan wat
+  // er straks ook in de brief komt.
+  const toon = (veld, waarde) => {
+    if (waarde === true) return 'ja';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(waarde))) return toonDatum(parseDatum(waarde));
+    if (veld === 'bestuursorgaan') return labelBestuursorgaan(waarde) || String(waarde);
+    if (veld === 'zaaktype') {
+      const soort = zoekZaaktype(waarde);
+      return soort ? soort.label : String(waarde);
+    }
+    return String(waarde);
+  };
+
+  vak.append(el('div', { class: 'melding melding--info' },
+    el('strong', { tekst: proef.kop || 'Dit stond er in de brief' }),
+    el('p', { tekst: proef.samenvatting || '' })));
+
+  const CONTACTLABEL = { kenmerk: 'Kenmerk van de instantie', naam: 'Naam aanvrager' };
+  vak.append(gegevensLijst([
+    ...velden.map((veld) => [LABEL[veld] || veld, toon(veld, voorstel[veld])]),
+    ...contactvelden.map((veld) => [CONTACTLABEL[veld] || veld, toon(veld, voorstelContact[veld])]),
+  ]));
+
+  const fout = el('div', {});
+  const overnemen = maakKnop('Overnemen en doorrekenen', async () => {
+    await werkBij(a.id, {
+      invoer: voorstel,
+      contact: voorstelContact,
+      toelichting: `Gegevens overgenomen uit ${data.brief.bestandsnaam || 'de brief'}.`,
+    }, fout);
+  }, 'knop--primair');
+  const negeren = maakKnop('Niet overnemen', () => { vak.textContent = ''; }, 'knop--stil');
+
+  vak.append(el('div', { class: 'knoprij', style: 'margin-top:10px' }, overnemen, negeren), fout);
+  return vak;
+}
+
+/**
+ * Wat er nu moet gebeuren, en de knop om het te doen.
+ *
+ * Eén stap tegelijk, in de volgorde waarin een zaak loopt. Dat is het verschil
+ * tussen tien dossiers en honderd: bij tien onthoud je zelf wel waar elk er
+ * voor staat, bij honderd niet, en dan blijven ze liggen op de stap die niemand
+ * ziet.
+ */
 function volgendeStapBlok(a) {
   const invoer = a.invoer || {};
-  const vervolg = (a.rapport && a.rapport.vervolg) || {};
+  const rapport = a.rapport || null;
+  const vervolg = (rapport && rapport.vervolg) || {};
   const houder = el('div', {});
   const fout = el('div', {});
+
+  // 1. Zonder brief valt er niets te rekenen, en zonder berekening weten wij
+  //    niet eens of er iets te halen is.
+  const geenBerekening = !rapport || !invoer.basisdatum;
+  if (geenBerekening) {
+    houder.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', { tekst: 'Stap 1: de brief erbij' }),
+      el('p', { tekst: 'Dit dossier heeft nog geen brief en dus geen berekening. Hang de brief '
+        + 'van de instantie erin; wij lezen de datums eruit en rekenen de zaak door.' })));
+    houder.append(briefInlezenBlok(a));
+    return houder;
+  }
+
+  const uitkomst = rapport.uitkomst;
   const klok = termijn(a.actiedatum);
+  const datumregel = a.actiedatum
+    ? `${toonDatum(parseDatum(a.actiedatum))} (${klok.tekst}).`
+    : 'Geen datum om te bewaken.';
 
-  houder.append(el('div', { class: `melding melding--${klok.kleur === 'rood' ? 'fout' : (klok.kleur === 'oranje' ? 'let-op' : 'info')}` },
-    el('strong', { tekst: vervolg.actieLabel || 'Geen actie gepland' }),
-    el('p', { tekst: [
-      a.actiedatum ? `${toonDatum(parseDatum(a.actiedatum))} (${klok.tekst}).` : 'Geen datum om te bewaken.',
-      vervolg.actieUitleg || '',
-    ].filter(Boolean).join(' ') })));
+  // 2. De termijn loopt nog: niets doen, wel bewaken.
+  if (uitkomst === 'termijn-loopt') {
+    houder.append(el('div', { class: 'melding melding--info' },
+      el('strong', { tekst: 'Stap 2: wachten tot de termijn om is' }),
+      el('p', { tekst: `${datumregel} Tot die datum kan er niets gevorderd worden; een `
+        + 'ingebrekestelling die te vroeg komt, telt niet en moet later opnieuw.' })));
+  }
 
+  // 3. De termijn is om en er is nog niet in gebreke gesteld. Dit is de stap
+  //    waar het geld wordt verdiend en waar het dus niet mag blijven liggen.
+  if (uitkomst === 'ingebrekestelling-nodig') {
+    houder.append(el('div', { class: 'melding melding--let-op' },
+      el('strong', { tekst: 'Stap 3: ingebrekestelling versturen' }),
+      el('p', { tekst: 'De beslistermijn is verstreken. Zonder deze brief gaat er geen dwangsom '
+        + 'lopen, hoe lang de instantie ook stil blijft.' })));
+
+    const bekijk = el('a', {
+      class: 'knop knop--primair knop--klein',
+      href: `/api/beheer/aanvragen/${a.id}/ingebrekestelling`,
+      target: '_blank', rel: 'noopener',
+    }, 'Brief maken en bekijken');
+
+    const vastleggen = async (datum, tochDoorgaan = false) => {
+      const data = await api(`/api/beheer/aanvragen/${a.id}/ingebrekestelling`, {
+        method: 'POST', body: JSON.stringify({ datum, tochDoorgaan }),
+      });
+      actieveAanvraag = data.aanvraag;
+      actieveEisen = data.eisen || actieveEisen;
+      rendereLade();
+      laadLijst();
+    };
+
+    const verstuurd = datumActie('Verstuurd op\u2026', a, fout, null, async (datum) => {
+      try {
+        await vastleggen(datum);
+      } catch (err) {
+        /*
+         * Hier staat bewust een weg vooruit. Het dossier kan onvolledig zijn
+         * terwijl de brief al de deur uit is - dan is het erger om dat niet
+         * vast te kunnen leggen dan om een gat in het dossier te hebben: de
+         * hersteltermijn loopt namelijk vanaf die datum, of wij hem kennen of
+         * niet. Te vroeg in gebreke stellen is het enige dat hier echt
+         * geweigerd blijft worden, en dat zegt de melding ook.
+         */
+        fout.textContent = '';
+        const mag = !/nog niet verstreken/i.test(err.message || '');
+        fout.append(el('div', { class: 'melding melding--fout' },
+          el('strong', { tekst: err.message }),
+          mag
+            ? el('div', { class: 'knoprij', style: 'margin-top:8px' },
+              maakKnop('Toch vastleggen op deze datum', async () => {
+                try {
+                  await vastleggen(datum, true);
+                } catch (nogmaals) {
+                  fout.textContent = '';
+                  fout.append(el('div', { class: 'melding melding--fout' },
+                    el('strong', { tekst: nogmaals.message })));
+                }
+              }, 'knop--stil'))
+            : el('p', { tekst: 'Wacht tot de beslistermijn om is; dan telt de brief wel.' })));
+      }
+    });
+
+    houder.append(el('div', { class: 'knoprij' }, bekijk, verstuurd), fout);
+  }
+
+  // 4. De twee weken lopen. Hier is wachten het werk.
+  if (uitkomst === 'hersteltermijn-loopt') {
+    houder.append(el('div', { class: 'melding melding--info' },
+      el('strong', { tekst: 'Stap 4: de twee weken lopen' }),
+      el('p', { tekst: `${datumregel} Komt er voor die datum geen besluit, dan begint de `
+        + 'dwangsom te lopen. Je hoeft tot dan niets te doen.' })));
+  }
+
+  // 5. Er is recht opgebouwd: vorderen.
+  if (uitkomst === 'recht') {
+    const bedrag = rapport.berekening ? rapport.berekening.totaal : 0;
+    houder.append(el('div', { class: 'melding melding--goed' },
+      el('strong', { tekst: 'Stap 5: dwangsom vorderen' }),
+      el('p', { tekst: `Er staat ${euro(bedrag)} open. Vorder het bedrag bij de instantie `
+        + 'en leg hieronder vast wat er wordt toegekend.' })));
+  }
+
+  if (uitkomst === 'geen-recht') {
+    houder.append(el('div', { class: 'melding melding--info' },
+      el('strong', { tekst: rapport.kop || 'Geen recht' }),
+      el('p', { tekst: rapport.samenvatting || '' })));
+  }
+
+  // De losse vastleggingen blijven beschikbaar, maar staan nu onder de stap in
+  // plaats van ervoor.
   const knoppen = el('div', { class: 'knoprij' });
-
   if (!invoer.ingebrekeGesteld) {
-    // "Wij verstuurden" vinkt ook de twee bewijsstukken af: die zitten dan in
-    // ons eigen dossier en hoeven niet bij de aanvrager te worden opgehaald.
-    knoppen.append(datumActie('Ingebrekestelling verstuurd (door ons)', a, fout, (datum) => ({
-      invoer: { ingebrekeGesteld: true, ingebrekestellingDatum: datum, ingebrekestellingDoorOns: true },
-      toelichting: `Ingebrekestelling door ons verstuurd op ${datum}.`,
-    })));
     knoppen.append(datumActie('Aanvrager stelde zelf in gebreke', a, fout, (datum) => ({
       invoer: { ingebrekeGesteld: true, ingebrekestellingDatum: datum, ingebrekestellingDoorOns: false },
       toelichting: `Aanvrager stelde zelf in gebreke op ${datum}; brief en verzendbewijs opvragen.`,
@@ -1078,13 +1300,13 @@ function volgendeStapBlok(a) {
       toelichting: `Besluit van het bestuursorgaan ontvangen op ${datum}.`,
     })));
   }
-
-  const herbereken = maakKnop('Opnieuw doorrekenen', async () => {
+  knoppen.append(maakKnop('Opnieuw doorrekenen', async () => {
     await werkBij(a.id, { toelichting: 'Zaak opnieuw doorgerekend op vandaag.' }, fout);
-  }, 'knop--stil');
-  knoppen.append(herbereken);
+  }, 'knop--stil'));
 
-  houder.append(knoppen, fout);
+  // Ook later nog een brief kunnen toevoegen: een besluit of een
+  // verlengingsbrief komt vaak pas na de ingebrekestelling binnen.
+  houder.append(knoppen, briefInlezenBlok(a), fout);
   return houder;
 }
 
@@ -1102,7 +1324,8 @@ function aanvragerBlok(a) {
       ['Telefoon', a.contact.telefoon],
       ['Adres', [a.contact.adres, a.contact.postcode].filter(Boolean).join(', ')],
       ['Woonplaats', a.contact.woonplaats],
-      ['Geboortedatum', a.contact.geboortedatum],
+      ['Geboortedatum', a.contact.geboortedatum
+        ? toonDatum(parseDatum(a.contact.geboortedatum)) : ''],
       ['Burgerservicenummer', maskeerBsn(a.contact.bsn)],
       ['IBAN', a.contact.iban ? toonIban(a.contact.iban) : ''],
       ['Kenmerk', a.contact.kenmerk],
@@ -1308,7 +1531,15 @@ function afhandelingBlok(a) {
 }
 
 /** Een knop die eerst een datum vraagt en die daarna vastlegt. */
-function datumActie(label, a, foutVak, maakBody) {
+/**
+ * Een knop die eerst om een datum vraagt.
+ *
+ * `maakBody` is de gewone weg: wat er met die datum naar /bijwerken gaat. Voor
+ * stappen die meer doen dan een veld zetten - de ingebrekestelling legt de
+ * datum vast, rekent opnieuw door én schuift de status op - kan er een eigen
+ * afhandeling mee, en dan blijft `maakBody` leeg.
+ */
+function datumActie(label, a, foutVak, maakBody, eigenAfhandeling = null) {
   const houder = el('span', { style: 'display:inline-flex; gap:6px; align-items:center' });
   const knop = maakKnop(label, () => {
     knop.classList.add('verborgen');
@@ -1316,6 +1547,15 @@ function datumActie(label, a, foutVak, maakBody) {
     datum.value = new Date().toISOString().slice(0, 10);
     const bevestig = maakKnop('Vastleggen', async () => {
       if (!datum.value) return;
+      if (eigenAfhandeling) {
+        try {
+          await eigenAfhandeling(datum.value);
+        } catch (err) {
+          foutVak.textContent = '';
+          foutVak.append(el('div', { class: 'melding melding--fout' }, el('strong', { tekst: err.message })));
+        }
+        return;
+      }
       await werkBij(a.id, maakBody(datum.value), foutVak);
     }, 'knop--primair');
     houder.append(datum, bevestig);
