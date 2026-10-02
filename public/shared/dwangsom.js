@@ -51,6 +51,10 @@ export const DOSSIERSOORT = {
   AANVRAAG: 'aanvraag',            // er is iets te vorderen, nu
   VOORAANMELDING: 'vooraanmelding', // nog niet, maar de klok loopt
   BEOORDELING: 'beoordeling',       // waarschijnlijk geen recht; wij kijken mee
+  // Binnengekomen via een gesprek: iemand heeft getekend, maar de brief moet er
+  // nog bij voordat er iets te rekenen valt. Een eigen bak, want deze wachten
+  // op ons en niet op de aanvrager.
+  AANMELDING: 'aanmelding',
 };
 
 export const UITKOMST = {

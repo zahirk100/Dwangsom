@@ -261,7 +261,10 @@ test('de beheerder kan op soort filteren en de stukken bijwerken', async () => {
   const metCookie = { headers: { cookie } };
 
   const alles = await (await haal('/api/beheer/aanvragen', metCookie)).json();
-  assert.ok(alles.soorten.length === 3);
+  // Elke bak uit src/store.js hoort in de beheeromgeving te staan; komt er een
+  // bij, dan hoort hij er vanzelf bij te komen en niet stilletjes te missen.
+  const { SOORTEN } = await import('../src/store.js');
+  assert.deepEqual(alles.soorten.map((s) => s.id), SOORTEN.map((s) => s.id));
   assert.ok(alles.statistieken.perSoort.vooraanmelding >= 2);
 
   const alleenVooraf = await (await haal('/api/beheer/aanvragen?soort=vooraanmelding', metCookie)).json();

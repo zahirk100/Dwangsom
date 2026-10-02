@@ -71,8 +71,13 @@ export const NIEUWE_POST = 'nieuwe-post';
  * @returns {{gegevens: Array, stukken: Array}}
  */
 export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } = {}) {
+  // Een standaardwaarde dekt alleen `undefined`, niet `null`. En `null` komt
+  // hier echt langs: een dossier dat via een aanmeldlink binnenkwam heeft nog
+  // geen brief en dus geen rapport. Zonder deze regel viel de hele
+  // beheerlijst om zodra er één zo'n dossier in stond.
+  const r = rapport || {};
   const zaaktype = zoekZaaktype(invoer.zaaktype);
-  const soort = rapport.vervolg ? rapport.vervolg.soort : null;
+  const soort = r.vervolg ? r.vervolg.soort : null;
   const isBezwaar = Boolean(zaaktype && zaaktype.termijnVanaf === TERMIJN_VANAF.BEZWAARTERMIJN);
   const machtiging = Boolean(contact.machtiging);
   // Treden wij nu namens iemand op? Dan hebben wij de gegevens nodig die op de
@@ -87,8 +92,8 @@ export function bepaalDossiereisen({ invoer = {}, contact = {}, rapport = {} } =
   //
   // Zonder machtiging sturen wij niets, dus dan vragen wij ook niets extra's:
   // dat dossier is een vraag, geen opdracht.
-  const nuIetsTeDoen = rapport.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
-    || rapport.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
+  const nuIetsTeDoen = r.uitkomst === UITKOMST.INGEBREKESTELLING_NODIG
+    || r.uitkomst === UITKOMST.HERSTELTERMIJN_LOOPT;
   const treedtOp = soort === DOSSIERSOORT.AANVRAAG || (machtiging && nuIetsTeDoen);
   const briefNodig = treedtOp;
 

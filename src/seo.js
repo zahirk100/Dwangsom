@@ -212,6 +212,7 @@ export function robotsTxt() {
     'Disallow: /cijfers',
     'Disallow: /mijn',
     'Disallow: /diagnose',
+    'Disallow: /aanmelden',
     'Disallow: /api/',
     '',
     `Sitemap: ${SITE}/sitemap.xml`,

@@ -9,6 +9,7 @@ Disallow: /beheer
 Disallow: /cijfers
 Disallow: /mijn
 Disallow: /diagnose
+Disallow: /aanmelden
 Disallow: /api/
 
 Sitemap: https://nubeslist.nl/sitemap.xml

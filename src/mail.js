@@ -90,6 +90,27 @@ export const SJABLONEN = {
     slot: 'Deze link is een uur geldig en werkt één keer. Vraag daarna gewoon een nieuwe aan.',
   }),
 
+  /**
+   * Iemand heeft zich aangemeld via een link uit een gesprek.
+   *
+   * Anders van toon dan `welkom`: deze aanvrager heeft nog geen brief gestuurd
+   * en weet dus ook nog niet wat zijn zaak oplevert. Hij hoeft op dit moment
+   * niets te doen, en dat is precies wat er hier staat. Niets beloven over een
+   * bedrag of een uitkomst: die kennen wij nu nog niet.
+   */
+  'aanmelding-bevestiging': ({ naam, referentie, url }) => ({
+    onderwerp: `Je aanmelding is binnen (${referentie})`,
+    kop: 'Je aanmelding is binnen',
+    regels: [
+      `Hallo${naam ? ` ${veilig(naam)}` : ''}, bedankt. Wij hebben je machtiging ontvangen.`,
+      'Wij gaan nu met je brief aan de slag. Je hoeft zelf niets te doen; hoor je een tijd niets, '
+        + 'dan stuur je ons gewoon een berichtje.',
+      `Je referentienummer is <strong>${veilig(referentie)}</strong>.`,
+    ],
+    knop: { tekst: 'Bekijk mijn dossier', url },
+    slot: 'Deze link is een uur geldig en werkt één keer. Vraag daarna gewoon een nieuwe aan.',
+  }),
+
   /** Opnieuw inloggen zonder wachtwoord. */
   inloglink: ({ url }) => ({
     onderwerp: 'Je inloglink voor NuBeslist',

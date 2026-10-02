@@ -30,7 +30,7 @@ import {
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
-import { berekenDwangsom } from './public/shared/dwangsom.js';
+import { berekenDwangsom, DOSSIERSOORT } from './public/shared/dwangsom.js';
 import { parseDatum } from './public/shared/datum.js';
 import { bepaalDossiereisen, dossierStatus, stukkenVanKlant, magUploaden, NIEUWE_POST } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
@@ -41,6 +41,10 @@ import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/
 import { campagnePaden } from './public/shared/campagnes.js';
 import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 import { kennispaginas } from './src/kennispagina.js';
+import {
+  maakAanmeldlink, zoekAanmeldlink, sluitAanmeldlink, trekAanmeldlinkIn,
+  aanmeldlinkOverzicht, snoeiAanmeldlinks, valideerAanmelding, wathapert, REDENEN,
+} from './src/aanmelding.js';
 import {
   geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
   laatsteDagen, overzicht, isBot, uurSleutel, huidigUur, GEBEURTENISSEN,
@@ -463,6 +467,114 @@ async function publiekeApi(req, res, url) {
       console.error('[meting] tellen mislukt:', err.message);
     }
     return stuurLeeg(res);
+  }
+
+  /**
+   * De aanmeldlink openen.
+   *
+   * Geeft alleen terug of de link nog werkt, en wat de aanvrager moet weten om
+   * te kunnen tekenen: onze gegevens en wat onze hulp kost. De notitie die de
+   * medewerker erbij zette, blijft binnen: die is voor ons, niet voor hem.
+   */
+  if (url.pathname === '/api/aanmelden' && req.method === 'GET') {
+    const rij = await zoekAanmeldlink(opslag, url.searchParams.get('t'));
+    const hapert = wathapert(rij);
+    if (hapert) return stuurJson(res, 200, { geldig: false, reden: REDENEN[hapert] });
+    return stuurJson(res, 200, {
+      geldig: true,
+      organisatie: organisatiegegevens(),
+      TARIEF_PERCENTAGE: process.env.TARIEF_PERCENTAGE || '',
+      TARIEF_VAST: process.env.TARIEF_VAST || '',
+    });
+  }
+
+  /**
+   * Het ingevulde aanmeldformulier.
+   *
+   * Hier ontstaat een dossier zonder brief en zonder berekening: die komen
+   * later in de beheeromgeving erbij. Wat er wél is, is een getekende
+   * machtiging met de gegevens die nodig zijn om een melding te kunnen doen.
+   *
+   * De link gaat pas op gebruikt nadat het dossier er echt staat. Gaat het
+   * daarvoor mis, dan kan de aanvrager het gewoon nog een keer proberen in
+   * plaats van ons te moeten vragen om een nieuwe link.
+   */
+  if (url.pathname === '/api/aanmelden' && req.method === 'POST') {
+    const limiet = indienBegrenzer.controleer(clientIp(req));
+    if (!limiet.toegestaan) {
+      return stuurFout(res, 429, 'Te veel aanmeldingen vanaf dit adres. Probeer het later opnieuw.');
+    }
+    const body = await leesJsonBody(req);
+    const token = String(body.t || '');
+    const rij = await zoekAanmeldlink(opslag, token);
+    const hapert = wathapert(rij);
+    if (hapert) return stuurJson(res, 410, { fout: REDENEN[hapert] });
+
+    const gelezen = valideerAanmelding(body);
+    if (!gelezen.geldig) {
+      return stuurJson(res, 422, { fout: 'Er ontbreekt nog iets.', velden: gelezen.fouten });
+    }
+    const g = gelezen.gegevens;
+
+    // Een account alleen als er een e-mailadres is. Zonder adres is er niets om
+    // een dossierlink heen te sturen, en dan is een account alleen maar een
+    // lege huls.
+    let klant = null;
+    if (g.email) {
+      try {
+        klant = await gebruikers.vindOfMaakKlant({ email: g.email, naam: g.naam });
+      } catch (err) {
+        console.error('[aanmelding] account aanmaken mislukt:', err.message);
+      }
+    }
+
+    const aanvraag = await store.nieuweAanvraag({
+      invoer: {},
+      contact: {
+        naam: g.naam,
+        email: g.email || '',
+        telefoon: g.telefoon || '',
+        geboortedatum: g.geboortedatum,
+        bsn: g.bsn,
+        iban: g.iban,
+        akkoordVoorwaarden: true,
+      },
+      rapport: null,
+      stukken: {},
+      handtekening: g.handtekening,
+      gebruikerId: klant ? klant.id : null,
+      soort: DOSSIERSOORT.AANMELDING,
+      historieregel: 'Aangemeld via een aanmeldlink na contact via WhatsApp. '
+        + 'De machtiging is getekend; de brief moet er nog bij.',
+      meta: {
+        ingediendVia: 'aanmeldlink',
+        notitie: rij.notitie || '',
+        linkDoor: rij.door || '',
+      },
+    });
+
+    await sluitAanmeldlink(opslag, token, aanvraag.referentie);
+    console.log(`[aanmelding] ${aanvraag.referentie} binnengekomen via een aanmeldlink`);
+
+    if (klant) {
+      try {
+        const magisch = await gebruikers.maakKoppeling(klant.id, 'magic');
+        await verstuur({
+          aan: klant.email,
+          sjabloon: 'aanmelding-bevestiging',
+          gegevens: {
+            naam: g.naam,
+            referentie: aanvraag.referentie,
+            url: `${siteUrl(req)}/mijn?t=${encodeURIComponent(magisch)}`,
+          },
+        });
+      } catch (err) {
+        // De aanmelding staat; een mail die niet aankomt mag dat niet omgooien.
+        console.error('[aanmelding] bevestiging versturen mislukt:', err.message);
+      }
+    }
+
+    return stuurJson(res, 201, { referentie: aanvraag.referentie, email: Boolean(klant) });
   }
 
   /**
@@ -1064,6 +1176,45 @@ async function beheerApi(req, res, url) {
     });
   }
 
+  /**
+   * Een aanmeldlink maken voor iemand die via WhatsApp is binnengekomen.
+   *
+   * Het token komt hier één keer langs en wordt nergens bewaard: in de opslag
+   * staat alleen de hash. Sluit de medewerker het venster voordat hij de link
+   * heeft gekopieerd, dan maakt hij gewoon een nieuwe. Dat is vervelender dan
+   * hem kunnen terugkijken, maar een lijst met werkende links naar
+   * machtigingsformulieren is precies wat je niet wilt bewaren.
+   */
+  if (url.pathname === '/api/beheer/aanmeldlinks' && req.method === 'POST') {
+    if (!magWijzigen(ik)) return stuurFout(res, 403, 'Je mag geen aanmeldlink maken.');
+    const body = await leesJsonBody(req).catch(() => ({}));
+    const { token, link } = await maakAanmeldlink(opslag, {
+      notitie: body.notitie,
+      door: ik.email,
+    });
+    console.log(`[aanmelding] link gemaakt door ${ik.email}`);
+    return stuurJson(res, 201, {
+      url: `${siteUrl(req)}/aanmelden?t=${encodeURIComponent(token)}`,
+      verlooptOp: link.verlooptOp,
+      id: link.id,
+      notitie: link.notitie,
+    });
+  }
+
+  if (url.pathname === '/api/beheer/aanmeldlinks' && req.method === 'GET') {
+    if (!isMedewerker(ik)) return stuurFout(res, 403, 'Geen toegang.');
+    return stuurJson(res, 200, { links: await aanmeldlinkOverzicht(opslag) });
+  }
+
+  if (url.pathname === '/api/beheer/aanmeldlinks' && req.method === 'DELETE') {
+    if (!magWijzigen(ik)) return stuurFout(res, 403, 'Je mag geen aanmeldlink intrekken.');
+    const id = url.searchParams.get('id');
+    if (!id) return stuurFout(res, 400, 'Geen link opgegeven.');
+    const bij = await trekAanmeldlinkIn(opslag, id);
+    if (!bij) return stuurFout(res, 404, 'Deze link bestaat niet (meer).');
+    return stuurJson(res, 200, { link: bij });
+  }
+
   if (url.pathname === '/api/beheer/metingen' && req.method === 'GET') {
     const aantalDagen = Math.min(Math.max(Number(url.searchParams.get('dagen')) || 30, 1), 120);
     const dagen = laatsteDagen(aantalDagen);
@@ -1494,6 +1645,9 @@ const PAGINAS = {
   // Zelfcontrole van de keten. Bewust zonder login bereikbaar: hij is juist
   // bedoeld voor het moment waarop de rest het niet doet.
   '/diagnose': 'diagnose.html',
+  // Het aanmeldformulier achter een link uit een gesprek. De link zelf is het
+  // slot; de pagina eromheen is gewoon een bestand.
+  '/aanmelden': 'aanmelden.html',
   '/mijn': 'mijn.html',
   '/hoe-werkt-het': 'hoe-werkt-het.html',
   '/contact': 'contact.html',

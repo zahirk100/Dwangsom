@@ -127,6 +127,27 @@
   @media (max-width: 560px) {
     .balk-weg-op-klein { display: none; }
   }
+
+  /* Het venster waarin een aanmeldlink ontstaat. Klein gehouden: er is één
+     invoerveld en één knop, en daarna één ding om te kopiëren. */
+  .venster { border: 0; border-radius: var(--radius); padding: 0; max-width: 540px; width: calc(100% - 32px);
+             box-shadow: var(--schaduw); color: var(--tekst); background: var(--vlak); }
+  .venster::backdrop { background: rgba(11, 18, 80, .45); }
+  .venster__binnen { padding: 22px 20px; display: block; }
+  .venster h2 { margin: 0 0 6px; font-size: 1.15rem; }
+  .venster .stil { color: var(--tekst-zacht); font-size: .9rem; margin: 0 0 14px; }
+  .venster label { display: block; font-weight: 600; margin: 14px 0 5px; }
+  .venster input {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--rand-sterk);
+    font: inherit; font-size: .95rem; background: var(--vlak); color: var(--tekst);
+  }
+  .venster #aanmeldlink-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
+  .venster__knoppen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .venster .melding { padding: 10px 12px; border-radius: 10px; font-size: .88rem; margin: 12px 0 0;
+                      background: var(--oranje-50); border: 1px solid var(--oranje-100); }
+  .venster .melding--fout { background: var(--rood-100); border-color: var(--rood-600); color: var(--rood-600); }
+  .verborgen { display: none !important; }
+
 </style>
 </head>
 <body>
@@ -223,11 +244,54 @@
     <div class="kop-rij">
       <h1>Binnengekomen aanvragen</h1>
       <div class="rechts">
+        <button class="knop knop--primair knop--klein" id="knop-aanmeldlink" type="button">+ Aanmeldlink</button>
         <button class="knop knop--zacht knop--klein verborgen" id="knop-accounts" type="button">Accounts</button>
         <a class="knop knop--zacht knop--klein" id="knop-export" href="/api/beheer/export.csv">⬇ Exporteren (CSV)</a>
         <button class="knop knop--stil knop--klein" id="knop-uitloggen">Uitloggen</button>
       </div>
     </div>
+
+    <!--
+      Een link maken voor iemand die via WhatsApp binnenkwam.
+
+      Het token komt één keer langs en wordt nergens bewaard: in de opslag staat
+      alleen een hash. Daarom staat de link hier groot in beeld met een
+      kopieerknop, en niet in een lijstje om later terug te zoeken.
+    -->
+    <dialog id="aanmeldlink-venster" class="venster">
+      <form method="dialog" class="venster__binnen">
+        <h2>Aanmeldlink maken</h2>
+        <p class="stil">Stuur deze link via WhatsApp naar de aanvrager. Hij vult zijn gegevens
+          in en tekent de machtiging; daarna staat hij hier als dossier.</p>
+
+        <div id="aanmeldlink-stap1">
+          <label for="aanmeldlink-notitie">Voor wie is deze link?</label>
+          <input type="text" id="aanmeldlink-notitie" maxlength="120" autocomplete="off"
+                 placeholder="Naam of telefoonnummer uit het gesprek">
+          <p class="stil">Alleen voor jezelf, zodat je de lijst kunt teruglezen.
+            De aanvrager ziet dit niet.</p>
+          <div class="venster__knoppen">
+            <button type="button" class="knop knop--primair" id="aanmeldlink-maken">Link maken</button>
+            <button type="submit" class="knop knop--stil">Annuleren</button>
+          </div>
+        </div>
+
+        <div id="aanmeldlink-stap2" class="verborgen">
+          <label for="aanmeldlink-url">De link</label>
+          <input type="text" id="aanmeldlink-url" readonly onclick="this.select()">
+          <p class="stil" id="aanmeldlink-geldig"></p>
+          <p class="melding" id="aanmeldlink-waarschuwing">Kopieer hem nu. Wij bewaren deze link
+            niet: sluit je dit venster, dan is hij weg en maak je gewoon een nieuwe.</p>
+          <div class="venster__knoppen">
+            <button type="button" class="knop knop--primair" id="aanmeldlink-kopieren">Kopieer de link</button>
+            <a class="knop knop--zacht" id="aanmeldlink-whatsapp" href="#" target="_blank" rel="noopener">Via WhatsApp sturen</a>
+            <button type="submit" class="knop knop--stil">Sluiten</button>
+          </div>
+        </div>
+
+        <p id="aanmeldlink-fout" class="melding melding--fout verborgen" role="alert"></p>
+      </form>
+    </dialog>
 
     <div id="opslag-waarschuwing"></div>
     <div id="werklijst-melding"></div>

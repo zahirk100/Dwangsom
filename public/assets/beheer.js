@@ -1460,12 +1460,97 @@ async function openAccounts() {
   toonLade('Accounts', lijf);
 }
 
+// -------------------------------------------------------- aanmeldlink ----
+
+/**
+ * Een link maken voor iemand die via WhatsApp binnenkwam.
+ *
+ * Het token komt één keer langs en wordt nergens bewaard: in de opslag staat
+ * alleen een hash. Daarom staat de link hier groot in beeld met een
+ * kopieerknop en een knop om hem meteen door te sturen, en niet in een lijstje
+ * om later terug te zoeken. Raakt hij kwijt, dan maak je een nieuwe; dat is
+ * vervelender dan terugkijken, maar een bewaarde lijst werkende links naar
+ * machtigingsformulieren is precies wat je niet wilt hebben.
+ */
+function aanmeldlinkVenster() {
+  const venster = document.getElementById('aanmeldlink-venster');
+  const stap1 = document.getElementById('aanmeldlink-stap1');
+  const stap2 = document.getElementById('aanmeldlink-stap2');
+  const fout = document.getElementById('aanmeldlink-fout');
+  const notitie = document.getElementById('aanmeldlink-notitie');
+  const urlveld = document.getElementById('aanmeldlink-url');
+  const maken = document.getElementById('aanmeldlink-maken');
+  const kopieren = document.getElementById('aanmeldlink-kopieren');
+  const viaWa = document.getElementById('aanmeldlink-whatsapp');
+  const geldig = document.getElementById('aanmeldlink-geldig');
+
+  function opnieuw() {
+    stap1.classList.remove('verborgen');
+    stap2.classList.add('verborgen');
+    fout.classList.add('verborgen');
+    notitie.value = '';
+    urlveld.value = '';
+    kopieren.textContent = 'Kopieer de link';
+  }
+
+  document.getElementById('knop-aanmeldlink').addEventListener('click', () => {
+    opnieuw();
+    venster.showModal();
+    notitie.focus();
+  });
+
+  maken.addEventListener('click', async () => {
+    maken.disabled = true;
+    maken.textContent = 'Bezig…';
+    fout.classList.add('verborgen');
+    try {
+      const data = await api('/api/beheer/aanmeldlinks', {
+        method: 'POST',
+        body: JSON.stringify({ notitie: notitie.value }),
+      });
+      urlveld.value = data.url;
+      geldig.textContent = `Deze link werkt tot ${new Date(data.verlooptOp)
+        .toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}.`;
+      // Het eerste bericht staat alvast klaar; de medewerker hoeft alleen nog
+      // het gesprek te kiezen.
+      const bericht = `Hoi! Via deze link rond je je aanmelding bij NuBeslist af. `
+        + `Het duurt ongeveer twee minuten: ${data.url}`;
+      viaWa.href = `https://wa.me/?text=${encodeURIComponent(bericht)}`;
+      stap1.classList.add('verborgen');
+      stap2.classList.remove('verborgen');
+      urlveld.focus();
+      urlveld.select();
+    } catch (err) {
+      fout.textContent = err.message;
+      fout.classList.remove('verborgen');
+    } finally {
+      maken.disabled = false;
+      maken.textContent = 'Link maken';
+    }
+  });
+
+  kopieren.addEventListener('click', async () => {
+    urlveld.select();
+    try {
+      await navigator.clipboard.writeText(urlveld.value);
+      kopieren.textContent = 'Gekopieerd';
+    } catch {
+      // Zonder toestemming voor het klembord blijft selecteren over; dan kan
+      // de medewerker zelf kopiëren in plaats van een knop die niets doet.
+      kopieren.textContent = 'Kopieer met Ctrl+C';
+    }
+  });
+}
+
 // ------------------------------------------------------------- opstart ----
 
 api('/api/beheer/sessie')
   .then((data) => {
     rollen = data.rollen || [];
-    if (data.ingelogd) return toonDashboard(data.gebruiker);
+    if (data.ingelogd) {
+      aanmeldlinkVenster();
+      return toonDashboard(data.gebruiker);
+    }
     return toonInloggen(data);
   })
   .catch(() => toonInloggen());

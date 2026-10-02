@@ -28,6 +28,8 @@ export const SOORTEN = [
     uitleg: 'Nog niet te vorderen; wij bewaken de datum waarop er iets moet gebeuren.' },
   { id: DOSSIERSOORT.BEOORDELING, label: 'Beoordelingen', enkelvoud: 'Beoordeling',
     uitleg: 'De automatische toets ziet geen recht; handmatig bekijken.' },
+  { id: DOSSIERSOORT.AANMELDING, label: 'Aanmeldingen', enkelvoud: 'Aanmelding',
+    uitleg: 'Getekend via een aanmeldlink. De brief moet er nog bij voordat er gerekend kan worden.' },
 ];
 
 export const STATUSSEN = [
@@ -76,12 +78,15 @@ export class Store {
 
   async nieuweAanvraag({
     invoer, contact, rapport, stukken, meta, brief, verlengbrief, handtekening, gebruikerId,
+    soort: gevraagdeSoort, historieregel,
   }) {
     const nu = new Date().toISOString();
     const jaar = new Date().getUTCFullYear();
     const nummer = await this.opslag.volgendNummer(jaar);
     const vervolg = (rapport && rapport.vervolg) || {};
-    const soort = vervolg.soort || DOSSIERSOORT.BEOORDELING;
+    // Een aanmelding via een link weet zelf in welke bak hij hoort: er is nog
+    // geen brief en dus geen rapport om het uit af te leiden.
+    const soort = gevraagdeSoort || vervolg.soort || DOSSIERSOORT.BEOORDELING;
     // Wat de aanvrager al heeft meegestuurd, staat meteen aangevinkt. Anders
     // meldt het dossier "ontbreekt" over stukken die gewoon binnen zijn, en
     // gaat de behandelaar daarover mailen.
@@ -119,9 +124,9 @@ export class Store {
       historie: [{
         op: nu,
         door: 'systeem',
-        tekst: soort === DOSSIERSOORT.VOORAANMELDING
+        tekst: historieregel || (soort === DOSSIERSOORT.VOORAANMELDING
           ? `Vooraanmelding ontvangen. Bewaken tot ${vervolg.actiedatum || 'nader te bepalen'}: ${vervolg.actieLabel || ''}`.trim()
-          : 'Aanvraag ontvangen via het aanvraagformulier.',
+          : 'Aanvraag ontvangen via het aanvraagformulier.'),
       }],
     };
     await this.opslag.voegToe(aanvraag);
