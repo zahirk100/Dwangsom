@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import {
-  overzicht, trechterVan, TRECHTERSTAPPEN, AFHAAKREDENEN, veld, GEBEURTENISSEN,
+  overzicht, trechterVan, TRECHTERSTAPPEN, AFHAAKREDENEN, veld, GEBEURTENISSEN, vandaagSleutel,
 } from '../src/meting.js';
 import { controleOverzicht, maakControle } from '../src/controles.js';
 
@@ -185,7 +185,9 @@ test('een controle zonder bron valt onder "onbekend" en verdwijnt niet', () => {
 });
 
 test('de controles zijn per dag uit te splitsen', () => {
-  const vandaag = new Date().toISOString().slice(0, 10);
+  // De Nederlandse dag, net als de applicatie: een UTC-datum wijst hier na
+  // middernacht naar gisteren.
+  const vandaag = vandaagSleutel();
   const uit = controleOverzicht([
     controle({ sleutel: 'a', bedrag: 200 }),
     { ...controle({ sleutel: 'b', bedrag: 100 }), aanvraagId: 'D-2' },

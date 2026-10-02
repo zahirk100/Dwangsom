@@ -28,6 +28,7 @@ import {
   serveerBestand, stuurFout, stuurHtml, stuurJson, stuurLeeg, stuurTekst,
 } from './src/http-util.js';
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
+import { ingebrekestellingHtml, kanIngebrekestelling } from './src/ingebrekestelling.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom, DOSSIERSOORT } from './public/shared/dwangsom.js';
@@ -1307,7 +1308,7 @@ async function beheerApi(req, res, url) {
     });
   }
 
-  const detail = /^\/api\/beheer\/aanvragen\/([A-Za-z0-9-]+)((?:\/[a-z]+)(?:\/[A-Za-z0-9-]+)?)?$/
+  const detail = /^\/api\/beheer\/aanvragen\/([A-Za-z0-9-]+)((?:\/[a-z-]+)(?:\/[A-Za-z0-9-]+)?)?$/
     .exec(url.pathname);
   if (detail) {
     const aanvraag = await store.vind(detail[1]);
@@ -1389,6 +1390,56 @@ async function beheerApi(req, res, url) {
       return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
     }
 
+    /**
+     * De ingebrekestelling als afdrukbare brief.
+     *
+     * Dezelfde vorm als de machtiging: een pagina die je afdrukt of als pdf
+     * bewaart. Ontbreekt er een gegeven, dan staat er een invulregel én een
+     * waarschuwing bovenaan - nooit een verzonnen datum of nummer, want een
+     * verkeerde datum in deze brief kost de aanvrager zijn hele vordering.
+     */
+    if (subpad === '/ingebrekestelling' && req.method === 'GET') {
+      return stuurHtml(res, 200, ingebrekestellingHtml(aanvraag, organisatiegegevens()));
+    }
+
+    /**
+     * De brief is verstuurd.
+     *
+     * Hier gebeurt in één keer wat de behandelaar anders op drie plekken moest
+     * doen: de datum vastleggen, de zaak opnieuw doorrekenen (vanaf nu loopt de
+     * hersteltermijn) en de status meeschuiven. Dat laatste ging altijd mis,
+     * en een dossier met de verkeerde status komt niet op de werklijst terug.
+     */
+    if (subpad === '/ingebrekestelling' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
+      const body = await leesJsonBody(req);
+      const datum = String(body.datum || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) {
+        return stuurFout(res, 422, 'Vul de datum in waarop de brief de deur uit ging.');
+      }
+      const mag = kanIngebrekestelling(aanvraag, organisatiegegevens());
+      if (!mag.kan && !body.tochDoorgaan) {
+        return stuurJson(res, 422, { fout: mag.reden, ontbreekt: mag.ontbreekt });
+      }
+      const nieuweInvoer = {
+        ...aanvraag.invoer,
+        ingebrekeGesteld: true,
+        ingebrekestellingDatum: datum,
+        ingebrekestellingDoorOns: true,
+      };
+      const bijgewerkt = await store.werkDossierBij(aanvraag.id, {
+        invoer: nieuweInvoer,
+        rapport: berekenDwangsom(nieuweInvoer),
+        status: 'ingebrekestelling-verstuurd',
+        door: ik.naam || ik.email,
+        toelichting: `Ingebrekestelling verstuurd op ${datum}.`,
+      });
+      return stuurJson(res, 200, {
+        aanvraag: zonderBestandsinhoud(bijgewerkt),
+        eisen: bepaalDossiereisen(bijgewerkt),
+      });
+    }
+
     if (subpad === '/stukken' && req.method === 'POST') {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
@@ -1408,10 +1459,21 @@ async function beheerApi(req, res, url) {
         return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: fouten });
       }
       const nieuweInvoer = { ...aanvraag.invoer, ...invoer };
+      const rapport = berekenDwangsom(nieuweInvoer);
+
+      /*
+       * Een dossier dat nog op 'Nieuw' staat en nu voor het eerst een
+       * berekening krijgt, is in behandeling - iemand is er immers net mee
+       * bezig geweest. Dat met de hand bijzetten werd altijd vergeten, en een
+       * dossier met de verkeerde status komt niet op de werklijst terug.
+       */
+      const gaatLopen = aanvraag.status === 'nieuw' && !aanvraag.rapport && Boolean(rapport.uitkomst);
+
       const bijgewerkt = await store.werkDossierBij(aanvraag.id, {
         contact,
         invoer: nieuweInvoer,
-        rapport: berekenDwangsom(nieuweInvoer),
+        rapport,
+        status: gaatLopen ? 'in-behandeling' : null,
         door: ik.naam || ik.email,
         toelichting: typeof body.toelichting === 'string' ? body.toelichting.slice(0, 300) : '',
         gewijzigd,
@@ -1482,6 +1544,99 @@ async function beheerApi(req, res, url) {
         toelichting: soort === 'claim' ? 'Dwangsomclaim, door ons opgesteld' : 'Ingebrekestelling, door ons opgesteld',
       });
       return stuurJson(res, 200, { aanvraag: zonderBestandsinhoud(bijgewerkt) });
+    }
+
+    /**
+     * Een brief in het dossier hangen en hem meteen laten lezen.
+     *
+     * Dit was de omslachtigste stap van het hele proces. De aanvrager die via
+     * de site binnenkwam liet zijn brief lezen door dezelfde tekstherkenning
+     * die hier nooit beschikbaar was; de behandelaar moest de datums met de
+     * hand overtikken uit een pdf in een ander venster. Bij een paar dossiers
+     * gaat dat; bij honderd is het de reden dat ze blijven liggen.
+     *
+     * Het bestand gaat hier in één keer het dossier in én door de lezer. Wat
+     * eruit komt wordt níét meteen opgeslagen: het gaat terug naar het scherm,
+     * zodat de behandelaar ziet wat er gevonden is en zelf op "overnemen"
+     * drukt. Een datum die een berekening stuurt, hoort niet buiten iemand om
+     * in een dossier te komen.
+     */
+    if (subpad === '/brief-lezen' && req.method === 'POST') {
+      const nee = magNietWijzigen(); if (nee) return nee;
+      const limiet = briefBegrenzer.controleer(clientIp(req));
+      if (!limiet.toegestaan) {
+        return stuurFout(res, 429, 'Te veel brieven achter elkaar. Probeer het zo nog eens.');
+      }
+      const body = await leesJsonBody(req, MAX_UPLOAD_BYTES);
+      const stukId = String(body.stukId || 'termijnbrief');
+
+      const gelezen = await leesBrief(body);
+      if (!gelezen.gelukt) {
+        return stuurJson(res, 422, { fout: gelezen.reden, soort: gelezen.soort, hint: gelezen.hint });
+      }
+      const herkenning = herkenBrief(gelezen.tekst);
+
+      // Bewaren doen wij altijd, ook als er niets uit te halen viel: het stuk
+      // hoort in het dossier, en een brief die de herkenning niet snapt is
+      // juist een reden om hem er met de hand bij te pakken.
+      let bijgewerkt = aanvraag;
+      if (body.data) {
+        // 'termijnbrief' staat hier los bij: dat is precies wat er wordt
+        // ingelezen, maar het hoort pas bij de gevraagde stukken zodra het
+        // dossier weet dat er een beslisdatum in stond - en dat weet het pas
+        // ná deze brief. Zonder deze regel belandt de brief die de hele zaak
+        // start in de bak losse post.
+        const toegestaan = new Set([
+          ...bepaalDossiereisen(aanvraag).stukken.map((stuk) => stuk.id),
+          ...LOSSE_BAKKEN,
+          'termijnbrief',
+        ]);
+        bijgewerkt = await store.voegBestandToe(aanvraag.id, {
+          stukId: toegestaan.has(stukId) ? stukId : 'correspondentie',
+          bestandsnaam: body.bestandsnaam,
+          mediaType: body.mediaType,
+          data: body.data,
+          door: ik.naam || ik.email,
+        }) || aanvraag;
+      }
+
+      // Wat de brief oplevert, naast wat er al in het dossier staat. Alleen
+      // velden die nu leeg zijn worden voorgesteld; wat een mens heeft
+      // ingevuld wint van wat een machine leest.
+      const uitBrief = naarInvoer(herkenning);
+      const voorstel = {};
+      for (const [veld, waarde] of Object.entries(uitBrief)) {
+        const nu = aanvraag.invoer ? aanvraag.invoer[veld] : undefined;
+        const leeg = nu === undefined || nu === null || nu === '' || nu === false;
+        if (leeg && waarde !== '' && waarde !== false) voorstel[veld] = waarde;
+      }
+
+      // Hetzelfde voor de twee gegevens van de persoon die in een brief staan
+      // en die een behandelaar anders overtikt: het kenmerk waarmee de
+      // instantie de zaak terugvindt, en de naam als die nog nergens stond.
+      const voorstelContact = {};
+      const huidigContact = aanvraag.contact || {};
+      for (const veld of ['kenmerk', 'naam']) {
+        const gevonden = String(herkenning[veld] || '').trim();
+        if (gevonden && !String(huidigContact[veld] || '').trim()) voorstelContact[veld] = gevonden;
+      }
+
+      return stuurJson(res, 200, {
+        aanvraag: zonderBestandsinhoud(bijgewerkt),
+        herkenning,
+        velden: herkendeVelden(herkenning),
+        voorstel,
+        voorstelContact,
+        // Wat de zaak zou worden als de behandelaar dit overneemt. Zo staat er
+        // op het scherm wat het oplevert vóórdat er iets verandert.
+        proefrapport: berekenDwangsom({ ...(aanvraag.invoer || {}), ...voorstel }),
+        brief: {
+          bron: gelezen.bron,
+          bestandsnaam: String(body.bestandsnaam || '').slice(0, 120),
+          tekens: gelezen.tekst.length,
+          tekst: gelezen.tekst.slice(0, 4000),
+        },
+      });
     }
 
     // Zelf een stuk aan het dossier toevoegen: een ontvangen brief, een

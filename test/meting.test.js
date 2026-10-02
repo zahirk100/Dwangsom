@@ -18,7 +18,7 @@ import path from 'node:path';
 
 import {
   normaliseerBron, kanaal, normaliseerPagina, veld, overzicht, geldigeGebeurtenis,
-  laatsteDagen, GEBEURTENISSEN,
+  laatsteDagen, GEBEURTENISSEN, vandaagSleutel,
 } from '../src/meting.js';
 
 const tijdelijk = await fs.mkdtemp(path.join(os.tmpdir(), 'nubeslist-meting-'));
@@ -40,7 +40,13 @@ const meld = (body) => fetch(`${basis}/api/meting`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 });
 
-const vandaag = new Date().toISOString().slice(0, 10);
+// Dezelfde dagsleutel als de applicatie gebruikt, en met opzet niet
+// `toISOString()`. Wij tellen op de Nederlandse klok, en die loopt een of twee
+// uur voor op UTC: tussen middernacht en twee uur 's nachts hier wijst een
+// UTC-datum naar gisteren, en dan zoeken deze toetsen in de verkeerde dag.
+// Dat is één keer gebeurd, en het leek op een kapotte meting terwijl de klok
+// het probleem was.
+const vandaag = vandaagSleutel();
 const tel = () => opslag.tellingen(vandaag);
 
 // ------------------------------------------------------------- bronnen ---
@@ -538,7 +544,7 @@ test('onbekende sleutels in de opslag worden overgeslagen', () => {
 test('de dagenlijst loopt van oud naar nieuw en eindigt vandaag', () => {
   const dagen = laatsteDagen(7);
   assert.equal(dagen.length, 7);
-  assert.equal(dagen[6], new Date().toISOString().slice(0, 10));
+  assert.equal(dagen[6], vandaagSleutel());
   assert.deepEqual(dagen, [...dagen].sort());
 });
 

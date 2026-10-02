@@ -26,6 +26,7 @@
  */
 
 import { bsnKlopt } from '../public/shared/identiteit.js';
+import { vandaagSleutel } from './meting.js';
 
 /** Hoelang een onvoltooide controle blijft staan. */
 export function bewaardagen(env = process.env) {
@@ -209,7 +210,14 @@ function perHerkomst(rijen, veld) {
 function perDagOverzicht(rijen) {
   const perDag = {};
   for (const rij of rijen) {
-    const dag = String(rij.bijgewerktOp || rij.gestartOp || '').slice(0, 10);
+    // Op de Nederlandse klok, net als de bezoekcijfers. De eerste tien tekens
+    // van een tijdstempel zijn de UTC-datum, en die wijst tussen middernacht
+    // en twee uur 's nachts hier naar gisteren. Stond dat ene blok op een
+    // andere dag dan de rest, dan lijken de cijfers elkaar tegen te spreken.
+    const stempel = rij.bijgewerktOp || rij.gestartOp || '';
+    const moment = new Date(stempel);
+    if (Number.isNaN(moment.getTime())) continue;
+    const dag = vandaagSleutel(moment);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dag)) continue;
     perDag[dag] ||= {
       dag, controles: 0, aanvragen: 0, gemistBedrag: 0,
