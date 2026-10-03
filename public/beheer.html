@@ -137,10 +137,11 @@
   .venster h2 { margin: 0 0 6px; font-size: 1.15rem; }
   .venster .stil { color: var(--tekst-zacht); font-size: .9rem; margin: 0 0 14px; }
   .venster label { display: block; font-weight: 600; margin: 14px 0 5px; }
-  .venster input {
+  .venster input, .venster select {
     width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--rand-sterk);
     font: inherit; font-size: .95rem; background: var(--vlak); color: var(--tekst);
   }
+  .venster .veldfout { color: var(--rood-600); font-size: .85rem; margin: 5px 0 0; }
   .venster #aanmeldlink-url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
   .venster__knoppen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .venster .melding { padding: 10px 12px; border-radius: 10px; font-size: .88rem; margin: 12px 0 0;
@@ -260,11 +261,45 @@
     -->
     <dialog id="aanmeldlink-venster" class="venster">
       <form method="dialog" class="venster__binnen">
-        <h2>Aanmeldlink maken</h2>
-        <p class="stil">Stuur deze link via WhatsApp naar de aanvrager. Hij vult zijn gegevens
-          in en tekent de machtiging; daarna staat hij hier als dossier.</p>
+        <h2 id="aanmeldlink-kop">Aanmeldlink maken</h2>
+        <p class="stil" id="aanmeldlink-intro">Stuur deze link via WhatsApp naar de aanvrager.
+          Hij vult zijn gegevens in en tekent de machtiging; daarna staat hij hier als dossier.</p>
 
         <div id="aanmeldlink-stap1">
+          <label for="aanmeldlink-soort">Wat voor link?</label>
+          <select id="aanmeldlink-soort">
+            <option value="aanmelding">Aanmelding &mdash; de beslistermijn is al voorbij</option>
+            <option value="vooraanmelding">Vooraanmelding &mdash; de instantie heeft nog tijd</option>
+          </select>
+          <p class="stil" id="aanmeldlink-soort-uitleg"></p>
+
+          <!--
+            Alleen bij een vooraanmelding, en alles is optioneel. Wat hier
+            ingevuld wordt, hoeft de aanvrager niet meer te doen - en dat is
+            precies waarom dit hier staat: elke vraag minder op zijn telefoon
+            is er één.
+          -->
+          <div id="aanmeldlink-zaak" class="verborgen">
+            <label for="aanmeldlink-orgaan">Bij welke instantie ligt de aanvraag?</label>
+            <select id="aanmeldlink-orgaan"></select>
+            <p class="veldfout verborgen" id="fout-aanmeldlink-bestuursorgaan"></p>
+
+            <label for="aanmeldlink-zaaktype">Waar gaat het over?</label>
+            <select id="aanmeldlink-zaaktype"></select>
+            <p class="veldfout verborgen" id="fout-aanmeldlink-zaaktype"></p>
+
+            <label for="aanmeldlink-basisdatum">Datum van de aanvraag</label>
+            <input type="date" id="aanmeldlink-basisdatum">
+            <p class="veldfout verborgen" id="fout-aanmeldlink-basisdatum"></p>
+
+            <label for="aanmeldlink-einddatum">Uiterste beslisdatum uit de brief</label>
+            <input type="date" id="aanmeldlink-einddatum">
+            <p class="veldfout verborgen" id="fout-aanmeldlink-termijnEinddatum"></p>
+
+            <p class="stil" style="margin-top:10px">Laat je iets leeg, dan vragen wij het de
+              aanvrager zelf. Is alles ingevuld, dan hoeft hij alleen nog te tekenen.</p>
+          </div>
+
           <label for="aanmeldlink-notitie">Voor wie is deze link?</label>
           <input type="text" id="aanmeldlink-notitie" maxlength="120" autocomplete="off"
                  placeholder="Naam of telefoonnummer uit het gesprek">

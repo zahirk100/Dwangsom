@@ -8,10 +8,19 @@
  * Vandaar de toon en de lengte: geen uitleg over dwangsommen, geen bedragen,
  * geen keuzes. Vier velden, een handtekening en klaar. Alles wat hier extra bij
  * komt, is een reden om te stoppen.
+ *
+ * Er zijn twee soorten links. Bij een gewone aanmelding is de termijn al
+ * voorbij en komt de brief later van ons. Bij een vooraanmelding loopt de
+ * termijn nog; dan horen er een paar vragen over de zaak bij, want zonder te
+ * weten wélke aanvraag en van wanneer valt er niets te bewaken. Wat de
+ * medewerker in het gesprek al noteerde, staat er dan als overzichtje: alleen
+ * wat nog ontbreekt wordt gevraagd.
  */
 
 import { tarief, tariefZin } from '/shared/tarief.js';
 import { bsnKlopt, normaliseerBsn, ibanKlopt, normaliseerIban, toonIban } from '/shared/identiteit.js';
+import { BESTUURSORGANEN, zaaktypenVoor, zoekZaaktype, labelBestuursorgaan } from '/shared/catalogus.js';
+import { parseDatum, toonDatum } from '/shared/datum.js';
 
 const bij = (id) => document.getElementById(id);
 const token = new URLSearchParams(location.search).get('t') || '';
@@ -31,7 +40,10 @@ function zetFout(veld, tekst) {
 }
 
 function wisFouten() {
-  for (const veld of ['naam', 'geboortedatum', 'bsn', 'iban', 'email', 'handtekening', 'akkoord']) {
+  for (const veld of [
+    'naam', 'geboortedatum', 'bsn', 'iban', 'email', 'handtekening', 'akkoord',
+    'bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum',
+  ]) {
     zetFout(veld, '');
   }
   bij('fout').classList.add('verborgen');
@@ -113,6 +125,133 @@ bij('bsn').addEventListener('blur', () => {
   }
 });
 
+// --------------------------------------------------------------- de zaak --
+
+/*
+ * Wat de medewerker al wist, en wat er daarna nog over is om te vragen.
+ * Beide komen uit dezelfde bron als de rest van de site: de catalogus met
+ * zaaktypen. Een lijst die hier apart wordt bijgehouden loopt uit de pas met
+ * de termijnen waarmee gerekend wordt.
+ */
+let linksoort = 'aanmelding';
+let bekendeZaak = {};
+
+const LABELS = {
+  bestuursorgaan: 'Instantie',
+  zaaktype: 'Je aanvraag',
+  basisdatum: 'Aanvraag gedaan op',
+  termijnEinddatum: 'Beslissing uiterlijk op',
+};
+
+function toonZaakwaarde(veld, waarde) {
+  if (veld === 'bestuursorgaan') return labelBestuursorgaan(waarde);
+  if (veld === 'zaaktype') {
+    const soort = zoekZaaktype(waarde);
+    return soort ? soort.label : waarde;
+  }
+  const ms = parseDatum(waarde);
+  return ms === null ? String(waarde) : toonDatum(ms);
+}
+
+/** De keuzelijst met soorten zaak hoort bij de gekozen instantie. */
+function vulZaaktypen() {
+  const orgaan = bij('bestuursorgaan').value || bekendeZaak.bestuursorgaan || '';
+  const lijst = bij('zaaktype');
+  const gekozen = lijst.value;
+  lijst.textContent = '';
+  const leeg = document.createElement('option');
+  leeg.value = '';
+  leeg.textContent = orgaan ? 'Kies waar het over gaat…' : 'Kies eerst een instantie';
+  lijst.append(leeg);
+  for (const soort of zaaktypenVoor(orgaan)) {
+    const optie = document.createElement('option');
+    optie.value = soort.id;
+    optie.textContent = soort.label;
+    lijst.append(optie);
+  }
+  if (gekozen && zaaktypenVoor(orgaan).some((z) => z.id === gekozen)) lijst.value = gekozen;
+  zetDatumlabel();
+}
+
+/*
+ * Bij een bezwaar loopt de termijn niet vanaf de aanvraag maar vanaf het
+ * besluit waartegen bezwaar is gemaakt. Dezelfde vraag stellen zou een datum
+ * opleveren waarmee de berekening de verkeerde kant op gaat.
+ */
+function zetDatumlabel() {
+  const soort = zoekZaaktype(bij('zaaktype').value || bekendeZaak.zaaktype || '');
+  const bezwaar = soort && soort.termijnVanaf === 'bezwaartermijn';
+  const label = bij('label-basisdatum');
+  if (!label) return;
+  label.childNodes[0].nodeValue = bezwaar
+    ? 'Wanneer is het besluit genomen waartegen je bezwaar maakte? '
+    : 'Wanneer heb je de aanvraag gedaan? ';
+}
+
+function bouwZaakkaart(data) {
+  linksoort = data.soort === 'vooraanmelding' ? 'vooraanmelding' : 'aanmelding';
+  bekendeZaak = data.zaak || {};
+  if (linksoort !== 'vooraanmelding') return;
+
+  bij('formulier-kop').textContent = 'Je vooraanmelding';
+  bij('formulier-inleiding').textContent = 'De instantie heeft nog tijd om te beslissen. '
+    + 'Wij houden die datum in de gaten en komen in actie zodra zij te laat zijn. '
+    + 'Daarvoor hebben wij deze gegevens nodig.';
+  bij('verzend').textContent = 'Vooraanmelding versturen';
+  bij('kaart-zaak').classList.remove('verborgen');
+
+  // Eerst de instanties in de lijst, dan pas wat er al bekend was invullen.
+  const orgaanlijst = bij('bestuursorgaan');
+  orgaanlijst.textContent = '';
+  const leeg = document.createElement('option');
+  leeg.value = '';
+  leeg.textContent = 'Kies een instantie…';
+  orgaanlijst.append(leeg);
+  for (const orgaan of BESTUURSORGANEN) {
+    const optie = document.createElement('option');
+    optie.value = orgaan.id;
+    optie.textContent = orgaan.label;
+    orgaanlijst.append(optie);
+  }
+
+  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum']) {
+    if (bekendeZaak[veld]) bij(veld).value = bekendeZaak[veld];
+  }
+  vulZaaktypen();
+  if (bekendeZaak.zaaktype) bij('zaaktype').value = bekendeZaak.zaaktype;
+
+  // Wat al bekend is, staat er als tekst om te controleren; de rest wordt
+  // gevraagd. Iemand die alles al heeft doorgegeven hoeft hier dus niets te
+  // doen behalve tekenen.
+  const overzicht = bij('zaak-bekend');
+  overzicht.textContent = '';
+  let gevraagd = 0;
+  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum']) {
+    if (bekendeZaak[veld]) {
+      const rij = document.createElement('div');
+      const kop = document.createElement('dt');
+      kop.textContent = LABELS[veld];
+      const waarde = document.createElement('dd');
+      waarde.textContent = toonZaakwaarde(veld, bekendeZaak[veld]);
+      rij.append(kop, waarde);
+      overzicht.append(rij);
+    } else {
+      bij(`veld-${veld}`).classList.remove('verborgen');
+      gevraagd += 1;
+    }
+  }
+  if (overzicht.children.length) overzicht.classList.remove('verborgen');
+  bij('zaak-uitleg').textContent = gevraagd === 0
+    ? 'Dit hebben wij van je genoteerd. Klopt het niet? Laat het ons weten via WhatsApp.'
+    : 'Hiermee weten wij vanaf wanneer de instantie te laat is.';
+}
+
+bij('bestuursorgaan').addEventListener('change', () => {
+  bij('zaaktype').value = '';
+  vulZaaktypen();
+});
+bij('zaaktype').addEventListener('change', zetDatumlabel);
+
 // ------------------------------------------------------------- openen -----
 
 async function open() {
@@ -147,8 +286,12 @@ async function open() {
     : 'Wat onze hulp kost, spreken wij apart met je af voordat wij iets doen. '
       + 'Lukt het niet, dan kost het je niets.';
 
+  bouwZaakkaart(data);
+
   bij('formulier').classList.remove('verborgen');
-  bij('naam').focus();
+  const eerste = document.querySelector('#kaart-zaak .veld:not(.verborgen) select, '
+    + '#kaart-zaak .veld:not(.verborgen) input') || bij('naam');
+  eerste.focus();
 }
 
 // ---------------------------------------------------------- versturen -----
@@ -163,6 +306,14 @@ bij('formulier').addEventListener('submit', async (gebeurtenis) => {
 
   const lading = {
     t: token,
+    // Alleen wat op het scherm staat. Wat de medewerker al had genoteerd,
+    // weet de server zelf nog; dat hoeft hier niet nog eens langs de aanvrager.
+    zaak: linksoort === 'vooraanmelding' ? {
+      bestuursorgaan: bij('bestuursorgaan').value,
+      zaaktype: bij('zaaktype').value,
+      basisdatum: bij('basisdatum').value,
+      termijnEinddatum: bij('termijnEinddatum').value,
+    } : undefined,
     naam: bij('naam').value,
     geboortedatum: bij('geboortedatum').value,
     bsn: normaliseerBsn(bij('bsn').value),
@@ -184,7 +335,17 @@ bij('formulier').addEventListener('submit', async (gebeurtenis) => {
 
     if (antwoord.status === 201) {
       bij('formulier').classList.add('verborgen');
-      bij('klaar-regel').textContent = `Je aanmelding is binnen. Je kenmerk is ${data.referentie}.`;
+      bij('klaar-regel').textContent = linksoort === 'vooraanmelding'
+        ? `Je vooraanmelding is binnen. Je kenmerk is ${data.referentie}.`
+        : `Je aanmelding is binnen. Je kenmerk is ${data.referentie}.`;
+      if (linksoort === 'vooraanmelding') {
+        const tot = data.bewaaktTot ? parseDatum(data.bewaaktTot) : null;
+        bij('klaar-uitleg').textContent = tot
+          ? `Wij houden ${toonDatum(tot)} in de gaten. Komt er dan nog geen beslissing, `
+            + 'dan stellen wij de instantie namens jou in gebreke. Je hoeft zelf niets te doen.'
+          : 'Wij kijken ernaar en nemen contact met je op als er iets moet gebeuren. '
+            + 'Je hoeft zelf niets te doen.';
+      }
       bij('klaar-mail').textContent = data.email
         ? 'Wij hebben je een bevestiging gemaild met een link naar je eigen dossier.'
         : 'Bewaar dit kenmerk; je hebt het nodig als je ons iets vraagt.';
@@ -210,7 +371,8 @@ bij('formulier').addEventListener('submit', async (gebeurtenis) => {
     bij('fout').classList.remove('verborgen');
   } finally {
     knop.disabled = false;
-    knop.textContent = 'Aanmelding versturen';
+    knop.textContent = linksoort === 'vooraanmelding'
+      ? 'Vooraanmelding versturen' : 'Aanmelding versturen';
   }
 });
 

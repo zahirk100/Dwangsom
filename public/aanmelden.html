@@ -30,7 +30,12 @@
     border: 1px solid var(--rand-sterk); font: inherit; font-size: 1rem;
     background: var(--vlak); color: var(--tekst);
   }
-  .veld input:focus-visible { outline: 3px solid var(--blauw-500); outline-offset: 1px; }
+  .veld select {
+    width: 100%; padding: 13px 14px; border-radius: 10px;
+    border: 1px solid var(--rand-sterk); font: inherit; font-size: 1rem;
+    background: var(--vlak); color: var(--tekst);
+  }
+  .veld input:focus-visible, .veld select:focus-visible { outline: 3px solid var(--blauw-500); outline-offset: 1px; }
   .veld input[aria-invalid="true"] { border-color: var(--rood-600); }
   .veldfout { display: none; margin: 6px 0 0; color: var(--rood-600); font-size: .9rem; }
   .veld.mis .veldfout { display: block; }
@@ -44,6 +49,14 @@
     margin: 16px 0 0; padding: 14px 16px; border-radius: var(--radius-klein);
     background: var(--papier); border: 1px solid var(--rand);
   }
+  /* Wat de medewerker in het gesprek al noteerde. Het staat er als tekst en
+     niet als invoerveld: er valt niets te doen, alleen te controleren. */
+  .bekend { margin: 0; border-top: 1px solid var(--rand); }
+  .bekend div { display: flex; justify-content: space-between; gap: 14px;
+                padding: 9px 0; border-bottom: 1px solid var(--rand); font-size: .95rem; }
+  .bekend dt { color: var(--tekst-zacht); margin: 0; }
+  .bekend dd { margin: 0; font-weight: 600; text-align: right; }
+
   .vergoeding strong { display: block; margin-bottom: 3px; }
   .vergoeding p { margin: 0; font-size: .92rem; color: var(--tekst-zacht); }
 
@@ -95,13 +108,47 @@
   </div>
 
   <form id="formulier" class="verborgen" novalidate>
-    <h1>Nog één stap</h1>
-    <p class="inleiding">
+    <h1 id="formulier-kop">Nog één stap</h1>
+    <p class="inleiding" id="formulier-inleiding">
       Wij hebben alleen deze gegevens nog nodig om namens jou te kunnen melden
       dat er te laat is beslist. Het duurt ongeveer twee minuten.
     </p>
 
     <div id="fout" class="melding melding--fout verborgen" role="alert"></div>
+
+    <section class="kaart verborgen" id="kaart-zaak">
+      <h2>Je aanvraag</h2>
+      <p id="zaak-uitleg">Hiermee weten wij vanaf wanneer de instantie te laat is.</p>
+
+      <dl class="bekend verborgen" id="zaak-bekend"></dl>
+
+      <div class="veld verborgen" id="veld-bestuursorgaan">
+        <label for="bestuursorgaan">Bij welke instantie ligt je aanvraag?</label>
+        <select id="bestuursorgaan" name="bestuursorgaan"></select>
+        <p class="veldfout" id="fout-bestuursorgaan"></p>
+      </div>
+
+      <div class="veld verborgen" id="veld-zaaktype">
+        <label for="zaaktype">Waar gaat je aanvraag over?</label>
+        <select id="zaaktype" name="zaaktype"></select>
+        <p class="veldfout" id="fout-zaaktype"></p>
+      </div>
+
+      <div class="veld verborgen" id="veld-basisdatum">
+        <label for="basisdatum" id="label-basisdatum">Wanneer heb je de aanvraag gedaan?
+          <span class="hulp">Ongeveer goed is genoeg als je het niet precies weet.</span></label>
+        <input id="basisdatum" name="basisdatum" type="date">
+        <p class="veldfout" id="fout-basisdatum"></p>
+      </div>
+
+      <div class="veld verborgen" id="veld-termijnEinddatum">
+        <label for="termijnEinddatum">Staat er een datum in de brief waarop je een beslissing krijgt?
+          <span class="hulp">Niet verplicht. Staat die datum er, vul hem dan in: die telt
+            namelijk zwaarder dan onze eigen berekening.</span></label>
+        <input id="termijnEinddatum" name="termijnEinddatum" type="date">
+        <p class="veldfout" id="fout-termijnEinddatum"></p>
+      </div>
+    </section>
 
     <section class="kaart">
       <h2>Je gegevens</h2>
@@ -197,7 +244,7 @@
   <div id="klaar" class="verborgen">
     <h1>Dat was het</h1>
     <p class="melding melding--goed" id="klaar-regel"></p>
-    <p>Wij gaan nu met je brief aan de slag. Je hoeft zelf niets meer te doen.</p>
+    <p id="klaar-uitleg">Wij gaan nu met je brief aan de slag. Je hoeft zelf niets meer te doen.</p>
     <p class="stil" id="klaar-mail"></p>
   </div>
 </main>

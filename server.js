@@ -32,7 +32,7 @@ import { ingebrekestellingHtml, kanIngebrekestelling } from './src/ingebrekestel
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom, DOSSIERSOORT } from './public/shared/dwangsom.js';
-import { parseDatum } from './public/shared/datum.js';
+import { parseDatum, toonDatum } from './public/shared/datum.js';
 import { bepaalDossiereisen, dossierStatus, stukkenVanKlant, magUploaden, NIEUWE_POST } from './public/shared/dossier.js';
 import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.js';
 import { leesBrief } from './src/brieflezer.js';
@@ -45,6 +45,7 @@ import { kennispaginas } from './src/kennispagina.js';
 import {
   maakAanmeldlink, zoekAanmeldlink, sluitAanmeldlink, trekAanmeldlinkIn,
   aanmeldlinkOverzicht, snoeiAanmeldlinks, valideerAanmelding, wathapert, REDENEN,
+  geldigeLinksoort, valideerZaak, zaakVanLink,
 } from './src/aanmelding.js';
 import {
   geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
@@ -483,6 +484,11 @@ async function publiekeApi(req, res, url) {
     if (hapert) return stuurJson(res, 200, { geldig: false, reden: REDENEN[hapert] });
     return stuurJson(res, 200, {
       geldig: true,
+      // Welk formulier de aanvrager krijgt, en wat wij al van hem weten. De
+      // notitie van de medewerker gaat hier bewust niet in mee: daar staat
+      // zijn telefoonnummer of een opmerking over het gesprek in.
+      soort: rij.soort || 'aanmelding',
+      zaak: rij.zaak || {},
       organisatie: organisatiegegevens(),
       TARIEF_PERCENTAGE: process.env.TARIEF_PERCENTAGE || '',
       TARIEF_VAST: process.env.TARIEF_VAST || '',
@@ -512,10 +518,31 @@ async function publiekeApi(req, res, url) {
     if (hapert) return stuurJson(res, 410, { fout: REDENEN[hapert] });
 
     const gelezen = valideerAanmelding(body);
-    if (!gelezen.geldig) {
-      return stuurJson(res, 422, { fout: 'Er ontbreekt nog iets.', velden: gelezen.fouten });
+    const linksoort = rij.soort || 'aanmelding';
+
+    /*
+     * Bij een vooraanmelding horen de vragen over de zaak erbij, en die moeten
+     * er dan ook echt zijn: zonder instantie, soort zaak en datum weten wij
+     * niet wanneer de instantie te laat is, en dat bewaken is het enige dat
+     * wij hier beloven. Bij een gewone aanmelding wordt er niets gevraagd en
+     * dus ook niets gerekend; de brief komt later.
+     */
+    const vooraf = linksoort === 'vooraanmelding';
+    const zaak = valideerZaak(
+      { ...(rij.zaak || {}), ...(body.zaak || {}) },
+      { verplicht: vooraf },
+    );
+    const fouten = { ...gelezen.fouten, ...zaak.fouten };
+    if (Object.keys(fouten).length > 0) {
+      return stuurJson(res, 422, { fout: 'Er ontbreekt nog iets.', velden: fouten });
     }
     const g = gelezen.gegevens;
+
+    // De berekening draait op wat de aanvrager zelf heeft opgegeven, net als in
+    // de funnel. Is er geen zaak ingevuld, dan is er ook geen rapport: liever
+    // een leeg dossier dan een uitkomst die nergens op steunt.
+    const invoer = vooraf ? zaakVanLink(rij, body.zaak || {}) : {};
+    const rapport = vooraf ? berekenDwangsom(invoer) : null;
 
     // Een account alleen als er een e-mailadres is. Zonder adres is er niets om
     // een dossierlink heen te sturen, en dan is een account alleen maar een
@@ -530,7 +557,7 @@ async function publiekeApi(req, res, url) {
     }
 
     const aanvraag = await store.nieuweAanvraag({
-      invoer: {},
+      invoer,
       contact: {
         naam: g.naam,
         email: g.email || '',
@@ -540,15 +567,21 @@ async function publiekeApi(req, res, url) {
         iban: g.iban,
         akkoordVoorwaarden: true,
       },
-      rapport: null,
+      rapport,
       stukken: {},
       handtekening: g.handtekening,
       gebruikerId: klant ? klant.id : null,
-      soort: DOSSIERSOORT.AANMELDING,
-      historieregel: 'Aangemeld via een aanmeldlink na contact via WhatsApp. '
-        + 'De machtiging is getekend; de brief moet er nog bij.',
+      // Een vooraanmelding weet uit zijn eigen berekening in welke bak hij
+      // hoort - meestal Vooraanmeldingen, maar blijkt de termijn tóch al
+      // voorbij, dan hoort hij meteen bij het echte werk.
+      soort: vooraf ? null : DOSSIERSOORT.AANMELDING,
+      historieregel: vooraf
+        ? 'Vooraanmelding via een link na contact via WhatsApp. De machtiging is getekend; '
+          + 'wij bewaken de beslistermijn.'
+        : 'Aangemeld via een aanmeldlink na contact via WhatsApp. '
+          + 'De machtiging is getekend; de brief moet er nog bij.',
       meta: {
-        ingediendVia: 'aanmeldlink',
+        ingediendVia: vooraf ? 'vooraanmeldlink' : 'aanmeldlink',
         notitie: rij.notitie || '',
         linkDoor: rij.door || '',
       },
@@ -562,10 +595,11 @@ async function publiekeApi(req, res, url) {
         const magisch = await gebruikers.maakKoppeling(klant.id, 'magic');
         await verstuur({
           aan: klant.email,
-          sjabloon: 'aanmelding-bevestiging',
+          sjabloon: vooraf ? 'vooraanmelding-bevestiging' : 'aanmelding-bevestiging',
           gegevens: {
             naam: g.naam,
             referentie: aanvraag.referentie,
+            bewaaktTot: aanvraag.actiedatum ? toonDatum(parseDatum(aanvraag.actiedatum)) : '',
             url: `${siteUrl(req)}/mijn?t=${encodeURIComponent(magisch)}`,
           },
         });
@@ -575,7 +609,14 @@ async function publiekeApi(req, res, url) {
       }
     }
 
-    return stuurJson(res, 201, { referentie: aanvraag.referentie, email: Boolean(klant) });
+    return stuurJson(res, 201, {
+      referentie: aanvraag.referentie,
+      email: Boolean(klant),
+      soort: aanvraag.soort,
+      // Geen bedrag en geen belofte: alleen de datum die wij in de gaten
+      // houden, als die er is.
+      bewaaktTot: aanvraag.actiedatum || null,
+    });
   }
 
   /**
@@ -1189,15 +1230,29 @@ async function beheerApi(req, res, url) {
   if (url.pathname === '/api/beheer/aanmeldlinks' && req.method === 'POST') {
     if (!magWijzigen(ik)) return stuurFout(res, 403, 'Je mag geen aanmeldlink maken.');
     const body = await leesJsonBody(req).catch(() => ({}));
+    const soort = geldigeLinksoort(body.soort);
+
+    // Wat de medewerker alvast over de zaak invult, moet kloppen voordat de
+    // link de deur uit gaat: een verkeerde datum hierin komt anders ongezien
+    // in het dossier terecht, want de aanvrager ziet hem als voorgevuld.
+    const zaak = valideerZaak(body.zaak || {}, { verplicht: false });
+    if (!zaak.geldig) {
+      return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: zaak.fouten });
+    }
+
     const { token, link } = await maakAanmeldlink(opslag, {
       notitie: body.notitie,
       door: ik.email,
+      soort,
+      zaak: zaak.gegevens,
     });
-    console.log(`[aanmelding] link gemaakt door ${ik.email}`);
+    console.log(`[aanmelding] ${soort}link gemaakt door ${ik.email}`);
     return stuurJson(res, 201, {
       url: `${siteUrl(req)}/aanmelden?t=${encodeURIComponent(token)}`,
       verlooptOp: link.verlooptOp,
       id: link.id,
+      soort: link.soort,
+      zaak: link.zaak,
       notitie: link.notitie,
     });
   }

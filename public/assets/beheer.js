@@ -2,7 +2,7 @@
 
 import { euro } from '/shared/dwangsom.js';
 import { parseDatum, toonDatum, vandaag, verschilDagen } from '/shared/datum.js';
-import { labelBestuursorgaan, zoekZaaktype } from '/shared/catalogus.js';
+import { labelBestuursorgaan, zoekZaaktype, BESTUURSORGANEN, zaaktypenVoor } from '/shared/catalogus.js';
 import { maskeerBsn, toonIban } from '/shared/identiteit.js';
 
 const inloggenVak = document.getElementById('inloggen');
@@ -1723,6 +1723,61 @@ function aanmeldlinkVenster() {
   const kopieren = document.getElementById('aanmeldlink-kopieren');
   const viaWa = document.getElementById('aanmeldlink-whatsapp');
   const geldig = document.getElementById('aanmeldlink-geldig');
+  const soort = document.getElementById('aanmeldlink-soort');
+  const zaakvak = document.getElementById('aanmeldlink-zaak');
+  const orgaan = document.getElementById('aanmeldlink-orgaan');
+  const zaaktype = document.getElementById('aanmeldlink-zaaktype');
+  const basisdatum = document.getElementById('aanmeldlink-basisdatum');
+  const einddatum = document.getElementById('aanmeldlink-einddatum');
+  const intro = document.getElementById('aanmeldlink-intro');
+  const soortUitleg = document.getElementById('aanmeldlink-soort-uitleg');
+  const kop = document.getElementById('aanmeldlink-kop');
+
+  const ZAAKVELDEN = ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum'];
+
+  /*
+   * Twee soorten links, en het verschil zit niet in de link maar in wat er
+   * daarna gebeurt. Bij een aanmelding is de termijn al voorbij en hangen wij
+   * de brief er zelf bij. Bij een vooraanmelding loopt de termijn nog: dan
+   * bewaakt het dossier een datum, en die moet er dus wel zijn. Wat jij hier
+   * invult, hoeft de aanvrager niet meer te doen.
+   */
+  const UITLEG = {
+    aanmelding: 'De aanvrager vult alleen zijn gegevens in en tekent. De brief hangen wij erbij.',
+    vooraanmelding: 'De aanvrager geeft ook door waar zijn aanvraag over gaat en van wanneer '
+      + 'die is. Daarna bewaakt het dossier de beslisdatum.',
+  };
+
+  function vulZaaktypen() {
+    const gekozen = zaaktype.value;
+    zaaktype.textContent = '';
+    const leeg = el('option', { value: '' }, orgaan.value ? '(nog niet bekend)' : 'Kies eerst een instantie');
+    zaaktype.append(leeg);
+    for (const z of zaaktypenVoor(orgaan.value)) {
+      zaaktype.append(el('option', { value: z.id }, z.label));
+    }
+    if (gekozen && zaaktypenVoor(orgaan.value).some((z) => z.id === gekozen)) zaaktype.value = gekozen;
+  }
+
+  function zetSoort() {
+    const vooraf = soort.value === 'vooraanmelding';
+    zaakvak.classList.toggle('verborgen', !vooraf);
+    soortUitleg.textContent = UITLEG[soort.value] || '';
+    intro.textContent = vooraf
+      ? 'Stuur deze link naar iemand die er nog net te vroeg bij is. Hij tekent de machtiging '
+        + 'en geeft zijn zaak door; daarna bewaken wij de beslisdatum.'
+      : 'Stuur deze link via WhatsApp naar de aanvrager. Hij vult zijn gegevens in en tekent '
+        + 'de machtiging; daarna staat hij hier als dossier.';
+    maken.textContent = vooraf ? 'Vooraanmeldlink maken' : 'Link maken';
+    kop.textContent = vooraf ? 'Vooraanmeldlink maken' : 'Aanmeldlink maken';
+  }
+
+  function wisZaakfouten() {
+    for (const veld of ZAAKVELDEN) {
+      const regel = document.getElementById(`fout-aanmeldlink-${veld}`);
+      if (regel) { regel.textContent = ''; regel.classList.add('verborgen'); }
+    }
+  }
 
   function opnieuw() {
     stap1.classList.remove('verborgen');
@@ -1730,8 +1785,20 @@ function aanmeldlinkVenster() {
     fout.classList.add('verborgen');
     notitie.value = '';
     urlveld.value = '';
+    basisdatum.value = '';
+    einddatum.value = '';
+    orgaan.value = '';
+    wisZaakfouten();
+    vulZaaktypen();
+    zetSoort();
     kopieren.textContent = 'Kopieer de link';
   }
+
+  orgaan.textContent = '';
+  orgaan.append(el('option', { value: '' }, '(nog niet bekend)'));
+  for (const b of BESTUURSORGANEN) orgaan.append(el('option', { value: b.id }, b.label));
+  orgaan.addEventListener('change', () => { zaaktype.value = ''; vulZaaktypen(); });
+  soort.addEventListener('change', zetSoort);
 
   document.getElementById('knop-aanmeldlink').addEventListener('click', () => {
     opnieuw();
@@ -1743,29 +1810,51 @@ function aanmeldlinkVenster() {
     maken.disabled = true;
     maken.textContent = 'Bezig…';
     fout.classList.add('verborgen');
+    wisZaakfouten();
     try {
+      const vooraf = soort.value === 'vooraanmelding';
       const data = await api('/api/beheer/aanmeldlinks', {
         method: 'POST',
-        body: JSON.stringify({ notitie: notitie.value }),
+        body: JSON.stringify({
+          notitie: notitie.value,
+          soort: soort.value,
+          zaak: vooraf ? {
+            bestuursorgaan: orgaan.value,
+            zaaktype: zaaktype.value,
+            basisdatum: basisdatum.value,
+            termijnEinddatum: einddatum.value,
+          } : {},
+        }),
       });
       urlveld.value = data.url;
       geldig.textContent = `Deze link werkt tot ${new Date(data.verlooptOp)
         .toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}.`;
       // Het eerste bericht staat alvast klaar; de medewerker hoeft alleen nog
       // het gesprek te kiezen.
-      const bericht = `Hoi! Via deze link rond je je aanmelding bij NuBeslist af. `
-        + `Het duurt ongeveer twee minuten: ${data.url}`;
+      const bericht = vooraf
+        ? 'Hoi! Via deze link meld je je alvast aan bij NuBeslist. Wij houden dan in de gaten '
+          + `of er op tijd wordt beslist: ${data.url}`
+        : 'Hoi! Via deze link rond je je aanmelding bij NuBeslist af. '
+          + `Het duurt ongeveer twee minuten: ${data.url}`;
       viaWa.href = `https://wa.me/?text=${encodeURIComponent(bericht)}`;
       stap1.classList.add('verborgen');
       stap2.classList.remove('verborgen');
       urlveld.focus();
       urlveld.select();
     } catch (err) {
-      fout.textContent = err.message;
+      // Fouten in de zaakvelden horen bij het vakje te staan waar ze vandaan
+      // komen; één melding bovenaan laat je zoeken.
+      const velden = err.velden || {};
+      let geplaatst = false;
+      for (const [veld, tekst] of Object.entries(velden)) {
+        const regel = document.getElementById(`fout-aanmeldlink-${veld}`);
+        if (regel) { regel.textContent = tekst; regel.classList.remove('verborgen'); geplaatst = true; }
+      }
+      fout.textContent = geplaatst ? 'Kijk hieronder waar het rood staat.' : err.message;
       fout.classList.remove('verborgen');
     } finally {
       maken.disabled = false;
-      maken.textContent = 'Link maken';
+      maken.textContent = soort.value === 'vooraanmelding' ? 'Vooraanmeldlink maken' : 'Link maken';
     }
   });
 

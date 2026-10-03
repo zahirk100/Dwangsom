@@ -22,7 +22,8 @@
 import { randomBytes, createHash } from 'node:crypto';
 
 import { bsnKlopt, normaliseerBsn, ibanKlopt, normaliseerIban } from '../public/shared/identiteit.js';
-import { parseDatum } from '../public/shared/datum.js';
+import { parseDatum, vandaag } from '../public/shared/datum.js';
+import { BESTUURSORGANEN, zoekZaaktype } from '../public/shared/catalogus.js';
 
 /** De verzameling waarin de links staan. */
 export const V_AANMELDLINKS = 'aanmeldlinks';
@@ -38,6 +39,39 @@ export const GELDIG_MS = 14 * 24 * 60 * 60 * 1000;
 
 /** Hoeveel open links er maximaal mogen staan; een rem op een vergissing. */
 export const MAX_OPEN = 500;
+
+/**
+ * De twee soorten links.
+ *
+ * 'aanmelding' is de korte: een medewerker heeft in het gesprek al vastgesteld
+ * dat de termijn voorbij is, en wat er nog moet gebeuren is de machtiging. De
+ * brief hangen wij er daarna zelf bij.
+ *
+ * 'vooraanmelding' is voor wie er nog net te vroeg bij is: de instantie heeft
+ * nog tijd om te beslissen. Er valt dan niets te vorderen en er is dus ook
+ * niets te beloven - wat wij doen is de datum bewaken en, als die voorbijgaat
+ * zonder besluit, namens hem in gebreke stellen. Daarvoor moeten wij wel weten
+ * wélke datum, en daarom hangen er bij dit soort link een paar vragen over de
+ * zaak aan.
+ */
+export const LINKSOORTEN = [
+  {
+    id: 'aanmelding',
+    label: 'Aanmelding',
+    uitleg: 'De beslistermijn is al voorbij. Alleen de machtiging nog; de brief hangen wij erbij.',
+  },
+  {
+    id: 'vooraanmelding',
+    label: 'Vooraanmelding',
+    uitleg: 'De instantie heeft nog tijd. Wij bewaken de datum en stellen in gebreke zodra die voorbij is.',
+  },
+];
+
+const LINKSOORT_IDS = new Set(LINKSOORTEN.map((s) => s.id));
+
+export function geldigeLinksoort(id) {
+  return LINKSOORT_IDS.has(String(id || '')) ? String(id) : 'aanmelding';
+}
 
 const hash = (token) => createHash('sha256').update(String(token)).digest('base64url');
 
@@ -60,7 +94,10 @@ function nieuwToken() {
  *   gesprek, zodat een lijst met open links leesbaar is. De aanvrager ziet hem
  *   nooit.
  */
-export async function maakAanmeldlink(opslag, { notitie = '', door = '', geldigMs = GELDIG_MS } = {}) {
+export async function maakAanmeldlink(
+  opslag,
+  { notitie = '', door = '', soort = 'aanmelding', zaak = null, geldigMs = GELDIG_MS } = {},
+) {
   const open = await openstaandeLinks(opslag);
   if (open.length >= MAX_OPEN) {
     const fout = new Error(`Er staan al ${MAX_OPEN} open aanmeldlinks. Ruim er eerst een paar op.`);
@@ -72,6 +109,11 @@ export async function maakAanmeldlink(opslag, { notitie = '', door = '', geldigM
   const nu = new Date();
   const rij = {
     id: hash(token),
+    soort: geldigeLinksoort(soort),
+    // Wat de medewerker in het gesprek al heeft genoteerd. Dit is geen geheim
+    // en geen gegeven van de aanvrager: het is de zaak zelf, en hoe meer
+    // hiervan klopt, hoe korter het formulier wordt.
+    zaak: zaak && typeof zaak === 'object' ? valideerZaak(zaak).gegevens : {},
     notitie: String(notitie || '').trim().slice(0, 120),
     door: String(door || '').slice(0, 120),
     aangemaaktOp: nu.toISOString(),
@@ -255,4 +297,94 @@ export function valideerAanmelding(body = {}) {
   }
 
   return { geldig: Object.keys(fouten).length === 0, fouten, gegevens: schoon };
+}
+
+// ---------------------------------------------------------------- de zaak --
+
+/**
+ * De vragen over de zaak zelf.
+ *
+ * Alleen bij een vooraanmelding, en alleen omdat er anders niets te bewaken
+ * valt: zonder te weten wélke aanvraag en van wanneer, weten wij ook niet
+ * wanneer de instantie te laat is. Dat is precies de belofte van dit formulier
+ * en er staat verder niets tegenover.
+ *
+ * Wat de medewerker in het gesprek al heeft genoteerd, staat voorgevuld. Is
+ * alles al bekend, dan ziet de aanvrager alleen een overzichtje en hoeft hij
+ * niets in te vullen.
+ */
+export const ZAAKVELDEN = ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum'];
+
+/**
+ * Leest de zaakgegevens na. Zonder `verplicht` mag alles leeg zijn: zo kan een
+ * medewerker een link maken met alleen de instantie erin en de rest overlaten.
+ */
+export function valideerZaak(ruw = {}, { verplicht = false } = {}) {
+  const fouten = {};
+  const gegevens = {};
+
+  const bestuursorgaan = String(ruw.bestuursorgaan || '').trim();
+  if (!bestuursorgaan) {
+    if (verplicht) fouten.bestuursorgaan = 'Kies bij welke instantie je aanvraag ligt.';
+  } else if (!BESTUURSORGANEN.some((b) => b.id === bestuursorgaan)) {
+    fouten.bestuursorgaan = 'Kies een instantie uit de lijst.';
+  } else {
+    gegevens.bestuursorgaan = bestuursorgaan;
+  }
+
+  const zaaktype = String(ruw.zaaktype || '').trim();
+  const soort = zaaktype ? zoekZaaktype(zaaktype) : null;
+  if (!zaaktype) {
+    if (verplicht) fouten.zaaktype = 'Kies waar je aanvraag over gaat.';
+  } else if (!soort) {
+    fouten.zaaktype = 'Kies een soort zaak uit de lijst.';
+  } else if (gegevens.bestuursorgaan && soort.bestuursorgaan !== gegevens.bestuursorgaan) {
+    // Anders ontstaat er een zaak die nergens bestaat - bijvoorbeeld bijstand
+    // bij UWV - en rekent de applicatie met een termijn die niet van toepassing is.
+    fouten.zaaktype = 'Dit soort zaak hoort niet bij deze instantie.';
+  } else {
+    gegevens.zaaktype = soort.id;
+    if (!gegevens.bestuursorgaan) gegevens.bestuursorgaan = soort.bestuursorgaan;
+  }
+
+  const basis = String(ruw.basisdatum || '').trim();
+  const basisms = parseDatum(basis);
+  if (!basis) {
+    if (verplicht) fouten.basisdatum = 'Vul in wanneer je de aanvraag hebt gedaan.';
+  } else if (basisms === null) {
+    fouten.basisdatum = 'Vul de datum in als 01-01-2026.';
+  } else if (basisms > vandaag()) {
+    fouten.basisdatum = 'Deze datum ligt in de toekomst. Controleer hem.';
+  } else if (basisms < Date.UTC(2000, 0, 1)) {
+    fouten.basisdatum = 'Deze datum ligt wel erg ver terug. Controleer hem.';
+  } else {
+    gegevens.basisdatum = basis;
+  }
+
+  // De datum die de instantie zelf noemt, gaat altijd voor op onze tabel. Hij
+  // is niet verplicht: lang niet elke brief noemt er een.
+  const einde = String(ruw.termijnEinddatum || '').trim();
+  if (einde) {
+    const eindems = parseDatum(einde);
+    if (eindems === null) {
+      fouten.termijnEinddatum = 'Vul de datum in als 01-01-2026.';
+    } else if (basisms !== null && eindems < basisms) {
+      fouten.termijnEinddatum = 'Deze datum ligt vóór je aanvraag. Controleer hem.';
+    } else {
+      gegevens.termijnEinddatum = einde;
+      gegevens.termijnBekend = true;
+    }
+  }
+
+  return { geldig: Object.keys(fouten).length === 0, fouten, gegevens };
+}
+
+/**
+ * De zaak zoals hij na dit formulier in het dossier komt: wat de medewerker al
+ * wist, aangevuld met wat de aanvrager zelf invulde.
+ */
+export function zaakVanLink(rij, ingevuld = {}) {
+  const basis = (rij && rij.zaak) || {};
+  const eigen = valideerZaak({ ...basis, ...ingevuld }, { verplicht: false });
+  return eigen.gegevens;
 }

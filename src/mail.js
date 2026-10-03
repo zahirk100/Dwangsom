@@ -111,6 +111,32 @@ export const SJABLONEN = {
     slot: 'Deze link is een uur geldig en werkt één keer. Vraag daarna gewoon een nieuwe aan.',
   }),
 
+  /**
+   * Hetzelfde, maar voor wie er nog net te vroeg bij is.
+   *
+   * Hier valt nog niets te halen en dus ook niets te beloven. Wat deze mail
+   * wél moet doen is de datum noemen die wij in de gaten houden: dat is het
+   * enige waar de aanvrager iets aan heeft, en het voorkomt dat hij over twee
+   * maanden denkt dat wij hem vergeten zijn.
+   */
+  'vooraanmelding-bevestiging': ({ naam, referentie, url, bewaaktTot }) => ({
+    onderwerp: `Je vooraanmelding is binnen (${referentie})`,
+    kop: 'Je vooraanmelding is binnen',
+    regels: [
+      `Hallo${naam ? ` ${veilig(naam)}` : ''}, bedankt. Wij hebben je machtiging ontvangen.`,
+      bewaaktTot
+        ? `De instantie heeft nog tot <strong>${veilig(bewaaktTot)}</strong> om te beslissen. `
+          + 'Wij houden die datum in de gaten. Komt er dan nog geen beslissing, dan stellen wij '
+          + 'de instantie namens jou in gebreke.'
+        : 'Wij kijken naar je zaak en nemen contact met je op zodra er iets moet gebeuren.',
+      'Je hoeft zelf niets te doen. Krijg je eerder een brief van de instantie? Stuur hem ons dan '
+        + 'even door.',
+      `Je referentienummer is <strong>${veilig(referentie)}</strong>.`,
+    ],
+    knop: { tekst: 'Bekijk mijn dossier', url },
+    slot: 'Deze link is een uur geldig en werkt één keer. Vraag daarna gewoon een nieuwe aan.',
+  }),
+
   /** Opnieuw inloggen zonder wachtwoord. */
   inloglink: ({ url }) => ({
     onderwerp: 'Je inloglink voor NuBeslist',

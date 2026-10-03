@@ -24,7 +24,8 @@ process.env.TARIEF_PERCENTAGE = '25';
 process.env.PORT = '0';
 delete process.env.BEHEER_OPEN;
 
-const { start, server, opslag } = await import('../server.js');
+const { start, server, opslag, store } = await import('../server.js');
+const { vandaagSleutel } = await import('../src/meting.js');
 await start(0);
 const basis = `http://127.0.0.1:${server.address().port}`;
 
@@ -48,16 +49,23 @@ const COMPLEET = {
   handtekening: HANDTEKENING,
 };
 
-async function maakLink(notitie = 'Jan uit het gesprek van 14:20') {
+async function maakLink(notitie = 'Jan uit het gesprek van 14:20', extra = {}) {
   const antwoord = await fetch(`${basis}/api/beheer/aanmeldlinks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', cookie },
-    body: JSON.stringify({ notitie }),
+    body: JSON.stringify({ notitie, ...extra }),
   });
   assert.equal(antwoord.status, 201);
   const data = await antwoord.json();
   return { ...data, token: new URL(data.url).searchParams.get('t') };
 }
+
+/** Dezelfde aanroep, maar dan om een weigering te bekijken. */
+const probeerLink = (lading) => fetch(`${basis}/api/beheer/aanmeldlinks`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', cookie },
+  body: JSON.stringify(lading),
+});
 
 const meld = (lading) => fetch(`${basis}/api/aanmelden`, {
   method: 'POST',
@@ -252,4 +260,192 @@ test('de machtiging noemt de vergoeding en verzint er geen', async () => {
   assert.match(script, /tariefZin/, 'de vergoedingsregel hoort uit tarief.js te komen');
   // Geen enkel percentage of bedrag dat in de code is vastgelegd.
   assert.ok(!/\b\d{1,2}\s?%/.test(script), 'er staat een vast percentage in het script');
+});
+
+// ------------------------------------------------------ de vooraanmelding --
+
+/*
+ * Het tweede soort link: voor wie er nog net te vroeg bij is. De instantie
+ * heeft dan nog tijd, er valt niets te vorderen en er is dus ook niets te
+ * beloven. Wat wij wél doen is de datum bewaken - en daarom draait alles
+ * hieronder om die datum: zonder zaakgegevens is er geen datum, en een dossier
+ * dat niets bewaakt, blijft liggen.
+ */
+
+const RECENT = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+const LANG_GELEDEN = new Date(Date.now() - 300 * 86400000).toISOString().slice(0, 10);
+
+const ZAAK = { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: RECENT };
+
+const vooraf = (lading) => meld({ ...COMPLEET, ...lading });
+
+test('een gewone link blijft een gewone aanmelding', async () => {
+  const link = await maakLink();
+  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
+  assert.equal(open.soort, 'aanmelding');
+  assert.deepEqual(open.zaak, {});
+});
+
+test('een vooraanmeldlink vertelt het formulier wat er gevraagd moet worden', async () => {
+  const link = await maakLink('Mo, belde vanochtend', {
+    soort: 'vooraanmelding',
+    zaak: { bestuursorgaan: 'uwv' },
+  });
+  assert.equal(link.soort, 'vooraanmelding');
+
+  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
+  assert.equal(open.geldig, true);
+  assert.equal(open.soort, 'vooraanmelding');
+  assert.equal(open.zaak.bestuursorgaan, 'uwv');
+  assert.ok(!JSON.stringify(open).includes('Mo, belde'), 'de aanvrager ziet onze notitie');
+});
+
+test('zonder zaakgegevens komt er geen vooraanmelding', async () => {
+  // Zouden wij dit toelaten, dan staat er een dossier dat niets bewaakt en dat
+  // dus precies op het verkeerde moment stil blijft liggen.
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const antwoord = await vooraf({ t: link.token });
+  assert.equal(antwoord.status, 422);
+  const velden = (await antwoord.json()).velden;
+  assert.ok(velden.bestuursorgaan);
+  assert.ok(velden.zaaktype);
+  assert.ok(velden.basisdatum);
+
+  // En de link blijft werken, zodat iemand het gewoon kan afmaken.
+  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
+  assert.equal(open.geldig, true);
+});
+
+test('een vooraanmelding wordt een dossier dat een datum bewaakt', async () => {
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const antwoord = await vooraf({ t: link.token, zaak: ZAAK });
+  assert.equal(antwoord.status, 201);
+  const data = await antwoord.json();
+  assert.equal(data.soort, 'vooraanmelding');
+  assert.match(data.bewaaktTot, /^\d{4}-\d{2}-\d{2}$/);
+
+  const alle = await opslag.haalAlle();
+  const dossier = alle.find((a) => a.referentie === data.referentie);
+  assert.equal(dossier.soort, 'vooraanmelding');
+  assert.equal(dossier.status, 'nieuw');
+  assert.equal(dossier.invoer.bestuursorgaan, 'uwv');
+  assert.equal(dossier.invoer.zaaktype, 'uwv-ww');
+  assert.equal(dossier.invoer.basisdatum, RECENT);
+  assert.equal(dossier.rapport.uitkomst, 'termijn-loopt');
+  assert.equal(dossier.actiedatum, data.bewaaktTot);
+  assert.match(dossier.historie[0].tekst, /vooraanmelding/i);
+  assert.equal(dossier.meta.ingediendVia, 'vooraanmeldlink');
+
+  // De machtiging is er net zo goed als bij een gewone aanmelding.
+  assert.equal(dossier.machtiging.digitaal, true);
+  assert.equal(dossier.contact.bsn, '111222333');
+});
+
+test('wat de medewerker al wist, hoeft de aanvrager niet nog eens in te vullen', async () => {
+  const link = await maakLink('x', { soort: 'vooraanmelding', zaak: ZAAK });
+  const antwoord = await vooraf({ t: link.token });
+  assert.equal(antwoord.status, 201, 'alles stond al op de link, dus dit hoort te kunnen');
+  const { referentie } = await antwoord.json();
+
+  const alle = await opslag.haalAlle();
+  const dossier = alle.find((a) => a.referentie === referentie);
+  assert.equal(dossier.invoer.zaaktype, 'uwv-ww');
+});
+
+test('de datum uit de brief gaat voor op onze eigen termijn', async () => {
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const eigen = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
+  const { referentie } = await (await vooraf({
+    t: link.token, zaak: { ...ZAAK, termijnEinddatum: eigen },
+  })).json();
+
+  const alle = await opslag.haalAlle();
+  const dossier = alle.find((a) => a.referentie === referentie);
+  assert.equal(dossier.invoer.termijnEinddatum, eigen);
+  assert.equal(dossier.invoer.termijnBekend, true);
+});
+
+test('blijkt de termijn tóch al voorbij, dan staat het dossier meteen op de werklijst', async () => {
+  // Iemand die denkt dat hij te vroeg is, kan het mis hebben. Dan wachten wij
+  // niet: de zaak hoort vandaag al op de lijst, met de ingebrekestelling als
+  // volgende stap.
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const { referentie, bewaaktTot } = await (await vooraf({
+    t: link.token, zaak: { ...ZAAK, basisdatum: LANG_GELEDEN },
+  })).json();
+
+  const alle = await opslag.haalAlle();
+  const dossier = alle.find((a) => a.referentie === referentie);
+  assert.equal(dossier.rapport.uitkomst, 'ingebrekestelling-nodig');
+  assert.equal(dossier.rapport.vervolg.actieLabel, 'Ingebrekestelling versturen');
+
+  const vandaag = vandaagSleutel();
+  assert.ok(bewaaktTot <= vandaag, `de datum om te bewaken is ${bewaaktTot}, niet vandaag`);
+  const werklijst = await store.lijst({ actie: 'nodig' });
+  assert.ok(werklijst.some((a) => a.referentie === referentie),
+    'een zaak waar vandaag iets moet gebeuren, hoort op de werklijst te staan');
+});
+
+test('een zaak die niet bestaat, komt er niet in', async () => {
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+
+  const verzonnen = await vooraf({ t: link.token, zaak: { ...ZAAK, bestuursorgaan: 'ministerie' } });
+  assert.equal(verzonnen.status, 422);
+
+  // Bijstand bij UWV bestaat niet, en zou met de verkeerde termijn rekenen.
+  const kruislings = await vooraf({ t: link.token, zaak: { ...ZAAK, zaaktype: 'gem-bijstand' } });
+  assert.equal(kruislings.status, 422);
+  assert.match((await kruislings.json()).velden.zaaktype, /hoort niet bij deze instantie/);
+
+  const morgen = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const toekomst = await vooraf({ t: link.token, zaak: { ...ZAAK, basisdatum: morgen } });
+  assert.equal(toekomst.status, 422);
+});
+
+test('via de zaakvelden komt er niets anders het dossier in', async () => {
+  // Alleen de vier velden die het formulier kent. Zou hier meer doorheen
+  // kunnen, dan bepaalt de aanvrager zelf dat hij al in gebreke heeft gesteld.
+  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const { referentie } = await (await vooraf({
+    t: link.token,
+    zaak: { ...ZAAK, ingebrekeGesteld: true, ingebrekestellingDatum: '2026-01-01', opschortingDagen: 99 },
+  })).json();
+
+  const alle = await opslag.haalAlle();
+  const dossier = alle.find((a) => a.referentie === referentie);
+  assert.ok(!dossier.invoer.ingebrekeGesteld);
+  assert.ok(!dossier.invoer.ingebrekestellingDatum);
+  assert.ok(!dossier.invoer.opschortingDagen);
+});
+
+test('een link met een onmogelijke datum wordt niet gemaakt', async () => {
+  const antwoord = await probeerLink({
+    notitie: 'x', soort: 'vooraanmelding', zaak: { bestuursorgaan: 'uwv', basisdatum: '1902-01-01' },
+  });
+  assert.equal(antwoord.status, 422);
+  assert.ok((await antwoord.json()).velden.basisdatum);
+
+  const links = await (await fetch(`${basis}/api/beheer/aanmeldlinks`, { headers: { cookie } })).json();
+  assert.ok(!links.links.some((l) => l.zaak && l.zaak.basisdatum === '1902-01-01'));
+});
+
+test('een verzonnen soort link wordt gewoon een aanmelding', async () => {
+  const link = await maakLink('x', { soort: 'van-alles' });
+  assert.equal(link.soort, 'aanmelding');
+});
+
+test('de bevestigingsmail belooft bij een vooraanmelding geen brief en geen bedrag', async () => {
+  // De gewone mail zegt "wij gaan met je brief aan de slag". Bij een
+  // vooraanmelding is er geen brief en valt er nog niets te halen; die mail
+  // zou dus een verwachting wekken die wij niet waarmaken.
+  const { SJABLONEN } = await import('../src/mail.js');
+  const mail = SJABLONEN['vooraanmelding-bevestiging']({
+    naam: 'M. El Amrani', referentie: 'DWS-2026-0099',
+    bewaaktTot: '15 november 2026', url: 'https://nubeslist.nl/mijn?t=x',
+  });
+  const alles = JSON.stringify(mail);
+  assert.match(alles, /15 november 2026/);
+  assert.match(alles, /in gebreke/);
+  assert.ok(!/met je brief aan de slag/.test(alles));
+  assert.ok(!/€|procent|%/.test(alles), 'er hoort geen bedrag in te staan');
 });
