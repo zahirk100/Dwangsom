@@ -380,11 +380,14 @@ export function valideerZaak(ruw = {}, { verplicht = false } = {}) {
 }
 
 /**
- * De zaak zoals hij na dit formulier in het dossier komt: wat de medewerker al
- * wist, aangevuld met wat de aanvrager zelf invulde.
+ * De zaak zoals hij na dit formulier in het dossier komt.
+ *
+ * Wat de medewerker in het gesprek heeft vastgelegd gaat voor. Het formulier
+ * vult alleen aan wat er nog niet stond - bij een nieuwe link is dat niets, en
+ * bij een oude link van vóór die regel precies de velden die ontbreken.
  */
 export function zaakVanLink(rij, ingevuld = {}) {
   const basis = (rij && rij.zaak) || {};
-  const eigen = valideerZaak({ ...basis, ...ingevuld }, { verplicht: false });
+  const eigen = valideerZaak({ ...ingevuld, ...basis }, { verplicht: false });
   return eigen.gegevens;
 }

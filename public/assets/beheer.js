@@ -1744,14 +1744,14 @@ function aanmeldlinkVenster() {
    */
   const UITLEG = {
     aanmelding: 'De aanvrager vult alleen zijn gegevens in en tekent. De brief hangen wij erbij.',
-    vooraanmelding: 'De aanvrager geeft ook door waar zijn aanvraag over gaat en van wanneer '
-      + 'die is. Daarna bewaakt het dossier de beslisdatum.',
+    vooraanmelding: 'Jij legt de zaak hieronder vast; de aanvrager tekent alleen. Daarna '
+      + 'bewaakt het dossier de beslisdatum en komen wij vanzelf in actie.',
   };
 
   function vulZaaktypen() {
     const gekozen = zaaktype.value;
     zaaktype.textContent = '';
-    const leeg = el('option', { value: '' }, orgaan.value ? '(nog niet bekend)' : 'Kies eerst een instantie');
+    const leeg = el('option', { value: '' }, orgaan.value ? 'Kies waar het over gaat…' : 'Kies eerst een instantie');
     zaaktype.append(leeg);
     for (const z of zaaktypenVoor(orgaan.value)) {
       zaaktype.append(el('option', { value: z.id }, z.label));
@@ -1764,8 +1764,8 @@ function aanmeldlinkVenster() {
     zaakvak.classList.toggle('verborgen', !vooraf);
     soortUitleg.textContent = UITLEG[soort.value] || '';
     intro.textContent = vooraf
-      ? 'Stuur deze link naar iemand die er nog net te vroeg bij is. Hij tekent de machtiging '
-        + 'en geeft zijn zaak door; daarna bewaken wij de beslisdatum.'
+      ? 'Stuur deze link naar iemand die er nog net te vroeg bij is. Hij tekent alleen de '
+        + 'machtiging; daarna bewaken wij de beslisdatum.'
       : 'Stuur deze link via WhatsApp naar de aanvrager. Hij vult zijn gegevens in en tekent '
         + 'de machtiging; daarna staat hij hier als dossier.';
     maken.textContent = vooraf ? 'Vooraanmeldlink maken' : 'Link maken';
@@ -1795,7 +1795,7 @@ function aanmeldlinkVenster() {
   }
 
   orgaan.textContent = '';
-  orgaan.append(el('option', { value: '' }, '(nog niet bekend)'));
+  orgaan.append(el('option', { value: '' }, 'Kies een instantie…'));
   for (const b of BESTUURSORGANEN) orgaan.append(el('option', { value: b.id }, b.label));
   orgaan.addEventListener('change', () => { zaaktype.value = ''; vulZaaktypen(); });
   soort.addEventListener('change', zetSoort);

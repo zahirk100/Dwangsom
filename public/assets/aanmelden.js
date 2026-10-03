@@ -42,7 +42,7 @@ function zetFout(veld, tekst) {
 function wisFouten() {
   for (const veld of [
     'naam', 'geboortedatum', 'bsn', 'iban', 'email', 'handtekening', 'akkoord',
-    'bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum',
+    'bestuursorgaan', 'zaaktype', 'basisdatum',
   ]) {
     zetFout(veld, '');
   }
@@ -194,9 +194,6 @@ function bouwZaakkaart(data) {
   if (linksoort !== 'vooraanmelding') return;
 
   bij('formulier-kop').textContent = 'Je vooraanmelding';
-  bij('formulier-inleiding').textContent = 'De instantie heeft nog tijd om te beslissen. '
-    + 'Wij houden die datum in de gaten en komen in actie zodra zij te laat zijn. '
-    + 'Daarvoor hebben wij deze gegevens nodig.';
   bij('verzend').textContent = 'Vooraanmelding versturen';
   bij('kaart-zaak').classList.remove('verborgen');
 
@@ -214,7 +211,7 @@ function bouwZaakkaart(data) {
     orgaanlijst.append(optie);
   }
 
-  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum']) {
+  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum']) {
     if (bekendeZaak[veld]) bij(veld).value = bekendeZaak[veld];
   }
   vulZaaktypen();
@@ -226,7 +223,14 @@ function bouwZaakkaart(data) {
   const overzicht = bij('zaak-bekend');
   overzicht.textContent = '';
   let gevraagd = 0;
-  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum']) {
+  /*
+   * De uiterste beslisdatum staat hier met opzet niet bij. Die komt uit de
+   * brief van de instantie, en die brief heeft de medewerker in het gesprek
+   * voor zich - de aanvrager zou er alleen maar naar hoeven zoeken. Weten wij
+   * hem, dan staat hij in het overzichtje; weten wij hem niet, dan rekent de
+   * applicatie met de wettelijke termijn en halen wij hem later uit de brief.
+   */
+  for (const veld of ['bestuursorgaan', 'zaaktype', 'basisdatum']) {
     if (bekendeZaak[veld]) {
       const rij = document.createElement('div');
       const kop = document.createElement('dt');
@@ -240,10 +244,32 @@ function bouwZaakkaart(data) {
       gevraagd += 1;
     }
   }
+  if (bekendeZaak.termijnEinddatum) {
+    const rij = document.createElement('div');
+    const kop = document.createElement('dt');
+    kop.textContent = LABELS.termijnEinddatum;
+    const waarde = document.createElement('dd');
+    waarde.textContent = toonZaakwaarde('termijnEinddatum', bekendeZaak.termijnEinddatum);
+    rij.append(kop, waarde);
+    overzicht.append(rij);
+  }
+
   if (overzicht.children.length) overzicht.classList.remove('verborgen');
+
+  /*
+   * In de praktijk is dit scherm leeg op het overzichtje na: de medewerker
+   * legt de zaak vast als hij de link maakt, want hij heeft de aanvrager toch
+   * al aan de lijn. Dan staat hier alleen wat wij genoteerd hebben, om te
+   * controleren - en is dit formulier even kort als het gewone.
+   */
   bij('zaak-uitleg').textContent = gevraagd === 0
-    ? 'Dit hebben wij van je genoteerd. Klopt het niet? Laat het ons weten via WhatsApp.'
+    ? 'Dit hebben wij uit ons gesprek genoteerd. Klopt er iets niet? Laat het ons even weten.'
     : 'Hiermee weten wij vanaf wanneer de instantie te laat is.';
+  bij('formulier-inleiding').textContent = gevraagd === 0
+    ? 'De instantie heeft nog tijd om te beslissen. Wij houden die datum in de gaten en komen '
+      + 'in actie zodra zij te laat zijn. Teken hieronder, dan regelen wij de rest.'
+    : 'De instantie heeft nog tijd om te beslissen. Wij houden die datum in de gaten en komen '
+      + 'in actie zodra zij te laat zijn. Daarvoor hebben wij deze gegevens nodig.';
 }
 
 bij('bestuursorgaan').addEventListener('change', () => {
@@ -312,7 +338,6 @@ bij('formulier').addEventListener('submit', async (gebeurtenis) => {
       bestuursorgaan: bij('bestuursorgaan').value,
       zaaktype: bij('zaaktype').value,
       basisdatum: bij('basisdatum').value,
-      termijnEinddatum: bij('termijnEinddatum').value,
     } : undefined,
     naam: bij('naam').value,
     geboortedatum: bij('geboortedatum').value,

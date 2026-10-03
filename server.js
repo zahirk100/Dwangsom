@@ -528,8 +528,11 @@ async function publiekeApi(req, res, url) {
      * dus ook niets gerekend; de brief komt later.
      */
     const vooraf = linksoort === 'vooraanmelding';
+    // Wat de medewerker noteerde wint van wat er uit het formulier komt. Bij
+    // een nieuwe vooraanmeldlink staat de zaak er altijd al op; de velden op
+    // het scherm zijn er alleen nog voor links van vóór die regel.
     const zaak = valideerZaak(
-      { ...(rij.zaak || {}), ...(body.zaak || {}) },
+      { ...(body.zaak || {}), ...(rij.zaak || {}) },
       { verplicht: vooraf },
     );
     const fouten = { ...gelezen.fouten, ...zaak.fouten };
@@ -1232,10 +1235,18 @@ async function beheerApi(req, res, url) {
     const body = await leesJsonBody(req).catch(() => ({}));
     const soort = geldigeLinksoort(body.soort);
 
-    // Wat de medewerker alvast over de zaak invult, moet kloppen voordat de
-    // link de deur uit gaat: een verkeerde datum hierin komt anders ongezien
-    // in het dossier terecht, want de aanvrager ziet hem als voorgevuld.
-    const zaak = valideerZaak(body.zaak || {}, { verplicht: false });
+    /*
+     * Bij een vooraanmelding worden de zaakgegevens hier gevraagd en nergens
+     * anders. Dat is een keuze over wie het werk doet: de medewerker heeft de
+     * aanvrager toch al aan de lijn, en elke vraag die daar wordt beantwoord
+     * is er één minder op een telefoonscherm. Een vooraanmelding zonder deze
+     * gegevens zou bovendien een dossier opleveren dat niets bewaakt, en dat
+     * is precies het dossier dat blijft liggen.
+     *
+     * Weet je de zaak nog niet? Stuur dan een gewone aanmeldlink; daar hangen
+     * wij de brief later zelf bij.
+     */
+    const zaak = valideerZaak(body.zaak || {}, { verplicht: soort === 'vooraanmelding' });
     if (!zaak.geldig) {
       return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: zaak.fouten });
     }

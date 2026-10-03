@@ -267,9 +267,14 @@ test('de machtiging noemt de vergoeding en verzint er geen', async () => {
 /*
  * Het tweede soort link: voor wie er nog net te vroeg bij is. De instantie
  * heeft dan nog tijd, er valt niets te vorderen en er is dus ook niets te
- * beloven. Wat wij wél doen is de datum bewaken - en daarom draait alles
- * hieronder om die datum: zonder zaakgegevens is er geen datum, en een dossier
- * dat niets bewaakt, blijft liggen.
+ * beloven. Wat wij wél doen is de datum bewaken.
+ *
+ * Waar deze toetsen op letten is wie welk werk doet. De zaak wordt vastgelegd
+ * door de medewerker die de link maakt - die heeft de aanvrager toch al aan de
+ * lijn - en niet op het scherm van de aanvrager. Dat scherm is daarmee even
+ * kort als bij een gewone aanmelding: gegevens, handtekening, klaar. Zonder
+ * zaak komt er geen link, want een vooraanmelding die niets bewaakt is precies
+ * het dossier dat blijft liggen.
  */
 
 const RECENT = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
@@ -277,7 +282,14 @@ const LANG_GELEDEN = new Date(Date.now() - 300 * 86400000).toISOString().slice(0
 
 const ZAAK = { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: RECENT };
 
+/** Een vooraanmeldlink zoals een medewerker die maakt: mét de zaak erop. */
+const voorafLink = (zaak = ZAAK) => maakLink('Mo, 06 11111111', { soort: 'vooraanmelding', zaak });
+
+/** Een aanvrager die alleen zijn eigen gegevens invult en tekent. */
 const vooraf = (lading) => meld({ ...COMPLEET, ...lading });
+
+const dossierVan = async (referentie) => (await opslag.haalAlle())
+  .find((a) => a.referentie === referentie);
 
 test('een gewone link blijft een gewone aanmelding', async () => {
   const link = await maakLink();
@@ -286,46 +298,40 @@ test('een gewone link blijft een gewone aanmelding', async () => {
   assert.deepEqual(open.zaak, {});
 });
 
-test('een vooraanmeldlink vertelt het formulier wat er gevraagd moet worden', async () => {
-  const link = await maakLink('Mo, belde vanochtend', {
-    soort: 'vooraanmelding',
-    zaak: { bestuursorgaan: 'uwv' },
-  });
-  assert.equal(link.soort, 'vooraanmelding');
-
-  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
-  assert.equal(open.geldig, true);
-  assert.equal(open.soort, 'vooraanmelding');
-  assert.equal(open.zaak.bestuursorgaan, 'uwv');
-  assert.ok(!JSON.stringify(open).includes('Mo, belde'), 'de aanvrager ziet onze notitie');
-});
-
-test('zonder zaakgegevens komt er geen vooraanmelding', async () => {
-  // Zouden wij dit toelaten, dan staat er een dossier dat niets bewaakt en dat
-  // dus precies op het verkeerde moment stil blijft liggen.
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
-  const antwoord = await vooraf({ t: link.token });
+test('een vooraanmeldlink zonder zaak wordt niet gemaakt', async () => {
+  // Liever hier stoppen dan een dossier dat geen datum bewaakt. Weet je de
+  // zaak nog niet, dan is er de gewone aanmeldlink.
+  const antwoord = await probeerLink({ notitie: 'x', soort: 'vooraanmelding' });
   assert.equal(antwoord.status, 422);
   const velden = (await antwoord.json()).velden;
   assert.ok(velden.bestuursorgaan);
   assert.ok(velden.zaaktype);
   assert.ok(velden.basisdatum);
 
-  // En de link blijft werken, zodat iemand het gewoon kan afmaken.
-  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
-  assert.equal(open.geldig, true);
+  const links = await (await fetch(`${basis}/api/beheer/aanmeldlinks`, { headers: { cookie } })).json();
+  assert.ok(!links.links.some((l) => l.soort === 'vooraanmelding' && !l.zaak.zaaktype));
 });
 
-test('een vooraanmelding wordt een dossier dat een datum bewaakt', async () => {
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
-  const antwoord = await vooraf({ t: link.token, zaak: ZAAK });
+test('de aanvrager krijgt niets te vragen, alleen te controleren', async () => {
+  const link = await voorafLink();
+  assert.equal(link.soort, 'vooraanmelding');
+
+  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
+  assert.equal(open.soort, 'vooraanmelding');
+  assert.deepEqual(open.zaak, { bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: RECENT });
+  assert.ok(!JSON.stringify(open).includes('06 11111111'), 'de aanvrager ziet onze notitie');
+});
+
+test('tekenen is genoeg: er ontstaat een dossier dat een datum bewaakt', async () => {
+  const link = await voorafLink();
+  // Let op wat hier níét wordt meegestuurd: geen zaak. Dat is het hele punt.
+  const antwoord = await vooraf({ t: link.token });
   assert.equal(antwoord.status, 201);
   const data = await antwoord.json();
   assert.equal(data.soort, 'vooraanmelding');
   assert.match(data.bewaaktTot, /^\d{4}-\d{2}-\d{2}$/);
 
-  const alle = await opslag.haalAlle();
-  const dossier = alle.find((a) => a.referentie === data.referentie);
+  const dossier = await dossierVan(data.referentie);
   assert.equal(dossier.soort, 'vooraanmelding');
   assert.equal(dossier.status, 'nieuw');
   assert.equal(dossier.invoer.bestuursorgaan, 'uwv');
@@ -341,92 +347,95 @@ test('een vooraanmelding wordt een dossier dat een datum bewaakt', async () => {
   assert.equal(dossier.contact.bsn, '111222333');
 });
 
-test('wat de medewerker al wist, hoeft de aanvrager niet nog eens in te vullen', async () => {
-  const link = await maakLink('x', { soort: 'vooraanmelding', zaak: ZAAK });
-  const antwoord = await vooraf({ t: link.token });
-  assert.equal(antwoord.status, 201, 'alles stond al op de link, dus dit hoort te kunnen');
-  const { referentie } = await antwoord.json();
+test('wat de medewerker noteerde, kan niet vanaf het formulier worden omgezet', async () => {
+  // Het formulier stuurt deze velden alleen mee als wij ze zelf niet wisten.
+  // Komt er toch iets anders binnen, dan telt wat in het gesprek is vastgelegd.
+  const link = await voorafLink();
+  const { referentie } = await (await vooraf({
+    t: link.token,
+    zaak: { bestuursorgaan: 'gemeente', zaaktype: 'gem-bijstand', basisdatum: LANG_GELEDEN },
+  })).json();
 
-  const alle = await opslag.haalAlle();
-  const dossier = alle.find((a) => a.referentie === referentie);
+  const dossier = await dossierVan(referentie);
+  assert.equal(dossier.invoer.bestuursorgaan, 'uwv');
   assert.equal(dossier.invoer.zaaktype, 'uwv-ww');
+  assert.equal(dossier.invoer.basisdatum, RECENT);
 });
 
 test('de datum uit de brief gaat voor op onze eigen termijn', async () => {
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
   const eigen = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
-  const { referentie } = await (await vooraf({
-    t: link.token, zaak: { ...ZAAK, termijnEinddatum: eigen },
-  })).json();
+  const link = await voorafLink({ ...ZAAK, termijnEinddatum: eigen });
+  const { referentie } = await (await vooraf({ t: link.token })).json();
 
-  const alle = await opslag.haalAlle();
-  const dossier = alle.find((a) => a.referentie === referentie);
+  const dossier = await dossierVan(referentie);
   assert.equal(dossier.invoer.termijnEinddatum, eigen);
   assert.equal(dossier.invoer.termijnBekend, true);
 });
 
 test('blijkt de termijn tóch al voorbij, dan staat het dossier meteen op de werklijst', async () => {
-  // Iemand die denkt dat hij te vroeg is, kan het mis hebben. Dan wachten wij
-  // niet: de zaak hoort vandaag al op de lijst, met de ingebrekestelling als
-  // volgende stap.
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
-  const { referentie, bewaaktTot } = await (await vooraf({
-    t: link.token, zaak: { ...ZAAK, basisdatum: LANG_GELEDEN },
-  })).json();
+  // Een medewerker kan zich vergissen in de datum. Dan wachten wij niet: de
+  // zaak hoort vandaag al op de lijst, met de ingebrekestelling als volgende stap.
+  const link = await voorafLink({ ...ZAAK, basisdatum: LANG_GELEDEN });
+  const { referentie, bewaaktTot } = await (await vooraf({ t: link.token })).json();
 
-  const alle = await opslag.haalAlle();
-  const dossier = alle.find((a) => a.referentie === referentie);
+  const dossier = await dossierVan(referentie);
   assert.equal(dossier.rapport.uitkomst, 'ingebrekestelling-nodig');
   assert.equal(dossier.rapport.vervolg.actieLabel, 'Ingebrekestelling versturen');
+  assert.ok(bewaaktTot <= vandaagSleutel(), `de datum om te bewaken is ${bewaaktTot}, niet vandaag`);
 
-  const vandaag = vandaagSleutel();
-  assert.ok(bewaaktTot <= vandaag, `de datum om te bewaken is ${bewaaktTot}, niet vandaag`);
   const werklijst = await store.lijst({ actie: 'nodig' });
   assert.ok(werklijst.some((a) => a.referentie === referentie),
     'een zaak waar vandaag iets moet gebeuren, hoort op de werklijst te staan');
 });
 
-test('een zaak die niet bestaat, komt er niet in', async () => {
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
-
-  const verzonnen = await vooraf({ t: link.token, zaak: { ...ZAAK, bestuursorgaan: 'ministerie' } });
+test('een zaak die niet bestaat, komt er niet op de link', async () => {
+  const verzonnen = await probeerLink({
+    notitie: 'x', soort: 'vooraanmelding', zaak: { ...ZAAK, bestuursorgaan: 'ministerie' },
+  });
   assert.equal(verzonnen.status, 422);
 
   // Bijstand bij UWV bestaat niet, en zou met de verkeerde termijn rekenen.
-  const kruislings = await vooraf({ t: link.token, zaak: { ...ZAAK, zaaktype: 'gem-bijstand' } });
+  const kruislings = await probeerLink({
+    notitie: 'x', soort: 'vooraanmelding', zaak: { ...ZAAK, zaaktype: 'gem-bijstand' },
+  });
   assert.equal(kruislings.status, 422);
   assert.match((await kruislings.json()).velden.zaaktype, /hoort niet bij deze instantie/);
 
   const morgen = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  const toekomst = await vooraf({ t: link.token, zaak: { ...ZAAK, basisdatum: morgen } });
+  const toekomst = await probeerLink({
+    notitie: 'x', soort: 'vooraanmelding', zaak: { ...ZAAK, basisdatum: morgen },
+  });
   assert.equal(toekomst.status, 422);
 });
 
 test('via de zaakvelden komt er niets anders het dossier in', async () => {
-  // Alleen de vier velden die het formulier kent. Zou hier meer doorheen
+  // Alleen de vier velden die bij de zaak horen. Zou hier meer doorheen
   // kunnen, dan bepaalt de aanvrager zelf dat hij al in gebreke heeft gesteld.
-  const link = await maakLink('x', { soort: 'vooraanmelding' });
+  const link = await voorafLink();
   const { referentie } = await (await vooraf({
     t: link.token,
-    zaak: { ...ZAAK, ingebrekeGesteld: true, ingebrekestellingDatum: '2026-01-01', opschortingDagen: 99 },
+    zaak: { ingebrekeGesteld: true, ingebrekestellingDatum: '2026-01-01', opschortingDagen: 99 },
   })).json();
 
-  const alle = await opslag.haalAlle();
-  const dossier = alle.find((a) => a.referentie === referentie);
+  const dossier = await dossierVan(referentie);
   assert.ok(!dossier.invoer.ingebrekeGesteld);
   assert.ok(!dossier.invoer.ingebrekestellingDatum);
   assert.ok(!dossier.invoer.opschortingDagen);
 });
 
-test('een link met een onmogelijke datum wordt niet gemaakt', async () => {
-  const antwoord = await probeerLink({
-    notitie: 'x', soort: 'vooraanmelding', zaak: { bestuursorgaan: 'uwv', basisdatum: '1902-01-01' },
-  });
-  assert.equal(antwoord.status, 422);
-  assert.ok((await antwoord.json()).velden.basisdatum);
+test('een oude link zonder zaak loopt niet dood', async () => {
+  // Links van vóór deze regel liggen nog in chats. Die vragen het alsnog aan
+  // de aanvrager in plaats van hem met een foutmelding achter te laten.
+  const { maakAanmeldlink } = await import('../src/aanmelding.js');
+  const { token } = await maakAanmeldlink(opslag, { notitie: 'oud', soort: 'vooraanmelding' });
 
-  const links = await (await fetch(`${basis}/api/beheer/aanmeldlinks`, { headers: { cookie } })).json();
-  assert.ok(!links.links.some((l) => l.zaak && l.zaak.basisdatum === '1902-01-01'));
+  const leeg = await vooraf({ t: token });
+  assert.equal(leeg.status, 422);
+  assert.ok((await leeg.json()).velden.zaaktype, 'dan hoort het formulier het te vragen');
+
+  const antwoord = await vooraf({ t: token, zaak: ZAAK });
+  assert.equal(antwoord.status, 201);
+  assert.equal((await dossierVan((await antwoord.json()).referentie)).invoer.zaaktype, 'uwv-ww');
 });
 
 test('een verzonnen soort link wordt gewoon een aanmelding', async () => {
