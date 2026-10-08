@@ -499,6 +499,7 @@ document.getElementById('knop-accounts').addEventListener('click', openAccounts)
 
 function sluitLade() {
   ladeHouder.textContent = '';
+  document.body.classList.remove('lade-open');
   actieveAanvraag = null;
 }
 
@@ -517,6 +518,7 @@ function toonLade(titel, inhoud) {
   const overlay = el('div', { class: 'overlay' });
   overlay.addEventListener('click', sluitLade);
   ladeHouder.append(overlay, lade);
+  document.body.classList.add('lade-open');
   lade.querySelector('#sluit-lade').addEventListener('click', sluitLade);
   lade.scrollTop = 0;
 }
@@ -685,6 +687,7 @@ function rendereLade() {
   const overlay = el('div', { class: 'overlay' });
   overlay.addEventListener('click', sluitLade);
   ladeHouder.append(overlay, lade);
+  document.body.classList.add('lade-open');
   lade.querySelector('#sluit-lade').addEventListener('click', sluitLade);
   lade.scrollTop = 0;
 }
@@ -1808,13 +1811,26 @@ function aanmeldlinkVenster() {
   orgaan.addEventListener('change', () => { zaaktype.value = ''; vulZaaktypen(); });
   soort.addEventListener('change', zetSoort);
 
+  for (const knop of venster.querySelectorAll('[data-sluit]')) {
+    knop.addEventListener('click', () => venster.close());
+  }
+
   document.getElementById('knop-aanmeldlink').addEventListener('click', () => {
+    // Staat er nog een dossier open, dan ligt de overlay over deze knop heen en
+    // komt de eerste klik daar terecht. Hier opruimen scheelt een klik die
+    // niets lijkt te doen.
+    sluitLade();
     opnieuw();
-    venster.showModal();
+    if (!venster.open) venster.showModal();
     notitie.focus();
   });
 
-  maken.addEventListener('click', async () => {
+  document.getElementById('aanmeldlink-formulier').addEventListener('submit', async (gebeurtenis) => {
+    gebeurtenis.preventDefault();
+    if (!stap1.classList.contains('verborgen')) await maakLink();
+  });
+
+  async function maakLink() {
     maken.disabled = true;
     maken.textContent = 'Bezig…';
     fout.classList.add('verborgen');
@@ -1875,7 +1891,7 @@ function aanmeldlinkVenster() {
       maken.disabled = false;
       maken.textContent = soort.value === 'vooraanmelding' ? 'Vooraanmeldlink maken' : 'Link maken';
     }
-  });
+  }
 
   kopieren.addEventListener('click', async () => {
     urlveld.select();

@@ -96,6 +96,23 @@
   .lade__kop { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
   .lade__kop h2 { margin: 0; font-size: 1.25rem; }
   .overlay { position: fixed; inset: 0; background: rgba(13,27,51,.35); z-index: 40; }
+
+  /*
+     De lade ligt over de rechterkant van het scherm, en daar staan ook de
+     knoppen "+ Aanmeldlink", "Accounts" en "Uitloggen". Een klik daarop kwam op
+     de lade terecht en deed niets: je klikte vijf keer en dacht dat de knop
+     kapot was. Zolang er een lade openstaat, schuift de lijst daarom opzij -
+     dan overlapt er niets en blijft alles bereikbaar.
+
+     Alleen op een breed scherm: op een telefoon vult de lade het hele scherm en
+     is opzijschuiven zinloos; daar sluit je hem met de kruisknop.
+  */
+  @media (min-width: 1100px) {
+    .lade-open .beheer { padding-right: 648px; transition: padding-right .15s ease; }
+    /* De lijst staat er nu naast in plaats van eronder, dus hij hoeft ook niet
+       meer afgeschermd te worden. Sluiten gaat met de kruisknop of met Escape. */
+    .lade-open .overlay { display: none; }
+  }
   .kolomkop { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--tekst-zacht); font-weight: 700; margin: 24px 0 10px; }
   .gegevens { margin: 0; }
   .gegevens div { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--rand); font-size: .92rem; }
@@ -260,7 +277,7 @@
       kopieerknop, en niet in een lijstje om later terug te zoeken.
     -->
     <dialog id="aanmeldlink-venster" class="venster">
-      <form method="dialog" class="venster__binnen">
+      <form id="aanmeldlink-formulier" class="venster__binnen" novalidate>
         <h2 id="aanmeldlink-kop">Aanmeldlink maken</h2>
         <p class="stil" id="aanmeldlink-intro">Stuur deze link via WhatsApp naar de aanvrager.
           Hij vult zijn gegevens in en tekent de machtiging; daarna staat hij hier als dossier.</p>
@@ -334,8 +351,8 @@
           <p class="stil">Alleen voor jezelf, zodat je de lijst kunt teruglezen.
             De aanvrager ziet dit niet.</p>
           <div class="venster__knoppen">
-            <button type="button" class="knop knop--primair" id="aanmeldlink-maken">Link maken</button>
-            <button type="submit" class="knop knop--stil">Annuleren</button>
+            <button type="submit" class="knop knop--primair" id="aanmeldlink-maken">Link maken</button>
+            <button type="button" class="knop knop--stil" data-sluit>Annuleren</button>
           </div>
         </div>
 
@@ -348,7 +365,7 @@
           <div class="venster__knoppen">
             <button type="button" class="knop knop--primair" id="aanmeldlink-kopieren">Kopieer de link</button>
             <a class="knop knop--zacht" id="aanmeldlink-whatsapp" href="#" target="_blank" rel="noopener">Via WhatsApp sturen</a>
-            <button type="submit" class="knop knop--stil">Sluiten</button>
+            <button type="button" class="knop knop--stil" data-sluit>Sluiten</button>
           </div>
         </div>
 
