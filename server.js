@@ -45,7 +45,7 @@ import { kennispaginas } from './src/kennispagina.js';
 import {
   maakAanmeldlink, zoekAanmeldlink, sluitAanmeldlink, trekAanmeldlinkIn,
   aanmeldlinkOverzicht, snoeiAanmeldlinks, valideerAanmelding, wathapert, REDENEN,
-  geldigeLinksoort, valideerZaak, zaakVanLink, valideerContactgegevens,
+  geldigeLinksoort, valideerZaak, zaakVanLink, valideerContactgegevens, valideerLead,
 } from './src/aanmelding.js';
 import {
   geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
@@ -478,6 +478,70 @@ async function publiekeApi(req, res, url) {
    * te kunnen tekenen: onze gegevens en wat onze hulp kost. De notitie die de
    * medewerker erbij zette, blijft binnen: die is voor ons, niet voor hem.
    */
+  /**
+   * Iemand heeft zijn zaak uitgerekend op /dwangsom-berekenen en laat zijn
+   * gegevens achter.
+   *
+   * Dit is de kortste weg die er is: geen brief, geen burgerservicenummer, geen
+   * machtiging. Die komen later via een aanmeldlink, als wij hem gesproken
+   * hebben. Wat hier ontstaat is een dossier met de zaak zoals hij hem zelf
+   * heeft opgegeven, plus een manier om hem te bereiken.
+   *
+   * De berekening wordt hier opnieuw gedaan en niet van de browser aangenomen.
+   * Een bedrag dat een bezoeker zelf kan meesturen, is geen bedrag.
+   */
+  if (url.pathname === '/api/lead' && req.method === 'POST') {
+    const limiet = indienBegrenzer.controleer(clientIp(req));
+    if (!limiet.toegestaan) {
+      return stuurFout(res, 429, 'Te veel aanmeldingen vanaf dit adres. Probeer het later opnieuw.');
+    }
+    const body = await leesJsonBody(req);
+
+    const zaak = valideerZaak(body.zaak || {}, { verplicht: true });
+    const wie = valideerLead(body);
+    const velden = { ...zaak.fouten, ...wie.fouten };
+    if (Object.keys(velden).length > 0) {
+      return stuurJson(res, 422, { fout: 'Er ontbreekt nog iets.', velden });
+    }
+
+    const invoer = { ...zaak.gegevens, ...wie.invoer };
+    const rapport = berekenDwangsom(invoer);
+
+    // Een account alleen als er een e-mailadres is; zonder adres is er niets om
+    // een dossierlink heen te sturen.
+    let klant = null;
+    if (wie.contact.email) {
+      try {
+        klant = await gebruikers.vindOfMaakKlant({ email: wie.contact.email, naam: wie.contact.naam });
+      } catch (err) {
+        console.error('[lead] account aanmaken mislukt:', err.message);
+      }
+    }
+
+    const aanvraag = await store.nieuweAanvraag({
+      invoer,
+      contact: { ...wie.contact, akkoordVoorwaarden: true },
+      rapport,
+      stukken: {},
+      handtekening: null,
+      gebruikerId: klant ? klant.id : null,
+      soort: null,
+      historieregel: 'Zelf uitgerekend op de site en gegevens achtergelaten. '
+        + 'Nog geen brief en geen machtiging; bellen of appen en daarna een aanmeldlink sturen.',
+      meta: { ingediendVia: 'rekenmachine', bron: normaliseerBron(body.bron) },
+    });
+
+    await opslag.tel(vandaagSleutel(), veld('reken-lead', normaliseerBron(body.bron)));
+    console.log(`[lead] ${aanvraag.referentie} via de rekenmachine (${rapport.uitkomst})`);
+
+    return stuurJson(res, 201, {
+      referentie: aanvraag.referentie,
+      email: Boolean(klant),
+      soort: aanvraag.soort,
+      bewaaktTot: aanvraag.actiedatum || null,
+    });
+  }
+
   if (url.pathname === '/api/aanmelden' && req.method === 'GET') {
     const rij = await zoekAanmeldlink(opslag, url.searchParams.get('t'));
     const hapert = wathapert(rij);

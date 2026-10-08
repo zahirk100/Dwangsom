@@ -72,6 +72,15 @@ export const GEBEURTENISSEN = {
   // niet te onderscheiden van "er is geen verkeer", en dat verschil was hier
   // twee weken lang niet te zien.
   diagnose: 'Testmelding vanaf het cijferscherm',
+  /*
+   * De rekenmachine op /dwangsom-berekenen is een eigen weggetje: iemand komt
+   * uit Google op een uitlegpagina, rekent zijn eigen zaak uit en laat daarna
+   * zijn gegevens achter. Dat is een andere beweging dan de funnel met de
+   * brief, en hij hoort er dus niet in opgeteld te worden - anders lijkt de
+   * funnel beter of slechter te lopen door iets wat er niet bij hoort.
+   */
+  'reken-uitslag': 'Rekenmachine gaf een uitkomst',
+  'reken-lead': 'Gegevens achtergelaten na de rekenmachine',
 };
 
 /**
@@ -81,7 +90,7 @@ export const GEBEURTENISSEN = {
  * verdubbelen. Hij staat apart, als controlegetal.
  */
 export const BUITEN_DE_TRECHTER = ['diagnose', 'paginaweergave', 'niet-gevonden',
-  'upload-mislukt', 'toestemming'];
+  'upload-mislukt', 'toestemming', 'reken-uitslag', 'reken-lead'];
 
 /**
  * Waarom iemand niet verder kwam.

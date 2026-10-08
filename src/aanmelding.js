@@ -444,3 +444,61 @@ export function valideerContactgegevens(ruw = {}) {
 
   return { geldig: Object.keys(fouten).length === 0, fouten, gegevens };
 }
+
+// ------------------------------------------------- de lead uit de rekenmachine
+
+/**
+ * Wie er terug moet worden gebeld, en of er al in gebreke is gesteld.
+ *
+ * Dit is het kortste formulier van de hele site. Iemand heeft net zijn eigen
+ * zaak uitgerekend en ziet wat hij kan krijgen; wat wij op dat moment vragen
+ * moet daar niet tegenop wegen. Dus geen burgerservicenummer, geen
+ * rekeningnummer, geen machtiging - die komen later via een aanmeldlink, als
+ * wij hem gesproken hebben.
+ *
+ * Een telefoonnummer is wel nodig: deze mensen komen via WhatsApp bij ons
+ * binnen en niet via de mail. Het e-mailadres mag, want daarmee krijgt hij een
+ * eigen dossier om in te kijken.
+ */
+export function valideerLead(body = {}) {
+  const fouten = {};
+  const contact = {};
+  const invoer = {};
+
+  const naam = String(body.naam || '').trim();
+  if (naam.length < 2) fouten.naam = 'Vul je naam in.';
+  else if (naam.length > 120) fouten.naam = 'Deze naam is te lang.';
+  else contact.naam = naam;
+
+  const telefoon = String(body.telefoon || '').replace(/[^0-9+ ]/g, '').trim().slice(0, 20);
+  if (!telefoon) {
+    fouten.telefoon = 'Vul je telefoonnummer in, dan kunnen wij je bereiken.';
+  } else if (telefoon.replace(/[^0-9]/g, '').length < 10) {
+    fouten.telefoon = 'Dit telefoonnummer lijkt niet compleet.';
+  } else {
+    contact.telefoon = telefoon;
+  }
+
+  const email = String(body.email || '').trim().toLowerCase();
+  if (email) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) fouten.email = 'Controleer je e-mailadres.';
+    else contact.email = email;
+  }
+
+  // Is er al in gebreke gesteld, dan loopt de klok al en is de zaak verder dan
+  // hij lijkt. Zonder die vraag rekenen wij een zaak te laag uit.
+  if (body.ingebrekeGesteld) {
+    const datum = String(body.ingebrekestellingDatum || '').trim();
+    if (parseDatum(datum) === null) {
+      fouten.ingebrekestellingDatum = 'Vul in wanneer je die brief hebt gestuurd.';
+    } else if (parseDatum(datum) > vandaag()) {
+      fouten.ingebrekestellingDatum = 'Deze datum ligt in de toekomst. Controleer hem.';
+    } else {
+      invoer.ingebrekeGesteld = true;
+      invoer.ingebrekestellingDatum = datum;
+      invoer.ingebrekestellingDoorOns = false;
+    }
+  }
+
+  return { geldig: Object.keys(fouten).length === 0, fouten, contact, invoer };
+}

@@ -43,6 +43,45 @@
   .tabel td { padding: 10px 10px 10px 0; border-top: 1px solid var(--rand); vertical-align: top; }
   .tabel td:last-child, .tabel th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
   .tabel tbody tr:first-child td { border-top: 0; }
+
+  /* De rekenmachine. Hij staat bovenaan de pagina omdat iemand die "dwangsom
+     berekenen" zoekt wil rekenen, niet lezen - de uitleg eronder is voor wie
+     daarna wil weten hoe het zit. */
+  .reken {
+    margin: 26px 0 34px; padding: 22px 20px; border-radius: var(--radius);
+    background: var(--vlak); border: 1px solid var(--rand); box-shadow: var(--schaduw);
+  }
+  .reken h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .reken > p { margin: 0 0 18px; color: var(--tekst-zacht); font-size: .94rem; }
+  .reken .veld { margin-bottom: 14px; }
+  .reken label { display: block; font-weight: 600; margin-bottom: 5px; }
+  .reken .hulp { display: block; font-weight: 400; font-size: .85rem; color: var(--tekst-zacht); }
+  .reken select, .reken input {
+    width: 100%; padding: 12px 13px; border-radius: 10px; border: 1px solid var(--rand-sterk);
+    font: inherit; font-size: 1rem; background: var(--vlak); color: var(--tekst);
+  }
+  .reken select:focus-visible, .reken input:focus-visible { outline: 3px solid var(--blauw-500); outline-offset: 1px; }
+  .reken .keuzerij { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  .reken .keuzerij label { font-weight: 400; display: flex; gap: 7px; align-items: center; margin: 0; }
+  .reken .keuzerij input { width: 18px; height: 18px; }
+  .reken .veldfout { color: var(--rood-600); font-size: .88rem; margin: 6px 0 0; }
+
+  .uitslag { margin-top: 18px; padding: 18px 18px; border-radius: var(--radius-klein); }
+  .uitslag--wacht { background: var(--papier); border: 1px dashed var(--rand-sterk); color: var(--tekst-zacht); }
+  .uitslag--goed { background: var(--groen-100); border: 1px solid var(--groen-600); }
+  .uitslag--info { background: var(--blauw-50); border: 1px solid var(--blauw-100); }
+  .uitslag--niets { background: var(--papier); border: 1px solid var(--rand); }
+  .uitslag strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+  .uitslag p { margin: 0; font-size: .95rem; }
+  .uitslag .bedrag { font-size: 1.6rem; font-weight: 700; display: block; margin: 6px 0 2px; }
+  .uitslag ul { margin: 10px 0 0; padding-left: 20px; font-size: .92rem; }
+
+  .lead { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--rand); }
+  .lead h3 { margin: 0 0 4px; font-size: 1.02rem; }
+  .lead > p { margin: 0 0 14px; color: var(--tekst-zacht); font-size: .93rem; }
+  .lead .knop { width: 100%; margin-top: 4px; }
+  .verborgen { display: none !important; }
+
   .vraag { border: 1px solid var(--rand); border-radius: var(--radius); margin-bottom: 9px; background: var(--vlak); }
   .vraag summary { cursor: pointer; padding: 14px 18px; font-weight: 700; }
   .vraag p { padding: 0 18px; margin: 0 0 14px; color: var(--tekst-zacht); }
@@ -202,6 +241,80 @@
   <p>De dwangsom is een vast bedrag per dag dat oploopt naarmate het langer duurt. Je hoeft er
      niets voor aan te tonen: als aan de voorwaarden is voldaan, ontstaat hij van rechtswege.</p>
 
+  <section class="reken" id="reken" aria-labelledby="reken-kop">
+    <h2 id="reken-kop">Reken je eigen zaak uit</h2>
+    <p>Vier vragen. Je hoeft niets te uploaden, en je gegevens blijven bij jou tot je ze zelf
+       achterlaat.</p>
+
+    <div class="veld">
+      <label for="r-orgaan">Bij welke instantie ligt je aanvraag?</label>
+      <select id="r-orgaan"></select>
+    </div>
+
+    <div class="veld">
+      <label for="r-zaak">Waar gaat je aanvraag over?</label>
+      <select id="r-zaak"></select>
+    </div>
+
+    <div class="veld">
+      <label for="r-datum" id="r-datum-label">Wanneer heb je de aanvraag gedaan?
+        <span class="hulp">Ongeveer goed is genoeg als je het niet precies weet.</span></label>
+      <input id="r-datum" type="date">
+      <p class="veldfout verborgen" id="fout-basisdatum"></p>
+    </div>
+
+    <div class="veld">
+      <label for="r-einddatum">Staat er een uiterste beslisdatum in je brief?
+        <span class="hulp">Niet verplicht. Staat die datum er, vul hem dan in: die telt zwaarder
+          dan de wettelijke standaardtermijn.</span></label>
+      <input id="r-einddatum" type="date">
+      <p class="veldfout verborgen" id="fout-termijnEinddatum"></p>
+    </div>
+
+    <div class="veld">
+      <label>Heb je de instantie al in gebreke gesteld?
+        <span class="hulp">Dat is de brief waarin je vraagt om alsnog binnen twee weken te
+          beslissen. Pas daarna gaat de dwangsom lopen.</span></label>
+      <div class="keuzerij">
+        <label><input type="radio" name="r-igs" value="nee" checked> Nee, nog niet</label>
+        <label><input type="radio" name="r-igs" value="ja"> Ja, op</label>
+        <input id="r-igs-datum" type="date" style="max-width:190px" disabled>
+      </div>
+      <p class="veldfout verborgen" id="fout-ingebrekestellingDatum"></p>
+    </div>
+
+    <div class="uitslag uitslag--wacht" id="r-uitslag" aria-live="polite">
+      <p>Vul hierboven je zaak in, dan rekenen wij meteen uit waar je staat.</p>
+    </div>
+
+    <div class="lead verborgen" id="r-lead">
+      <h3>Zullen wij dit voor je regelen?</h3>
+      <p>Laat je naam en telefoonnummer achter, dan nemen wij contact op en doen wij de rest.
+         Je zit nergens aan vast.</p>
+      <div class="veld">
+        <label for="r-naam">Je naam</label>
+        <input id="r-naam" type="text" autocomplete="name">
+        <p class="veldfout verborgen" id="fout-naam"></p>
+      </div>
+      <div class="veld">
+        <label for="r-telefoon">Je telefoonnummer</label>
+        <input id="r-telefoon" type="tel" autocomplete="tel" inputmode="tel">
+        <p class="veldfout verborgen" id="fout-telefoon"></p>
+      </div>
+      <div class="veld">
+        <label for="r-email">Je e-mailadres <span class="hulp">Niet verplicht. Hiermee kun je je
+          eigen dossier volgen.</span></label>
+        <input id="r-email" type="email" autocomplete="email" inputmode="email">
+        <p class="veldfout verborgen" id="fout-email"></p>
+      </div>
+      <button type="button" class="knop knop--primair" id="r-verstuur">Ja, neem contact met mij op</button>
+      <p class="veldfout verborgen" id="r-fout"></p>
+    </div>
+
+    <div class="uitslag uitslag--goed verborgen" id="r-klaar"></div>
+  </section>
+
+
   <h2>Waar begint de teller?</h2>
   <p>Niet op de dag dat de beslistermijn verstrijkt. De teller begint <strong>twee weken nadat je
      het bestuursorgaan in gebreke hebt gesteld</strong>, en alleen als er dan nog steeds geen
@@ -312,5 +425,6 @@
 <!-- Telt hetzelfde bezoek zonder javascript, als controle op het script hierboven. -->
 <img src="/api/tel" alt="" width="1" height="1" aria-hidden="true" style="position:absolute;width:1px;height:1px;left:-9999px;top:0">
 <script type="module" src="/assets/menu.js"></script>
+<script type="module" src="/assets/rekenmachine.js"></script>
 </body>
 </html>
