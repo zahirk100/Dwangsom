@@ -45,7 +45,7 @@ import { kennispaginas } from './src/kennispagina.js';
 import {
   maakAanmeldlink, zoekAanmeldlink, sluitAanmeldlink, trekAanmeldlinkIn,
   aanmeldlinkOverzicht, snoeiAanmeldlinks, valideerAanmelding, wathapert, REDENEN,
-  geldigeLinksoort, valideerZaak, zaakVanLink,
+  geldigeLinksoort, valideerZaak, zaakVanLink, valideerContactgegevens,
 } from './src/aanmelding.js';
 import {
   geldigeGebeurtenis, normaliseerBron, kanaal, normaliseerPagina, veld, vandaagSleutel,
@@ -564,11 +564,14 @@ async function publiekeApi(req, res, url) {
       contact: {
         naam: g.naam,
         email: g.email || '',
-        telefoon: g.telefoon || '',
         geboortedatum: g.geboortedatum,
         bsn: g.bsn,
         iban: g.iban,
         akkoordVoorwaarden: true,
+        // Wat de medewerker in het gesprek noteerde. Het formulier vraagt er
+        // niet naar; dit scheelt de aanvrager vier vragen en ons het overtikken.
+        telefoon: g.telefoon || '',
+        ...(rij.contact || {}),
       },
       rapport,
       stukken: {},
@@ -1247,8 +1250,12 @@ async function beheerApi(req, res, url) {
      * wij de brief later zelf bij.
      */
     const zaak = valideerZaak(body.zaak || {}, { verplicht: soort === 'vooraanmelding' });
-    if (!zaak.geldig) {
-      return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden: zaak.fouten });
+    // Adres en telefoonnummer eist UWV in een melding per brief. Alles wat hier
+    // uit het gesprek wordt meegegeven, hoeft niemand later over te tikken.
+    const gegevens = valideerContactgegevens(body.contact || {});
+    const velden = { ...zaak.fouten, ...gegevens.fouten };
+    if (Object.keys(velden).length > 0) {
+      return stuurJson(res, 422, { fout: 'Deze gegevens kloppen niet.', velden });
     }
 
     const { token, link } = await maakAanmeldlink(opslag, {
@@ -1256,6 +1263,7 @@ async function beheerApi(req, res, url) {
       door: ik.email,
       soort,
       zaak: zaak.gegevens,
+      contact: gegevens.gegevens,
     });
     console.log(`[aanmelding] ${soort}link gemaakt door ${ik.email}`);
     return stuurJson(res, 201, {

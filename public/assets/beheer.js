@@ -1732,8 +1732,14 @@ function aanmeldlinkVenster() {
   const intro = document.getElementById('aanmeldlink-intro');
   const soortUitleg = document.getElementById('aanmeldlink-soort-uitleg');
   const kop = document.getElementById('aanmeldlink-kop');
+  const gegevensvak = document.getElementById('aanmeldlink-gegevens');
+  const telefoon = document.getElementById('aanmeldlink-telefoon');
+  const adres = document.getElementById('aanmeldlink-adres');
+  const postcode = document.getElementById('aanmeldlink-postcode');
+  const woonplaats = document.getElementById('aanmeldlink-woonplaats');
 
   const ZAAKVELDEN = ['bestuursorgaan', 'zaaktype', 'basisdatum', 'termijnEinddatum'];
+  const CONTACTVELDEN = ['telefoon', 'postcode'];
 
   /*
    * Twee soorten links, en het verschil zit niet in de link maar in wat er
@@ -1773,7 +1779,7 @@ function aanmeldlinkVenster() {
   }
 
   function wisZaakfouten() {
-    for (const veld of ZAAKVELDEN) {
+    for (const veld of [...ZAAKVELDEN, ...CONTACTVELDEN]) {
       const regel = document.getElementById(`fout-aanmeldlink-${veld}`);
       if (regel) { regel.textContent = ''; regel.classList.add('verborgen'); }
     }
@@ -1788,6 +1794,8 @@ function aanmeldlinkVenster() {
     basisdatum.value = '';
     einddatum.value = '';
     orgaan.value = '';
+    for (const veld of [telefoon, adres, postcode, woonplaats]) veld.value = '';
+    gegevensvak.open = false;
     wisZaakfouten();
     vulZaaktypen();
     zetSoort();
@@ -1824,6 +1832,12 @@ function aanmeldlinkVenster() {
             basisdatum: basisdatum.value,
             termijnEinddatum: einddatum.value,
           } : {},
+          contact: {
+            telefoon: telefoon.value,
+            adres: adres.value,
+            postcode: postcode.value,
+            woonplaats: woonplaats.value,
+          },
         }),
       });
       urlveld.value = data.url;
@@ -1848,7 +1862,12 @@ function aanmeldlinkVenster() {
       let geplaatst = false;
       for (const [veld, tekst] of Object.entries(velden)) {
         const regel = document.getElementById(`fout-aanmeldlink-${veld}`);
-        if (regel) { regel.textContent = tekst; regel.classList.remove('verborgen'); geplaatst = true; }
+        if (regel) {
+          regel.textContent = tekst;
+          regel.classList.remove('verborgen');
+          if (CONTACTVELDEN.includes(veld)) gegevensvak.open = true;
+          geplaatst = true;
+        }
       }
       fout.textContent = geplaatst ? 'Kijk hieronder waar het rood staat.' : err.message;
       fout.classList.remove('verborgen');

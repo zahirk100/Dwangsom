@@ -301,6 +301,33 @@
               ze nog niet? Stuur dan een gewone aanmeldlink; de brief hangen wij er later zelf bij.</p>
           </div>
 
+          <!--
+            Adres en telefoonnummer eist UWV in een melding per brief. Ze staan
+            hier omdat de medewerker de aanvrager op dat moment aan de lijn
+            heeft; wat hier wordt ingevuld, hoeft niemand later over te tikken
+            en hoeft de aanvrager niet op zijn telefoon in te typen.
+          -->
+          <details id="aanmeldlink-gegevens" style="margin-top:16px">
+            <summary style="cursor:pointer; font-weight:600">Gegevens uit het gesprek (aanbevolen)</summary>
+            <p class="stil" style="margin-top:8px">UWV wil in een melding het adres én het
+              telefoonnummer van de aanvrager. Vul in wat je hebt; de rest vul je later aan
+              in het dossier.</p>
+
+            <label for="aanmeldlink-telefoon">Telefoonnummer</label>
+            <input type="tel" id="aanmeldlink-telefoon" autocomplete="off" placeholder="06 12345678">
+            <p class="veldfout verborgen" id="fout-aanmeldlink-telefoon"></p>
+
+            <label for="aanmeldlink-adres">Straat en huisnummer</label>
+            <input type="text" id="aanmeldlink-adres" autocomplete="off" maxlength="160">
+
+            <label for="aanmeldlink-postcode">Postcode</label>
+            <input type="text" id="aanmeldlink-postcode" autocomplete="off" maxlength="8" placeholder="1234 AB">
+            <p class="veldfout verborgen" id="fout-aanmeldlink-postcode"></p>
+
+            <label for="aanmeldlink-woonplaats">Woonplaats</label>
+            <input type="text" id="aanmeldlink-woonplaats" autocomplete="off" maxlength="80">
+          </details>
+
           <label for="aanmeldlink-notitie">Voor wie is deze link?</label>
           <input type="text" id="aanmeldlink-notitie" maxlength="120" autocomplete="off"
                  placeholder="Naam of telefoonnummer uit het gesprek">

@@ -96,7 +96,10 @@ function nieuwToken() {
  */
 export async function maakAanmeldlink(
   opslag,
-  { notitie = '', door = '', soort = 'aanmelding', zaak = null, geldigMs = GELDIG_MS } = {},
+  {
+    notitie = '', door = '', soort = 'aanmelding', zaak = null, contact = null,
+    geldigMs = GELDIG_MS,
+  } = {},
 ) {
   const open = await openstaandeLinks(opslag);
   if (open.length >= MAX_OPEN) {
@@ -114,6 +117,7 @@ export async function maakAanmeldlink(
     // en geen gegeven van de aanvrager: het is de zaak zelf, en hoe meer
     // hiervan klopt, hoe korter het formulier wordt.
     zaak: zaak && typeof zaak === 'object' ? valideerZaak(zaak).gegevens : {},
+    contact: contact && typeof contact === 'object' ? valideerContactgegevens(contact).gegevens : {},
     notitie: String(notitie || '').trim().slice(0, 120),
     door: String(door || '').slice(0, 120),
     aangemaaktOp: nu.toISOString(),
@@ -390,4 +394,53 @@ export function zaakVanLink(rij, ingevuld = {}) {
   const basis = (rij && rij.zaak) || {};
   const eigen = valideerZaak({ ...ingevuld, ...basis }, { verplicht: false });
   return eigen.gegevens;
+}
+
+// ------------------------------------------------ gegevens uit het gesprek --
+
+/**
+ * Adres en telefoonnummer van de aanvrager, alvast vastgelegd door de
+ * medewerker.
+ *
+ * Waarom hier en niet op het formulier: UWV eist in een melding per brief het
+ * adres én het telefoonnummer van de aanvrager. Die moeten dus ergens vandaan
+ * komen, en de medewerker heeft hem op dat moment aan de lijn - zijn
+ * telefoonnummer staat zelfs bovenaan het gesprek. Elke vraag die daar wordt
+ * beantwoord is er één minder op een telefoonscherm.
+ *
+ * Alles is optioneel: wat hier niet wordt ingevuld, vult de behandelaar later
+ * aan in het dossier, en tot die tijd zegt de beheeromgeving precies wat er
+ * nog mist.
+ */
+export const CONTACTVELDEN_LINK = ['telefoon', 'adres', 'postcode', 'woonplaats'];
+
+const POSTCODE = /^([1-9][0-9]{3})\s*([A-Za-z]{2})$/;
+
+export function valideerContactgegevens(ruw = {}) {
+  const fouten = {};
+  const gegevens = {};
+
+  const telefoon = String(ruw.telefoon || '').replace(/[^0-9+ ]/g, '').trim().slice(0, 20);
+  if (telefoon) {
+    if (telefoon.replace(/[^0-9]/g, '').length < 10) {
+      fouten.telefoon = 'Dit telefoonnummer lijkt niet compleet.';
+    } else {
+      gegevens.telefoon = telefoon;
+    }
+  }
+
+  const adres = String(ruw.adres || '').trim().slice(0, 160);
+  if (adres) gegevens.adres = adres;
+
+  const postcode = String(ruw.postcode || '').trim();
+  if (postcode) {
+    const deel = POSTCODE.exec(postcode);
+    if (!deel) fouten.postcode = 'Vul de postcode in als 1234 AB.';
+    else gegevens.postcode = `${deel[1]} ${deel[2].toUpperCase()}`;
+  }
+
+  const woonplaats = String(ruw.woonplaats || '').trim().slice(0, 80);
+  if (woonplaats) gegevens.woonplaats = woonplaats;
+
+  return { geldig: Object.keys(fouten).length === 0, fouten, gegevens };
 }

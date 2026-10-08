@@ -458,3 +458,35 @@ test('de bevestigingsmail belooft bij een vooraanmelding geen brief en geen bedr
   assert.ok(!/met je brief aan de slag/.test(alles));
   assert.ok(!/€|procent|%/.test(alles), 'er hoort geen bedrag in te staan');
 });
+
+test('wat de medewerker uit het gesprek noteert, staat meteen in het dossier', async () => {
+  // Adres en telefoonnummer eist UWV in een melding per brief. Het formulier
+  // vraagt er niet naar; ze komen hiervandaan.
+  const link = await maakLink('Mo', {
+    contact: {
+      telefoon: '06-12345678', adres: 'Molenweg 88', postcode: '7511ab', woonplaats: 'Enschede',
+    },
+  });
+  const { referentie } = await (await meld({ t: link.token, ...COMPLEET })).json();
+  const dossier = await dossierVan(referentie);
+
+  assert.equal(dossier.contact.telefoon, '0612345678');
+  assert.equal(dossier.contact.adres, 'Molenweg 88');
+  assert.equal(dossier.contact.postcode, '7511 AB', 'de postcode hoort genormaliseerd te worden');
+  assert.equal(dossier.contact.woonplaats, 'Enschede');
+});
+
+test('de aanvrager ziet onze aantekeningen over hem niet terug op het formulier', async () => {
+  const link = await maakLink('x', { contact: { telefoon: '06 12345678', adres: 'Molenweg 88' } });
+  const open = await (await fetch(`${basis}/api/aanmelden?t=${encodeURIComponent(link.token)}`)).json();
+  assert.ok(!JSON.stringify(open).includes('Molenweg'), 'het formulier krijgt gegevens die het niet nodig heeft');
+  assert.ok(!JSON.stringify(open).includes('12345678'));
+});
+
+test('een postcode of telefoonnummer dat niet klopt, komt niet op de link', async () => {
+  const antwoord = await probeerLink({ notitie: 'x', contact: { postcode: 'XX', telefoon: '0612' } });
+  assert.equal(antwoord.status, 422);
+  const velden = (await antwoord.json()).velden;
+  assert.match(velden.postcode, /1234 AB/);
+  assert.match(velden.telefoon, /niet compleet/);
+});

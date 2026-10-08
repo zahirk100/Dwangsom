@@ -19,11 +19,26 @@
 import { parseDatum, toonDatum, vandaag, plusDagen } from '../public/shared/datum.js';
 import { HERSTELTERMIJN_DAGEN, TARIEF, euro } from '../public/shared/dwangsom.js';
 import { labelBestuursorgaan, vraagtBsn, zoekZaaktype } from '../public/shared/catalogus.js';
-import { normaliseerBsn } from '../public/shared/identiteit.js';
+import { normaliseerBsn, toonIban } from '../public/shared/identiteit.js';
 
 const esc = (tekst) => String(tekst === null || tekst === undefined ? '' : tekst)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+/**
+ * Waar een melding van een te late beslissing heen moet.
+ *
+ * UWV noemt op zijn eigen site en op het formulier "Melding te late beslissing"
+ * één postbus voor deze meldingen, en dat is een ander adres dan het adres op
+ * de brief waarmee de zaak binnenkwam. Een ingebrekestelling die op de verkeerde
+ * stapel belandt, kost dagen die de aanvrager niet terugkrijgt.
+ *
+ * Alleen instanties waarvan wij het adres zéker weten staan hier. Voor de rest
+ * blijft het een invulregel; een gegokt postbusnummer is erger dan een leeg vak.
+ */
+export const POSTADRESSEN = {
+  uwv: { regels: ['Postbus 58175', '1040 HD  AMSTERDAM'] },
+};
 
 const INVULREGEL = '.'.repeat(28);
 
@@ -50,6 +65,17 @@ export function ingebrekestellingContext(aanvraag = {}, organisatie = {}, nu = v
   const bsn = normaliseerBsn(contact.bsn);
   if (bsnNodig && !bsn) ontbreekt.push('Burgerservicenummer');
 
+  /*
+   * Deze twee staan met zoveel woorden op de lijst die UWV zelf publiceert van
+   * wat er in een melding per brief moet staan: het telefoonnummer en het
+   * rekeningnummer waarop de vergoeding moet komen. Zonder die twee is de brief
+   * niet compleet, hoe keurig de rest ook klopt.
+   */
+  const telefoon = String(contact.telefoon || '').trim();
+  if (!telefoon) ontbreekt.push('Telefoonnummer');
+  const iban = String(contact.iban || '').trim();
+  if (!iban) ontbreekt.push('Rekeningnummer');
+
   const geboortems = parseDatum(contact.geboortedatum);
   if (!geboortems) ontbreekt.push('Geboortedatum');
 
@@ -67,7 +93,11 @@ export function ingebrekestellingContext(aanvraag = {}, organisatie = {}, nu = v
     datum: toonDatum(nu),
     aan: {
       naam: invoer.organisatienaam || labelBestuursorgaan(invoer.bestuursorgaan) || null,
-      adres: String(invoer.organisatieadres || '').trim() || null,
+      // Een adres dat in het dossier staat gaat voor; dat komt uit de brief van
+      // de instantie zelf en is dus specifieker dan onze tabel.
+      regels: String(invoer.organisatieadres || '').trim()
+        ? [String(invoer.organisatieadres).trim()]
+        : ((POSTADRESSEN[invoer.bestuursorgaan] || {}).regels || null),
     },
     aanvrager: {
       naam: nodig(contact.naam, 'Naam'),
@@ -77,6 +107,8 @@ export function ingebrekestellingContext(aanvraag = {}, organisatie = {}, nu = v
         'Postcode en woonplaats'),
       bsn: bsnNodig ? (bsn || null) : null,
       bsnNodig,
+      telefoon: telefoon || null,
+      iban: iban ? toonIban(iban) : null,
     },
     gemachtigde: {
       naam: organisatie.naam || 'NuBeslist',
@@ -221,7 +253,9 @@ export function ingebrekestellingHtml(aanvraag, organisatie, nu = vandaag()) {
     <div class="adressen">
       <div class="adres">
         <strong>${esc(c.aan.naam || 'Het bestuursorgaan')}</strong>
-        ${c.aan.adres ? esc(c.aan.adres) : '<span class="invulregel">' + INVULREGEL + '</span>'}
+        ${c.aan.regels
+    ? c.aan.regels.map((regel) => esc(regel)).join('<br>')
+    : `<span class="invulregel">${INVULREGEL}</span>`}
       </div>
       <div class="adres afzender">
         <strong>${esc(g.naam)}</strong>
@@ -242,10 +276,12 @@ export function ingebrekestellingHtml(aanvraag, organisatie, nu = vandaag()) {
     ${regel('Geboortedatum', c.aanvrager.geboortedatum)}
     ${regel('Adres', c.aanvrager.adres)}
     ${regel('Postcode en woonplaats', c.aanvrager.postcodePlaats)}
+    ${regel('Telefoonnummer', c.aanvrager.telefoon)}
     ${c.aanvrager.bsnNodig ? regel('Burgerservicenummer', c.aanvrager.bsn) : ''}
     ${regel('Aanvraag', c.zaak.omschrijving)}
     ${regel('Ingediend op', c.zaak.aanvraagdatum)}
     ${regel('Uiterste beslisdatum', c.zaak.beslisdatum)}
+    ${regel('Rekeningnummer voor de vergoeding', c.aanvrager.iban)}
 
     <h2>Geachte heer, mevrouw</h2>
     <p>Namens bovengenoemde aanvrager stel ik u hierbij in gebreke wegens het niet tijdig
@@ -270,8 +306,12 @@ export function ingebrekestellingHtml(aanvraag, organisatie, nu = vandaag()) {
     <p>De dwangsom loopt ten hoogste ${c.bedragen.maxDagen} dagen, met een maximum van
        ${esc(euro(c.bedragen.maximum))} in totaal.</p>
 
-    <p>Ik verzoek u alsnog binnen de genoemde termijn te beslissen. Correspondentie over deze
-       zaak kunt u aan ondergetekende richten.</p>
+    <p>Ik verzoek u alsnog binnen de genoemde termijn te beslissen. Een eventueel verbeurde
+       dwangsom kunt u overmaken op ${c.aanvrager.iban
+    ? `rekeningnummer <span class="nadruk">${esc(c.aanvrager.iban)}</span>`
+    : `het hierboven genoemde rekeningnummer`}, ten name van
+       ${c.aanvrager.naam ? esc(c.aanvrager.naam) : `<span class="invulregel">${INVULREGEL}</span>`}.
+       Correspondentie over deze zaak kunt u aan ondergetekende richten.</p>
 
     <div class="ondertekening">
       <p>Met vriendelijke groet,</p>

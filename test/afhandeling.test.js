@@ -224,7 +224,9 @@ async function dossierKlaar() {
   const data = await (await lees(dossier.id)).json();
   await bijwerken(dossier.id, { invoer: data.voorstel, contact: data.voorstelContact });
   await bijwerken(dossier.id, {
-    contact: { adres: 'Molenweg 88', postcode: '7511 AB', woonplaats: 'Enschede' },
+    contact: {
+      adres: 'Molenweg 88', postcode: '7511 AB', woonplaats: 'Enschede', telefoon: '06 12345678',
+    },
   });
   return uitOpslag(dossier.id);
 }
@@ -295,7 +297,9 @@ test('te vroeg in gebreke stellen wordt tegengehouden', async () => {
       bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: '2026-09-01',
       termijnBekend: true, termijnEinddatum: over,
     },
-    contact: { adres: 'Molenweg 88', postcode: '7511 AB', woonplaats: 'Enschede' },
+    contact: {
+      adres: 'Molenweg 88', postcode: '7511 AB', woonplaats: 'Enschede', telefoon: '06 12345678',
+    },
   });
 
   const antwoord = await api(`${dossier.id}/ingebrekestelling`, {
@@ -363,4 +367,80 @@ test('de brief die wij zelf opstellen blijft werken', async () => {
   const gedownload = await api(`${dossier.id}/brief?soort=claim`);
   assert.equal(gedownload.status, 200);
   assert.match(gedownload.headers.get('content-disposition') || '', /attachment/);
+});
+
+// -------------------------------------------- het lijstje dat UWV publiceert --
+
+/*
+ * UWV zet op zijn eigen site wat er in een melding per brief moet staan. Wij
+ * sturen onze eigen ingebrekestelling in plaats van hun formulier, en dat mag:
+ * een ingebrekestelling is vormvrij. Maar dan moet die brief wél alles bevatten
+ * wat zij noemen, anders is het alsnog onvolledig en begint de klok niet te
+ * lopen. Vandaar deze toets, met hun eigen woorden als meetlat:
+ *
+ *   - De datum.
+ *   - Uw naam en adres.
+ *   - Uw burgerservicenummer.
+ *   - Uw telefoonnummer.
+ *   - Voor welke aanvraag of welk bezwaar wij te laat zijn met beslissen.
+ *   - De datum waarop u de aanvraag heeft gedaan of het bezwaar heeft gemaakt.
+ *   - Uw rekeningnummer waarop u de vergoeding wilt ontvangen.
+ *
+ * Het laatste punt van hun lijst (loonheffingennummer) geldt alleen voor
+ * werkgevers; onze aanvragers zijn particulieren.
+ */
+test('de ingebrekestelling bevat alles wat UWV in een melding per brief eist', async () => {
+  const dossier = await dossierKlaar();
+  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
+  const kaal = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+
+  const eisen = [
+    ['de datum', /\d{1,2} (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december) 20\d\d/],
+    ['de naam', /K\. Bakker/],
+    ['het adres', /Molenweg 88/],
+    ['de postcode en woonplaats', /7511 AB\s+Enschede/],
+    ['het burgerservicenummer', /111222333/],
+    ['het telefoonnummer', /06 12345678/],
+    ['om welke aanvraag het gaat', /WW-uitkering aanvragen/],
+    ['de datum van de aanvraag', /7 april 2026/],
+    ['het rekeningnummer', /NL91 ?ABNA ?0417 ?1643 ?00/],
+  ];
+  for (const [wat, patroon] of eisen) {
+    assert.match(kaal, patroon, `UWV vraagt om ${wat}; dat staat niet in de brief`);
+  }
+
+  // En hij gaat naar de postbus die UWV voor deze meldingen noemt.
+  assert.match(kaal, /Postbus 58175/);
+  assert.match(kaal, /1040 HD\s+AMSTERDAM/i);
+});
+
+test('een brief zonder telefoonnummer of rekeningnummer heet onvolledig', async () => {
+  // Niet stilletjes versturen: het zijn precies de twee velden die wij eerder
+  // niet eens vroegen, en zonder die twee voldoet de brief niet aan het lijstje.
+  const dossier = await nieuwDossier();
+  const data = await (await lees(dossier.id)).json();
+  await bijwerken(dossier.id, {
+    invoer: data.voorstel,
+    contact: { adres: 'Molenweg 88', postcode: '7511 AB', woonplaats: 'Enschede' },
+  });
+
+  const antwoord = await api(`${dossier.id}/ingebrekestelling`, {
+    method: 'POST', body: JSON.stringify({ datum: '2026-09-20' }),
+  });
+  assert.equal(antwoord.status, 422);
+  assert.ok((await antwoord.json()).ontbreekt.includes('Telefoonnummer'));
+
+  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
+  assert.match(html, /Nog niet compleet/);
+  assert.match(html, /Telefoonnummer/);
+});
+
+test('voor een andere instantie verzinnen wij geen postbus', async () => {
+  // Alleen van UWV weten wij het adres zeker. Een gegokt postbusnummer laat de
+  // brief op de verkeerde stapel belanden, en dat kost dagen.
+  const dossier = await dossierKlaar();
+  await bijwerken(dossier.id, { invoer: { bestuursorgaan: 'gemeente', zaaktype: 'gem-bijstand' } });
+  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
+  assert.ok(!/58175/.test(html), 'het UWV-postbusnummer staat in een brief aan de gemeente');
+  assert.match(html, /\.{20,}/, 'er hoort een invulregel voor het adres te staan');
 });
