@@ -38,7 +38,7 @@ import { herkenBrief, herkendeVelden, naarInvoer } from './src/briefherkenning.j
 import { leesBrief } from './src/brieflezer.js';
 import { controleOverzicht, bewaardagen, STAPPEN as CONTROLESTAPPEN } from './src/controles.js';
 import { BESTUURSORGANEN, ZAAKTYPEN } from './public/shared/catalogus.js';
-import { claimBrief, ingebrekestellingBrief, briefBestandsnaam } from './public/shared/brief.js';
+import { claimBrief, briefBestandsnaam } from './public/shared/brief.js';
 import { campagnePaden } from './public/shared/campagnes.js';
 import { CAMPAGNE_PAD } from './src/campagnepagina.js';
 import { kennispaginas } from './src/kennispagina.js';
@@ -1591,11 +1591,20 @@ async function beheerApi(req, res, url) {
       return stuurBestandInhoud(res, bestand);
     }
 
+    /**
+     * Onze eigen brieven om te downloaden.
+     *
+     * De ingebrekestelling komt uit dezelfde bron als de knop bij stap 3. Er
+     * waren er ooit twee, en welke je kreeg hing af van welke knop je aanklikte;
+     * dat is precies hoe een brief de deur uit gaat die niet compleet is.
+     */
     if (subpad === '/brief' && req.method === 'GET') {
       const soort = url.searchParams.get('soort') === 'claim' ? 'claim' : 'ingebrekestelling';
-      const maker = soort === 'claim' ? claimBrief : ingebrekestellingBrief;
-      const tekst = maker({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport });
-      return stuurTekst(res, 200, tekst, {
+      const inhoud = soort === 'claim'
+        ? claimBrief({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport })
+        : ingebrekestellingHtml(aanvraag, organisatiegegevens());
+      return stuurTekst(res, 200, inhoud, {
+        'Content-Type': soort === 'claim' ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8',
         'Content-Disposition': `attachment; filename="${briefBestandsnaam(soort, aanvraag.referentie)}"`,
       });
     }
@@ -1607,13 +1616,14 @@ async function beheerApi(req, res, url) {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const soort = body.soort === 'claim' ? 'claim' : 'ingebrekestelling';
-      const maker = soort === 'claim' ? claimBrief : ingebrekestellingBrief;
-      const tekst = maker({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport });
+      const inhoud = soort === 'claim'
+        ? claimBrief({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport })
+        : ingebrekestellingHtml(aanvraag, organisatiegegevens());
       const bijgewerkt = await store.voegBestandToe(aanvraag.id, {
         stukId: 'correspondentie',
         bestandsnaam: briefBestandsnaam(soort, aanvraag.referentie),
-        mediaType: 'text/plain; charset=utf-8',
-        data: Buffer.from(tekst, 'utf8').toString('base64'),
+        mediaType: soort === 'claim' ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8',
+        data: Buffer.from(inhoud, 'utf8').toString('base64'),
         door: ik.naam || ik.email,
         toelichting: soort === 'claim' ? 'Dwangsomclaim, door ons opgesteld' : 'Ingebrekestelling, door ons opgesteld',
       });

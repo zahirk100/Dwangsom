@@ -231,14 +231,25 @@ async function dossierKlaar() {
   return uitOpslag(dossier.id);
 }
 
+/*
+ * Toetsen die alleen lézen, delen één dossier. Elke aanmelding telt mee in de
+ * snelheidsbegrenzer op het indienen, en die zit er niet voor niets: hij moet
+ * in de toetsen net zo hard staan als in het echt.
+ */
+let gedeeld = null;
+async function dossierKlaarGedeeld() {
+  if (!gedeeld) gedeeld = await dossierKlaar();
+  return gedeeld;
+}
+
 test('de brief is alleen voor ingelogde medewerkers', async () => {
-  const dossier = await dossierKlaar();
+  const dossier = await dossierKlaarGedeeld();
   const zonder = await fetch(`${basis}/api/beheer/aanvragen/${dossier.id}/ingebrekestelling`);
   assert.equal(zonder.status, 401);
 });
 
 test('de ingebrekestelling staat op papier met de datums uit het dossier', async () => {
-  const dossier = await dossierKlaar();
+  const dossier = await dossierKlaarGedeeld();
   const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
   assert.match(html, /Ingebrekestelling wegens niet tijdig beslissen/);
   assert.ok(html.includes(dossier.referentie));
@@ -256,7 +267,7 @@ test('de brief noemt de bedragen uit de wet en verzint er geen', async () => {
   // noemt - of 'undefined', wat hier echt in heeft gestaan - is geen brief
   // waarmee iemand iets kan.
   const { TARIEF, euro } = await import('../public/shared/dwangsom.js');
-  const dossier = await dossierKlaar();
+  const dossier = await dossierKlaarGedeeld();
   const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
 
   assert.ok(!/undefined|NaN/.test(html), 'er staat een bedrag in dat nergens vandaan komt');
@@ -281,7 +292,7 @@ test('een brief met een gat erin zegt welk gegeven ontbreekt', async () => {
 });
 
 test('zonder verzenddatum wordt er niets vastgelegd', async () => {
-  const dossier = await dossierKlaar();
+  const dossier = await dossierKlaarGedeeld();
   const antwoord = await api(`${dossier.id}/ingebrekestelling`, {
     method: 'POST', body: JSON.stringify({}),
   });
@@ -390,7 +401,7 @@ test('de brief die wij zelf opstellen blijft werken', async () => {
  * werkgevers; onze aanvragers zijn particulieren.
  */
 test('de ingebrekestelling bevat alles wat UWV in een melding per brief eist', async () => {
-  const dossier = await dossierKlaar();
+  const dossier = await dossierKlaarGedeeld();
   const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
   const kaal = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
 
@@ -443,4 +454,43 @@ test('voor een andere instantie verzinnen wij geen postbus', async () => {
   const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
   assert.ok(!/58175/.test(html), 'het UWV-postbusnummer staat in een brief aan de gemeente');
   assert.match(html, /\.{20,}/, 'er hoort een invulregel voor het adres te staan');
+});
+
+test('er is maar één ingebrekestelling, waar je hem ook vandaan haalt', async () => {
+  /*
+   * Er waren er twee: de opgemaakte pagina bij stap 3, en een tekstversie
+   * achter de downloadknop onder Correspondentie. Welke de deur uit ging, hing
+   * af van welke knop een behandelaar toevallig aanklikte - en die tweede
+   * noemde het burgerservicenummer niet, het rekeningnummer niet, en zette
+   * "[Afdeling / postadres]" in plaats van een adres. Precies de gegevens
+   * waarop UWV een melding beoordeelt.
+   */
+  const dossier = await dossierKlaarGedeeld();
+  const stap3 = await (await api(`${dossier.id}/ingebrekestelling`)).text();
+  const download = await api(`${dossier.id}/brief?soort=ingebrekestelling`);
+  const gedownload = await download.text();
+
+  assert.equal(download.status, 200);
+  assert.match(download.headers.get('content-type') || '', /text\/html/);
+  assert.equal(gedownload, stap3, 'de downloadknop geeft een andere brief dan stap 3');
+  assert.ok(!/\[Afdeling/.test(gedownload));
+
+  // En wat er in het dossier bewaard wordt, is diezelfde brief.
+  const bewaard = await api(`${dossier.id}/brief`, {
+    method: 'POST', body: JSON.stringify({ soort: 'ingebrekestelling' }),
+  });
+  assert.equal(bewaard.status, 200);
+  const na = await uitOpslag(dossier.id);
+  const stuk = na.bestanden.find((b) => b.stukId === 'correspondentie');
+  assert.match(stuk.bestandsnaam, /\.html$/);
+  assert.match(stuk.mediaType, /text\/html/);
+});
+
+test('de claimbrief blijft gewone tekst', async () => {
+  // Die is om in een e-mail te plakken, niet om af te drukken.
+  const dossier = await dossierKlaarGedeeld();
+  const antwoord = await api(`${dossier.id}/brief?soort=claim`);
+  assert.equal(antwoord.status, 200);
+  assert.match(antwoord.headers.get('content-type') || '', /text\/plain/);
+  assert.match(antwoord.headers.get('content-disposition') || '', /\.txt/);
 });

@@ -1,7 +1,13 @@
 /**
- * Genereert de standaardbrieven: de ingebrekestelling en de claim nadat de
- * dwangsom is gaan lopen. Wordt zowel in de wizard (download voor de klant)
- * als in de beheeromgeving gebruikt.
+ * De claimbrief: het verzoek om de verbeurde dwangsom vast te stellen en uit te
+ * betalen, nadat de termijn is gaan lopen.
+ *
+ * Hier stond ooit ook een ingebrekestelling in. Die is weggehaald toen bleek
+ * dat er twee versies naast elkaar bestonden: deze, en de opgemaakte pagina in
+ * src/ingebrekestelling.js. Welke je kreeg, hing af van welke knop je toevallig
+ * aanklikte - en deze noemde het burgerservicenummer niet, het rekeningnummer
+ * niet, en zette "[Afdeling / postadres]" in plaats van een echt adres. Precies
+ * de gegevens die UWV in een melding eist. Eén brief, uit één bron.
  */
 
 import { toonDatum, parseDatum, vandaag } from './datum.js';
@@ -32,45 +38,6 @@ function zaakregel(invoer = {}) {
   const zt = zoekZaaktype(invoer.zaaktype);
   const onderwerp = zt ? `"${zt.label}"` : 'mijn aanvraag';
   return { onderwerp, zt };
-}
-
-/**
- * Ingebrekestelling op grond van art. 4:17 lid 3 Awb.
- */
-export function ingebrekestellingBrief({ invoer = {}, contact = {}, rapport = {}, datum } = {}) {
-  const briefdatum = parseDatum(datum) ?? vandaag();
-  const { onderwerp } = zaakregel(invoer);
-  const kenmerk = contact.kenmerk || invoer.kenmerk;
-  const eindeTermijn = rapport.beslistermijn ? parseDatum(rapport.beslistermijn.einddatum) : null;
-
-  return regels(
-    afzender(contact),
-    '',
-    geadresseerde(invoer),
-    '',
-    `Datum: ${toonDatum(briefdatum)}`,
-    kenmerk ? `Uw kenmerk: ${kenmerk}` : null,
-    'Betreft: ingebrekestelling wegens niet tijdig beslissen',
-    '',
-    'Geachte heer, mevrouw,',
-    '',
-    `Op ${toonDatum(parseDatum(invoer.basisdatum))} heb ik bij u een aanvraag ingediend voor ${onderwerp}.`,
-    eindeTermijn
-      ? `De wettelijke beslistermijn is verstreken op ${toonDatum(eindeTermijn)}. Tot op heden heb ik geen besluit ontvangen.`
-      : 'De wettelijke beslistermijn is inmiddels verstreken. Tot op heden heb ik geen besluit ontvangen.',
-    '',
-    'Met deze brief stel ik u formeel in gebreke wegens niet tijdig beslissen, zoals bedoeld in artikel 4:17, derde lid, van de Algemene wet bestuursrecht.',
-    '',
-    'Ik verzoek u binnen twee weken na ontvangst van deze brief alsnog een besluit te nemen en dat schriftelijk aan mij bekend te maken. Neemt u binnen die termijn geen besluit, dan bent u van rechtswege een dwangsom verschuldigd van maximaal € 1.442, berekend over ten hoogste 42 dagen (artikel 4:17, tweede lid, Awb). Ik behoud mij daarnaast het recht voor beroep in te stellen wegens niet tijdig beslissen (artikel 6:12 Awb).',
-    '',
-    'Ik verzoek u de ontvangst van deze ingebrekestelling schriftelijk te bevestigen.',
-    '',
-    'Met vriendelijke groet,',
-    '',
-    '',
-    contact.naam || '[Uw naam]',
-    contact.geboortedatum ? `Geboortedatum: ${contact.geboortedatum}` : null,
-  );
 }
 
 /**
@@ -118,5 +85,7 @@ export function claimBrief({ invoer = {}, contact = {}, rapport = {}, datum } = 
 
 export function briefBestandsnaam(soort, referentie) {
   const deel = referentie ? `-${referentie}` : '';
-  return soort === 'claim' ? `dwangsom-claim${deel}.txt` : `ingebrekestelling${deel}.txt`;
+  // De ingebrekestelling is een opgemaakte pagina om af te drukken; de claim is
+  // nog gewone tekst om in een e-mail te plakken.
+  return soort === 'claim' ? `dwangsom-claim${deel}.txt` : `ingebrekestelling${deel}.html`;
 }
