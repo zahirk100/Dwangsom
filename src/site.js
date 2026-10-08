@@ -46,4 +46,4 @@ export function siteNaam(env = process.env) {
  * mee. Een datum die blijft staan is niet erg; een datum die elke dag opschuift
  * terwijl er niets gebeurt, is een signaal dat je kwijtraakt.
  */
-export const INHOUD_GEWIJZIGD = '2026-10-08';
+export const INHOUD_GEWIJZIGD = '2026-10-09';

@@ -16,6 +16,7 @@ import { ALGEMEEN, CAMPAGNES, alleIngangen, ingangVoor, campagnePaden } from '..
 import { landingHtml, alleLandingspaginas } from '../src/landingpagina.js';
 import { BESTUURSORGANEN, zoekZaaktype } from '../public/shared/catalogus.js';
 import { siteBasis } from '../src/site.js';
+import { faqSchema } from '../src/seo.js';
 
 const SITE = siteBasis();
 
@@ -216,5 +217,82 @@ test('elke pagina heeft een plek waar de volgende stap verschijnt', () => {
     if (!html.includes('id="instantiekeuze"')) continue;
     assert.match(html, /id="keuzeactie"/,
       `"${ingang.slug || '/'}" heeft keuzeknoppen maar geen vak voor de volgende stap`);
+  }
+});
+
+// ------------------------------------------- elke zaakpagina een eigen kern --
+
+/*
+ * De aanleiding is een meting in Search Console: eenentwintig pagina's wel
+ * gevonden, niet opgenomen. /uwv-wia en /jeugdhulp bleken toen 499 van hun 531
+ * regels te delen - één pagina in twintig jasjes. Deze toetsen bewaken dat er
+ * per zaaksoort een eigen kern blijft staan.
+ */
+
+const ZAAKPAGINAS = alleIngangen().filter((i) => i.slug && i.zaak);
+
+function zinnenVan(ingang) {
+  return landingHtml(ingang, {})
+    .replace(/<script[\s\S]*?<\/script>/g, '')
+    .replace(/<style[\s\S]*?<\/style>/g, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.?!])\s+/)
+    .map((z) => z.trim())
+    .filter((z) => z.length > 25);
+}
+
+test('elke zaakpagina noemt zijn eigen termijn en zijn eigen voorbeeld', () => {
+  const voorbeelden = new Set();
+  for (const ingang of ZAAKPAGINAS) {
+    const html = landingHtml(ingang, {});
+    assert.match(html, /id="termijn"/, `/${ingang.slug} mist het blok met de beslistermijn`);
+
+    const kop = /<h2>Hoelang mag ([^<]+?) over ([^<]+?) doen\?<\/h2>/.exec(html);
+    assert.ok(kop, `/${ingang.slug} mist een kop over de termijn`);
+    assert.ok(!/\(/.test(kop[2]), `/${ingang.slug}: "${kop[2]}" leest niet als een zin`);
+
+    // Het rekenvoorbeeld hoort per zaaksoort te verschillen; staan er dertien
+    // keer dezelfde datums, dan hebben wij dertien keer dezelfde pagina.
+    const stappen = /Je dient de aanvraag in op <strong>([^<]+)<\/strong>[\s\S]*?staat er\s*<strong>([^<]+)<\/strong>/.exec(html);
+    assert.ok(stappen, `/${ingang.slug} mist het rekenvoorbeeld`);
+    voorbeelden.add(`${stappen[1]}|${stappen[2]}`);
+  }
+  assert.equal(voorbeelden.size, ZAAKPAGINAS.length,
+    'twee zaakpagina\'s tonen hetzelfde rekenvoorbeeld');
+});
+
+test('twee zaakpagina\'s delen niet bijna hun hele tekst', () => {
+  /*
+   * Niet nul: kop, voet en de uitleg over hoe het werkt horen gelijk te zijn.
+   * Wel een plafond, want daarboven is het voor een zoekmachine één pagina.
+   *
+   * Het was 94%. Het dichtst bij elkaar zitten nu /uwv-wia en /uwv-ww met 83%,
+   * en dat is eerlijk gezegd omdat die twee procedures het ook écht zijn:
+   * dezelfde instantie, dezelfde termijn van acht weken, dezelfde grondslag.
+   * Blijft Google die twee overslaan, dan is samenvoegen onder /uwv de
+   * volgende stap - niet nog meer tekst erbij verzinnen.
+   */
+  const grens = 0.85;
+  for (let i = 1; i < ZAAKPAGINAS.length; i += 1) {
+    const a = zinnenVan(ZAAKPAGINAS[i - 1]);
+    const b = new Set(zinnenVan(ZAAKPAGINAS[i]));
+    const gedeeld = a.filter((z) => b.has(z)).length / a.length;
+    assert.ok(gedeeld < grens,
+      `/${ZAAKPAGINAS[i - 1].slug} en /${ZAAKPAGINAS[i].slug} delen `
+      + `${Math.round(gedeeld * 100)}% van hun zinnen`);
+  }
+});
+
+test('de eigen vragen staan bovenaan en komen in het schema terecht', () => {
+  for (const ingang of ZAAKPAGINAS.slice(0, 4)) {
+    const html = landingHtml(ingang, {});
+    const vragen = [...html.matchAll(/<summary[^>]*>([^<]*)<\/summary>/g)].map((m) => m[1]);
+    assert.match(vragen[0], /^Wat is de beslistermijn voor /,
+      `/${ingang.slug}: de eigen vraag hoort bovenaan te staan`);
+    const schema = faqSchema(html, `https://x/${ingang.slug}`);
+    assert.ok(schema, `/${ingang.slug} mist een FAQ-schema`);
+    assert.ok(schema.mainEntity.length >= 5);
+    assert.match(schema.mainEntity[0].name, /beslistermijn/i);
   }
 });

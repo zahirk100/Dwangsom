@@ -66,26 +66,34 @@
   "mainEntity": [
     {
       "@type": "Question",
+      "name": "Wat is de beslistermijn voor een toeslagaanvraag?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Voor een toeslagaanvraag staat geen eigen termijn in de wet. Dan geldt de redelijke termijn van Awb art. 4:13 lid 2 (acht weken), dus 8 weken. Noemt de Belastingdienst in je ontvangstbevestiging zelf een datum, dan is dat de datum waaraan zij gehouden zijn."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "In mijn brief staat een andere datum dan 8 weken. Wat telt er dan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "De datum uit je brief. Noemt de Belastingdienst zelf een moment waarop je een beslissing kunt verwachten, dan is dat de termijn waaraan zij zich hebben verbonden. De 8 weken hierboven is de terugvaloptie voor als er geen datum genoemd is."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Wat levert het op als de Belastingdienst te laat is met een toeslagaanvraag?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Dat hangt af van hoelang het daarna nog duurt, niet van hoelang je al wacht. In het voorbeeld hierboven - aanvraag op 13 maart 2026, in gebreke gesteld op 18 mei 2026 - loopt de dwangsom vanaf 2 juni 2026 en staat er na 14 dagen € 322,00. Meer dan € 1.442,00 wordt het nooit."
+      }
+    },
+    {
+      "@type": "Question",
       "name": "Welke brief moet ik uploaden?",
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "De brief waarin de Belastingdienst zegt wanneer je een beslissing kunt verwachten. Meestal is dat de ontvangstbevestiging van je aanvraag of van je bezwaarschrift, uit je berichtenbox of per post. Weet je het niet zeker? Upload de brief die je hebt; wij kijken met je mee."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Moet ik zelf weten wat de beslistermijn is?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Nee. Dat is precies wat wij uitzoeken. Staat er een datum in je brief, dan telt die datum. Staat er geen datum in, dan bepalen wij de termijn aan de hand van het soort aanvraag."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Wat als ik te horen heb gekregen dat het langer duurt?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Dan geldt die nieuwe datum. Upload die brief ook, dan rekenen wij met de juiste termijn. Je hoeft zelf niet te beoordelen of zo'n brief juridisch een verlenging is; dat doen wij."
       }
     },
     {
@@ -98,34 +106,10 @@
     },
     {
       "@type": "Question",
-      "name": "Hoeveel kan het opleveren?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "De eerste veertien dagen is het € 23 per dag, de volgende veertien dagen € 35 per dag en de laatste veertien dagen € 45 per dag. Na 42 dagen stopt de teller op € 1.442. Dat staat in artikel 4:17 van de Algemene wet bestuursrecht."
-      }
-    },
-    {
-      "@type": "Question",
       "name": "Krijg ik het geld, of gaat het naar jullie?",
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "Het geld gaat naar jou. De instantie betaalt een toegekende dwangsom rechtstreeks op je eigen rekening. Daarom vragen wij je rekeningnummer: om het op de juiste rekening te laten uitbetalen, niet om het te ontvangen."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Wanneer kan er geen dwangsom ontstaan?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Onder meer als je geen belanghebbende bent, als je aanvraag kennelijk niet-ontvankelijk is, of als je onredelijk laat meldt dat de termijn voorbij is. Bij Woo-verzoeken en asielaanvragen geldt de regeling niet. In die gevallen kun je wel naar de rechtbank stappen omdat er niet tijdig is beslist."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Ik heb alleen een foto van mijn brief, kan dat ook?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Een pdf uit je berichtenbox werkt het beste, want daar staat de tekst leesbaar in. Lukt dat niet, dan kun je de tekst van je brief ook in het scherm plakken of overtypen. Bij een foto vragen wij je de belangrijkste gegevens zelf in te vullen."
       }
     },
     {
@@ -268,6 +252,44 @@
         <p class="hero__beelduitleg">Dit zie je nadat wij je brief hebben gelezen. Je hoeft zelf
           geen datum op te zoeken en geen wet te begrijpen.</p>
       </aside>
+    </div>
+  </section>
+
+
+  <!-- ============================================ de zaak zelf: wat hier anders is -->
+  <section class="blok" id="termijn">
+    <div class="omhulsel">
+      <div class="sectiekop">
+        <h2>Hoelang mag de Belastingdienst over een toeslagaanvraag doen?</h2>
+        <p>Dit is de termijn waar jouw zaak op staat of valt. Staat er een datum in je eigen
+           brief, dan telt die datum altijd vóór op de standaardtermijn hieronder.</p>
+      </div>
+
+      <div class="termijnkaart">
+        <p class="termijnkaart__getal">8 weken</p>
+        <p class="termijnkaart__onder">standaardtermijn voor een toeslagaanvraag</p>
+      </div>
+
+      <p>De termijn begint te lopen op de dag dat de Belastingdienst je aanvraag ontvangt.</p>
+      <p>Voor dit soort aanvragen staat geen eigen termijn in de wet. Dan geldt de redelijke
+       termijn, en die is in ieder geval acht weken: Awb art. 4:13 lid 2 (acht weken).</p>
+      <p class="let-op-regel">Voor toeslagen gelden soms eigen termijnen; de datum uit de brief gaat voor.</p>
+
+      <h3>Een voorbeeld met deze termijn</h3>
+      <p>Zo loopt het als de Belastingdienst niets van zich laat horen:</p>
+      
+      <ol class="voorbeeldlijst">
+        <li>Je dient de aanvraag in op <strong>13 maart 2026</strong>.</li>
+        <li>de Belastingdienst moet dan uiterlijk <strong>8 mei 2026</strong> beslissen.</li>
+        <li>Blijft het stil, dan stel je bijvoorbeeld op <strong>18 mei 2026</strong>
+            in gebreke. Daarna heeft de Belastingdienst nog 14 dagen.</li>
+        <li>Komt er dan nog niets, dan loopt de dwangsom vanaf
+            <strong>2 juni 2026</strong>.</li>
+        <li>Blijft het daarna 14 dagen stil, dan staat er
+            <strong>€ 322,00</strong>.</li>
+      </ol>
+      <p class="wetnoot-regel">De bedragen komen uit Awb art. 4:17 lid 2 en zijn voor
+         elke instantie gelijk; alleen de beslistermijn verschilt per soort aanvraag.</p>
     </div>
   </section>
 
@@ -436,89 +458,7 @@
     </div>
   </section>
 
-  <!-- ============================================ 5. dit doe jij / dit doen wij -->
-  <section class="blok" id="verdeling">
-    <div class="omhulsel">
-      <div class="sectiekop">
-        <h2>Jij doet &eacute;&eacute;n ding. Wij de rest.</h2>
-        <p>Een dwangsom ontstaat alleen als iemand de data bijhoudt. Vanaf je handtekening is dat
-           onze taak, niet de jouwe.</p>
-      </div>
-      <div class="verdeling">
-        <article class="kaart verdeling__kant verdeling__kant--jij">
-          <span class="verdeling__wie">Dit doe jij</span>
-          <ul>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Je brief uploaden</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Controleren of onze gegevens kloppen</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>&Eacute;&eacute;n keer tekenen</span></li>
-          </ul>
-          <p class="verdeling__tijd">Samen ongeveer twee minuten.</p>
-        </article>
-        <article class="kaart verdeling__kant verdeling__kant--wij">
-          <span class="verdeling__wie">Vanaf dat moment doen wij</span>
-          <ul>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De formele melding opstellen en versturen</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>Het verzendbewijs bewaren</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De vervolgtermijn bewaken</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De dwangsom berekenen en vorderen</span></li>
-            <li><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg><span>De beschikking opvolgen</span></li>
-          </ul>
-          <p class="verdeling__tijd">Jij hoeft de procedure niet bij te houden.</p>
-        </article>
-      </div>
-    </div>
-  </section>
 
-  <!-- ====================================================== 6. het dossier -->
-  <section class="blok blok--papier" id="dossier">
-    <div class="omhulsel">
-      <div class="sectiekop">
-        <h2>En je kunt op elk moment zien waar het staat</h2>
-        <p>Na je handtekening krijg je een eigen dossier. Geen mappen, geen telefoontjes: één
-           scherm dat zegt wat er is gebeurd en wat er nu loopt.</p>
-      </div>
-
-      <div class="dossierdemo">
-        <div class="dossierdemo__kop">
-          <div>
-            <span class="dossierdemo__ref">DWS-2026-0148</span>
-            <h3 data-dossierkop>Jouw zaak bij Belastingdienst</h3>
-          </div>
-          <span class="dossierdemo__staat">Melding verzonden</span>
-        </div>
-
-        <div class="dossierdemo__klok">
-          <strong>11 dagen</strong>
-          <span data-dossierklok>De Belastingdienst heeft nog tot 6 oktober om alsnog
-             te beslissen.</span>
-        </div>
-
-        <ul class="tijdlijn">
-          <li class="klaar"><span class="tijdlijn__titel">Je brief gecontroleerd</span>
-            <span class="tijdlijn__datum">22 september</span></li>
-          <li class="klaar"><span class="tijdlijn__titel">Machtiging ontvangen</span>
-            <span class="tijdlijn__datum">22 september</span></li>
-          <li class="klaar"><span class="tijdlijn__titel">Melding te late beslissing verzonden</span>
-            <span class="tijdlijn__datum">22 september</span></li>
-          <li class="bezig"><span class="tijdlijn__titel">Vervolgtermijn loopt</span>
-            <span class="tijdlijn__datum">tot 6 oktober</span></li>
-          <li><span class="tijdlijn__titel">Eventuele dwangsom bewaken</span>
-            <span class="tijdlijn__datum">daarna</span></li>
-        </ul>
-
-        <p class="dossierdemo__rust"><strong>Je hoeft nu niets te doen.</strong> Krijg je
-           ondertussen post? Dan upload je die in je dossier en pakken wij het op.</p>
-      </div>
-    </div>
-  </section>
 
   <!-- ================================================= 7. waar wacht je op -->
   <section class="blok" id="waarvoor">
@@ -562,32 +502,6 @@
     </div>
   </section>
 
-  <!-- ================================================== 8. waarom nubeslist -->
-  <section class="blok blok--papier" id="waarom">
-    <div class="omhulsel">
-      <div class="sectiekop">
-        <h2>Waarom mensen dit aan ons overlaten</h2>
-        <p>Je kunt zo'n melding ook zelf sturen. Dit is wat je dan zelf moet uitzoeken en
-           bijhouden, en wat wij overnemen.</p>
-      </div>
-      <div class="redenen">
-        <article class="kaart"><h3>Geen termijnen uitzoeken</h3>
-          <p>Wij halen de datum uit je brief en bepalen welke termijn voor jouw zaak geldt.</p></article>
-        <article class="kaart"><h3>Geen formulieren uitzoeken</h3>
-          <p>Wij stellen de juiste vervolgstap op en versturen hem namens jou.</p></article>
-        <article class="kaart"><h3>Geen deadlines bewaken</h3>
-          <p>Wij houden bij wanneer er opnieuw iets moet gebeuren, en doen dat dan ook.</p></article>
-        <article class="kaart"><h3>Geen voorschot</h3>
-          <p>De eerste controle is gratis en je betaalt niets vooraf.</p></article>
-        <article class="kaart"><h3>Jij houdt overzicht</h3>
-          <p>In je dossier zie je precies waar je zaak staat en wat de volgende stap is.</p></article>
-        <article class="kaart"><h3>Het geld gaat naar jou</h3>
-          <p>De instantie betaalt rechtstreeks op je eigen rekening, niet aan ons.</p></article>
-      </div>
-      <p class="redenen__slot">Jij levert &eacute;&eacute;n keer je informatie aan. Vanaf daar
-         houden wij de procedure bij.</p>
-    </div>
-  </section>
 
   <!-- ================================================= 8b. nog niet te laat -->
   <!--
@@ -651,47 +565,6 @@
     </div>
   </section>
 
-  <!-- ======================================================= 10. vertrouwen -->
-  <section class="blok blok--papier" id="vertrouwen">
-    <div class="omhulsel">
-      <div class="sectiekop">
-        <h2>Aan wie geef je dit mee?</h2>
-      </div>
-      <div class="vertrouwen">
-        <article class="kaart vertrouwen__wie">
-          <h3>Achter NuBeslist</h3>
-          <p>NuBeslist is een Nederlandse particuliere dienstverlener die mensen helpt wanneer
-             een beslissing van een overheidsinstantie te lang uitblijft. Wij maken een procedure
-             die normaal bestaat uit brieven, termijnen en opvolging eenvoudig en inzichtelijk.</p>
-          <dl class="vertrouwen__gegevens">
-            <div><dt>Naam</dt><dd>NuBeslist</dd></div>
-            <div><dt>Vestiging</dt><dd></dd></div>
-            <div><dt>KvK</dt><dd></dd></div>
-            <div><dt>E-mail</dt><dd></dd></div>
-          </dl>
-          <p class="fijndruk">Wij zijn geen overheidsinstantie en niet verbonden aan UWV, DUO,
-             de SVB of een gemeente.</p>
-        </article>
-        <div class="vertrouwen__punten">
-          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"
-        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg> Je gegevens</h3>
-            <p>Wij gebruiken je gegevens alleen om je zaak te beoordelen en de melding namens je te
-               doen. Wij verkopen niets door en delen niets met anderen dan de instantie waar je
-               zaak ligt.</p>
-            <p><a href="/privacy">Hoe wij met je gegevens omgaan</a></p></article>
-          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> De machtiging</h3>
-            <p>Je machtigt ons alleen voor deze ene procedure over de te late beslissing. Wij mogen
-               daarmee geen andere zaken van je behandelen.</p></article>
-          <article class="kaart"><h3><svg viewBox="0 0 20 20" aria-hidden="true" fill="none"
-        stroke="var(--groen-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5"/></svg> De uitbetaling</h3>
-            <p>Een toegekende dwangsom gaat rechtstreeks naar jouw rekening. Wij ontvangen jouw
-               vergoeding niet.</p></article>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <!-- ============================================================ 11. vragen -->
   <section class="blok" id="vragen">
@@ -703,23 +576,26 @@
       </div>
 
       <details class="vraag" open>
+        <summary>Wat is de beslistermijn voor een toeslagaanvraag?</summary>
+        <p>Voor een toeslagaanvraag staat geen eigen termijn in de wet. Dan geldt de redelijke termijn van Awb art. 4:13 lid 2 (acht weken), dus 8 weken. Noemt de Belastingdienst in je ontvangstbevestiging zelf een datum, dan is dat de datum waaraan zij gehouden zijn.</p>
+      </details>
+      <details class="vraag">
+        <summary>In mijn brief staat een andere datum dan 8 weken. Wat telt er dan?</summary>
+        <p>De datum uit je brief. Noemt de Belastingdienst zelf een moment waarop je een beslissing kunt verwachten, dan is dat de termijn waaraan zij zich hebben verbonden. De 8 weken hierboven is de terugvaloptie voor als er geen datum genoemd is.</p>
+      </details>
+      <details class="vraag">
+        <summary>Wat levert het op als de Belastingdienst te laat is met een toeslagaanvraag?</summary>
+        <p>Dat hangt af van hoelang het daarna nog duurt, niet van hoelang je al wacht. In het voorbeeld hierboven - aanvraag op 13 maart 2026, in gebreke gesteld op 18 mei 2026 - loopt de dwangsom vanaf 2 juni 2026 en staat er na 14 dagen € 322,00. Meer dan € 1.442,00 wordt het nooit.</p>
+      </details>
+      <details class="vraag">
         <summary data-vraag-brief>Welke brief moet ik uploaden?</summary>
         <p>De brief waarin <span data-instantie-zin>de Belastingdienst</span> zegt wanneer je een
            beslissing kunt verwachten. Meestal is dat de ontvangstbevestiging van je aanvraag of
            van je bezwaarschrift, uit je berichtenbox of per post. Weet je het niet zeker? Upload
            de brief die je hebt; wij kijken met je mee.</p>
       </details>
-      <details class="vraag">
-        <summary>Moet ik zelf weten wat de beslistermijn is?</summary>
-        <p>Nee. Dat is precies wat wij uitzoeken. Staat er een datum in je brief, dan telt die
-           datum. Staat er geen datum in, dan bepalen wij de termijn aan de hand van het soort
-           aanvraag.</p>
-      </details>
-      <details class="vraag">
-        <summary data-vraag-verlenging>Wat als ik te horen heb gekregen dat het langer duurt?</summary>
-        <p>Dan geldt die nieuwe datum. Upload die brief ook, dan rekenen wij met de juiste termijn.
-           Je hoeft zelf niet te beoordelen of zo'n brief juridisch een verlenging is; dat doen wij.</p>
-      </details>
+
+
       <details class="vraag">
         <summary>Wat is die melding die jullie versturen?</summary>
         <p>Dat is de ingebrekestelling: een brief waarin staat dat de beslistermijn voorbij is en
@@ -727,31 +603,15 @@
            instantie krijgt daarna twee weken om alsnog te beslissen, en pas na die twee weken kan
            de teller gaan lopen.</p>
       </details>
-      <details class="vraag">
-        <summary>Hoeveel kan het opleveren?</summary>
-        <p>De eerste veertien dagen is het &euro; 23 per dag, de volgende veertien dagen &euro; 35
-           per dag en de laatste veertien dagen &euro; 45 per dag. Na 42 dagen stopt de teller op
-           &euro; 1.442. Dat staat in artikel 4:17 van de Algemene wet bestuursrecht.</p>
-      </details>
+
       <details class="vraag">
         <summary data-vraag-uitbetaling>Krijg ik het geld, of gaat het naar jullie?</summary>
         <p>Het geld gaat naar jou. De instantie betaalt een toegekende dwangsom rechtstreeks op je
            eigen rekening. Daarom vragen wij je rekeningnummer: om het op de juiste rekening te
            laten uitbetalen, niet om het te ontvangen.</p>
       </details>
-      <details class="vraag">
-        <summary>Wanneer kan er geen dwangsom ontstaan?</summary>
-        <p>Onder meer als je geen belanghebbende bent, als je aanvraag kennelijk niet-ontvankelijk
-           is, of als je onredelijk laat meldt dat de termijn voorbij is. Bij Woo-verzoeken en
-           asielaanvragen geldt de regeling niet. In die gevallen kun je wel naar de rechtbank
-           stappen omdat er niet tijdig is beslist.</p>
-      </details>
-      <details class="vraag">
-        <summary>Ik heb alleen een foto van mijn brief, kan dat ook?</summary>
-        <p>Een pdf uit je berichtenbox werkt het beste, want daar staat de tekst leesbaar in.
-           Lukt dat niet, dan kun je de tekst van je brief ook in het scherm plakken of
-           overtypen. Bij een foto vragen wij je de belangrijkste gegevens zelf in te vullen.</p>
-      </details>
+
+
       <details class="vraag">
         <summary>Wat doen jullie met mijn gegevens?</summary>
         <p>Wij gebruiken je gegevens alleen om je zaak te beoordelen en de melding namens je te

@@ -27,6 +27,7 @@ import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
 import { KENNISLINKS } from './kennispagina.js';
 import { siteBasis } from './site.js';
+import { feitenSectie, zaakVragen } from './zaakfeiten.js';
 
 const SITE = siteBasis();
 
@@ -254,6 +255,7 @@ ${heroKeuze(ingang)}
     </div>
   </section>
 
+${feitenSectie(ingang)}
   <!-- ====================================================== 2. herken je dit -->
   <section class="blok blok--papier" id="herkenning">
     <div class="omhulsel">
@@ -418,6 +420,7 @@ ${heroKeuze(ingang)}
     </div>
   </section>
 
+${ingang.zaak ? '' : `
   <!-- ============================================ 5. dit doe jij / dit doen wij -->
   <section class="blok" id="verdeling">
     <div class="omhulsel">
@@ -450,7 +453,8 @@ ${heroKeuze(ingang)}
       </div>
     </div>
   </section>
-
+`}
+${ingang.zaak ? '' : `
   <!-- ====================================================== 6. het dossier -->
   <section class="blok blok--papier" id="dossier">
     <div class="omhulsel">
@@ -493,7 +497,7 @@ ${heroKeuze(ingang)}
       </div>
     </div>
   </section>
-
+`}
   <!-- ================================================= 7. waar wacht je op -->
   <section class="blok" id="waarvoor">
     <div class="omhulsel">
@@ -528,6 +532,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
     </div>
   </section>
 
+${ingang.zaak ? '' : `
   <!-- ================================================== 8. waarom nubeslist -->
   <section class="blok blok--papier" id="waarom">
     <div class="omhulsel">
@@ -554,7 +559,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
          houden wij de procedure bij.</p>
     </div>
   </section>
-
+`}
   <!-- ================================================= 8b. nog niet te laat -->
   <!--
     De bezoeker wiens termijn nog loopt is geen verloren bezoeker. Hij is een
@@ -611,6 +616,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
     </div>
   </section>
 
+${ingang.zaak ? '' : `
   <!-- ======================================================= 10. vertrouwen -->
   <section class="blok blok--papier" id="vertrouwen">
     <div class="omhulsel">
@@ -648,7 +654,7 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
       </div>
     </div>
   </section>
-
+`}
   <!-- ============================================================ 11. vragen -->
   <section class="blok" id="vragen">
     <div class="omhulsel">
@@ -658,24 +664,28 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
            aan vast.</p>
       </div>
 
-      <details class="vraag" open>
+${zaakVragen(ingang).map((v, i) => `      <details class="vraag"${i === 0 ? ' open' : ''}>
+        <summary>${veilig(v.vraag)}</summary>
+        <p>${veilig(v.antwoord)}</p>
+      </details>`).join('\n')}
+      <details class="vraag"${ingang.zaak ? '' : ' open'}>
         <summary data-vraag-brief>Welke brief moet ik uploaden?</summary>
         <p>De brief waarin <span data-instantie-zin>${veilig(naam)}</span> zegt wanneer je een
            beslissing kunt verwachten. Meestal is dat de ontvangstbevestiging van je aanvraag of
            van je bezwaarschrift, uit je berichtenbox of per post. Weet je het niet zeker? Upload
            de brief die je hebt; wij kijken met je mee.</p>
       </details>
-      <details class="vraag">
+${ingang.zaak ? '' : `      <details class="vraag">
         <summary>Moet ik zelf weten wat de beslistermijn is?</summary>
         <p>Nee. Dat is precies wat wij uitzoeken. Staat er een datum in je brief, dan telt die
            datum. Staat er geen datum in, dan bepalen wij de termijn aan de hand van het soort
            aanvraag.</p>
-      </details>
-      <details class="vraag">
+      </details>`}
+${ingang.zaak ? '' : `      <details class="vraag">
         <summary data-vraag-verlenging>Wat als ik te horen heb gekregen dat het langer duurt?</summary>
         <p>Dan geldt die nieuwe datum. Upload die brief ook, dan rekenen wij met de juiste termijn.
            Je hoeft zelf niet te beoordelen of zo'n brief juridisch een verlenging is; dat doen wij.</p>
-      </details>
+      </details>`}
       <details class="vraag">
         <summary>Wat is die melding die jullie versturen?</summary>
         <p>Dat is de ingebrekestelling: een brief waarin staat dat de beslistermijn voorbij is en
@@ -683,31 +693,31 @@ ${ingangenPer('gemeente').map(ingangLink).join('\n')}
            instantie krijgt daarna twee weken om alsnog te beslissen, en pas na die twee weken kan
            de teller gaan lopen.</p>
       </details>
-      <details class="vraag">
+${ingang.zaak ? '' : `      <details class="vraag">
         <summary>Hoeveel kan het opleveren?</summary>
         <p>De eerste veertien dagen is het &euro; 23 per dag, de volgende veertien dagen &euro; 35
            per dag en de laatste veertien dagen &euro; 45 per dag. Na 42 dagen stopt de teller op
            &euro; 1.442. Dat staat in artikel 4:17 van de Algemene wet bestuursrecht.</p>
-      </details>
+      </details>`}
       <details class="vraag">
         <summary data-vraag-uitbetaling>Krijg ik het geld, of gaat het naar jullie?</summary>
         <p>Het geld gaat naar jou. De instantie betaalt een toegekende dwangsom rechtstreeks op je
            eigen rekening. Daarom vragen wij je rekeningnummer: om het op de juiste rekening te
            laten uitbetalen, niet om het te ontvangen.</p>
       </details>
-      <details class="vraag">
+${ingang.zaak ? '' : `      <details class="vraag">
         <summary>Wanneer kan er geen dwangsom ontstaan?</summary>
         <p>Onder meer als je geen belanghebbende bent, als je aanvraag kennelijk niet-ontvankelijk
            is, of als je onredelijk laat meldt dat de termijn voorbij is. Bij Woo-verzoeken en
            asielaanvragen geldt de regeling niet. In die gevallen kun je wel naar de rechtbank
            stappen omdat er niet tijdig is beslist.</p>
-      </details>
-      <details class="vraag">
+      </details>`}
+${ingang.zaak ? '' : `      <details class="vraag">
         <summary>Ik heb alleen een foto van mijn brief, kan dat ook?</summary>
         <p>Een pdf uit je berichtenbox werkt het beste, want daar staat de tekst leesbaar in.
            Lukt dat niet, dan kun je de tekst van je brief ook in het scherm plakken of
            overtypen. Bij een foto vragen wij je de belangrijkste gegevens zelf in te vullen.</p>
-      </details>
+      </details>`}
       <details class="vraag">
         <summary>Wat doen jullie met mijn gegevens?</summary>
         <p>Wij gebruiken je gegevens alleen om je zaak te beoordelen en de melding namens je te

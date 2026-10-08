@@ -560,3 +560,34 @@ details.vraag p { margin: 12px 0 0; font-size: .94rem; color: var(--tekst-zacht)
   .keuzeactie__knop { width: auto; min-width: 280px; }
   .keuzeactie__fijn { text-align: left; }
 }
+
+/* ------------------------------------------------ de termijn van deze zaak --
+
+   Het blok dat per zaakpagina verschilt: de beslistermijn, waar die vandaan
+   komt, en een voorbeeld dat met precies die termijn is doorgerekend. Het staat
+   direct onder de hero, want wie zoekt op "hoelang mag UWV erover doen" komt
+   voor dat antwoord en niet voor de rest van de pagina. */
+
+.termijnkaart {
+  display: inline-block; padding: 16px 24px; margin: 0 0 20px;
+  border-radius: var(--radius); background: var(--blauw-50); border: 1px solid var(--blauw-100);
+}
+.termijnkaart__getal { margin: 0; font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.termijnkaart__onder { margin: 4px 0 0; font-size: .9rem; color: var(--tekst-zacht); }
+
+#termijn p { max-width: 72ch; }
+#termijn h3 { margin: 30px 0 8px; font-size: 1.05rem; }
+
+.voorbeeldlijst { margin: 10px 0 18px; padding-left: 22px; max-width: 72ch; }
+.voorbeeldlijst li { margin-bottom: 9px; }
+
+.let-op-regel {
+  padding: 12px 15px; border-radius: var(--radius-klein);
+  background: var(--oranje-50); border: 1px solid var(--oranje-100);
+}
+.wetnoot-regel { font-size: .86rem; color: var(--tekst-zacht); }
+
+@media (max-width: 640px) {
+  .termijnkaart { display: block; }
+  .termijnkaart__getal { font-size: 1.7rem; }
+}
