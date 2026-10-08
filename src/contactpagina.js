@@ -17,8 +17,9 @@ import { organisatiegegevens, whatsappLink, whatsappLeesbaar } from './organisat
 import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, kruimelSchema, metSchema } from './seo.js';
 import { KENNISLINKS } from './kennispagina.js';
+import { siteBasis } from './site.js';
 
-const SITE = 'https://nubeslist.nl';
+const SITE = siteBasis();
 
 export const CONTACT_PAD = '/contact';
 

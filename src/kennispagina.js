@@ -25,8 +25,9 @@ import { ZAAKTYPEN, BESTUURSORGANEN, labelBestuursorgaan } from '../public/share
 import { organisatiegegevens, whatsappLink, whatsappLeesbaar } from './organisatie.js';
 import { merklink, woordmerk, MERKNAAM } from './merk.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, metSchema } from './seo.js';
+import { siteBasis } from './site.js';
 
-const SITE = 'https://nubeslist.nl';
+const SITE = siteBasis();
 
 function veilig(tekst) {
   return String(tekst ?? '')
@@ -515,7 +516,9 @@ ${vraag('Is de dwangsom belast?', [
   return maak({
     pad: '/dwangsom-berekenen',
     kruimel: 'Dwangsom berekenen',
-    titel: `Dwangsom berekenen: van &euro; 23 per dag tot &euro; ${duizend(TARIEF.maxBedrag)}`,
+    // Geen &euro; hier: de titel gaat later nog door de ontsnapping heen en
+    // dan staat er letterlijk "&euro;" in het zoekresultaat.
+    titel: `Dwangsom berekenen: van € 23 per dag tot € ${duizend(TARIEF.maxBedrag)}`,
     omschrijving: 'Hoe de dwangsom bij niet tijdig beslissen wordt berekend: wanneer de teller '
       + `begint, de bedragen per dag en waarom hij na ${TARIEF.maxDagen} dagen stopt.`,
     h1: 'Hoe wordt de dwangsom berekend?',

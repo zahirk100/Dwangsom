@@ -20,6 +20,9 @@ import { fileURLToPath } from 'node:url';
 import { robotsTxt, sitemapXml, faqSchema, organisatieSchema, kruimelSchema, metSchema } from '../src/seo.js';
 import { alleLandingspaginas } from '../src/landingpagina.js';
 import { campagneHtml, CAMPAGNE_PAD } from '../src/campagnepagina.js';
+import { siteBasis } from '../src/site.js';
+
+const SITE = siteBasis();
 
 const WORTEL = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const lees = (naam) => fs.readFileSync(path.join(WORTEL, 'public', naam), 'utf8');
@@ -36,7 +39,7 @@ const paginas = alleLandingspaginas({ TARIEF_PERCENTAGE: '25' });
 
 test('robots.txt wijst naar de sitemap en houdt de afgeschermde delen buiten', () => {
   const r = robotsTxt();
-  assert.match(r, /Sitemap: https:\/\/nubeslist\.nl\/sitemap\.xml/);
+  assert.ok(r.includes(`Sitemap: ${SITE}/sitemap.xml`), 'robots.txt wijst niet naar de sitemap');
   for (const pad of ['/beheer', '/mijn', '/api/']) {
     assert.ok(r.includes(`Disallow: ${pad}`), `${pad} hoort uitgesloten te zijn`);
   }
@@ -57,7 +60,7 @@ test('de sitemap is geldige xml met absolute adressen', () => {
   assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>/);
   assert.match(xml, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
   for (const loc of [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])) {
-    assert.match(loc, /^https:\/\/nubeslist\.nl\//, `${loc} hoort absoluut te zijn`);
+    assert.ok(loc.startsWith(`${SITE}/`), `${loc} hoort absoluut te zijn en op ${SITE} te staan`);
   }
 });
 
@@ -65,7 +68,7 @@ test('de gebouwde sitemap bevat geen enkele noindex-pagina', () => {
   // Dit is de waarschuwing die iedereen in Search Console krijgt en niemand
   // kan verklaren: "ingediend en als noindex gemarkeerd".
   const xml = lees('sitemap.xml');
-  const paden = [...xml.matchAll(/<loc>https:\/\/nubeslist\.nl(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
+  const paden = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1].slice(SITE.length));
   for (const pad of paden) {
     const bestand = pad === '/' ? 'index.html' : `${pad.slice(1)}.html`;
     const html = lees(bestand);
@@ -78,7 +81,7 @@ test('de gebouwde sitemap bevat geen enkele noindex-pagina', () => {
 
 test('elke pagina in de sitemap bestaat ook echt', () => {
   const xml = lees('sitemap.xml');
-  const paden = [...xml.matchAll(/<loc>https:\/\/nubeslist\.nl(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
+  const paden = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1].slice(SITE.length));
   assert.ok(paden.length >= 20, `verwacht minstens twintig pagina's, kreeg ${paden.length}`);
   for (const pad of paden) {
     const bestand = pad === '/' ? 'index.html' : `${pad.slice(1)}.html`;
@@ -87,7 +90,7 @@ test('elke pagina in de sitemap bestaat ook echt', () => {
 });
 
 test('de advertentielanding staat in de sitemap', () => {
-  assert.ok(lees('sitemap.xml').includes(`<loc>https://nubeslist.nl${CAMPAGNE_PAD}</loc>`));
+  assert.ok(lees('sitemap.xml').includes(`<loc>${SITE}${CAMPAGNE_PAD}</loc>`));
 });
 
 // ---------------------------------------------------- gestructureerd: faq ---
@@ -133,7 +136,7 @@ test('elke pagina noemt dezelfde organisatie, en verzint geen beoordelingen', ()
   for (const { bestand, html } of paginas) {
     const org = schemas(html).find((s) => s['@type'] === 'Organization');
     assert.ok(org, `${bestand} mist het organisatieschema`);
-    assert.equal(org['@id'], 'https://nubeslist.nl/#organisatie');
+    assert.equal(org['@id'], `${SITE}/#organisatie`);
     assert.ok(!('aggregateRating' in org), 'verzonnen beoordelingen kosten je een handmatige maatregel');
     assert.ok(!('review' in org));
   }
@@ -168,9 +171,9 @@ test('een zaakpagina hangt in het kruimelpad onder zijn instantie', () => {
   assert.ok(kruimels, 'de WIA-pagina hoort een kruimelpad te hebben');
   const paden = kruimels.itemListElement.map((k) => k.item);
   assert.deepEqual(paden, [
-    'https://nubeslist.nl/',
-    'https://nubeslist.nl/uwv',
-    'https://nubeslist.nl/uwv-wia',
+    `${SITE}/`,
+    `${SITE}/uwv`,
+    `${SITE}/uwv-wia`,
   ]);
   kruimels.itemListElement.forEach((k, i) => assert.equal(k.position, i + 1));
 });
@@ -229,4 +232,57 @@ test('de taal staat vast op nederlands', () => {
   for (const { bestand, html } of paginas) {
     assert.match(html, /<html lang="nl"/, `${bestand} mist de taal`);
   }
+});
+
+// ------------------------------------------------------- één hostnaam ------
+
+test('de hele site noemt dezelfde hostnaam', async () => {
+  /*
+   * Hier ging het mis: de canonical, de sitemap en de og:url wezen naar
+   * nubeslist.nl terwijl de site op www.nubeslist.nl staat. Google haalt die
+   * canonical op, krijgt een omleiding, en meldt de pagina als "Pagina met
+   * omleiding" in plaats van hem te indexeren. Zes pagina's stonden er zo bij.
+   *
+   * Eén hostnaam dus, en die staat in src/site.js. Wijzigt hij, dan valt deze
+   * toets om bij elk bestand dat nog niet mee is.
+   */
+  const fs = await import('node:fs/promises');
+  const pad = await import('node:path');
+  const wortel = new URL('../public/', import.meta.url);
+  const bestanden = (await fs.readdir(wortel)).filter((naam) => naam.endsWith('.html'));
+  assert.ok(bestanden.length > 20, 'er horen meer pagina\'s te zijn');
+
+  const andereHost = /https:\/\/(?!www\.nubeslist\.nl\b)[a-z0-9.-]*nubeslist\.nl/gi;
+  for (const naam of bestanden) {
+    const html = await fs.readFile(pad.join(wortel.pathname, naam), 'utf8');
+    const mis = html.match(andereHost);
+    assert.ok(!mis, `${naam} noemt ${mis && mis[0]} in plaats van ${SITE}`);
+  }
+
+  for (const naam of ['sitemap.xml', 'robots.txt']) {
+    const inhoud = await fs.readFile(pad.join(wortel.pathname, naam), 'utf8');
+    assert.ok(!andereHost.test(inhoud), `${naam} noemt een andere hostnaam`);
+    assert.ok(inhoud.includes(SITE), `${naam} noemt ${SITE} niet`);
+  }
+});
+
+test('de sitemap noemt de datum waarop de inhoud wijzigde, niet die van de build', async () => {
+  /*
+   * Hier stond "vandaag", opnieuw bij elke deploy. Google ziet dan
+   * zevenentwintig pagina's die dagelijks wijzigen terwijl er niets verandert,
+   * en leert die datum te negeren. Nu komt hij uit een constante die wij
+   * bijzetten als de tekst echt verandert.
+   */
+  const { INHOUD_GEWIJZIGD } = await import('../src/site.js');
+  const xml = lees('sitemap.xml');
+  const datums = [...xml.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]);
+  assert.ok(datums.length > 20);
+  for (const d of datums) assert.equal(d, INHOUD_GEWIJZIGD);
+
+  // En de bron ervan is niet de klok.
+  const bron = await (await import('node:fs/promises'))
+    .readFile(new URL('../src/seo.js', import.meta.url), 'utf8');
+  const blok = /export function sitemapXml[\s\S]*?\n}/.exec(bron);
+  assert.ok(blok, 'sitemapXml hoort in seo.js te staan');
+  assert.ok(!/new Date\(\)/.test(blok[0]), 'de sitemap leest de datum van vandaag uit de klok');
 });

@@ -1,3 +1,4 @@
+import { siteBasis, INHOUD_GEWIJZIGD } from './site.js';
 /**
  * Wat een zoekmachine van deze site moet kunnen begrijpen.
  *
@@ -20,7 +21,7 @@
  * maatregel.
  */
 
-const SITE = 'https://nubeslist.nl';
+const SITE = siteBasis();
 
 /** Tekens die in json-ld niet mogen blijven staan. */
 function tekst(ruw) {
@@ -228,15 +229,18 @@ export function robotsTxt() {
  * naar noindex-pagina's wijst levert alleen waarschuwingen op in Search
  * Console.
  *
- * @param {Array<{pad: string, prioriteit?: number, frequentie?: string}>} paginas
- * @param {Date} [nu]
+ * De datum is wanneer de inhoud veranderde, niet wanneer de build liep. Een
+ * lastmod die bij elke deploy opschuift terwijl er niets wijzigt, leert Google
+ * om hem te negeren.
+ *
+ * @param {Array<{pad: string, prioriteit?: number, frequentie?: string, gewijzigd?: string}>} paginas
+ * @param {string} [standaardDatum]
  */
-export function sitemapXml(paginas, nu = new Date()) {
-  const datum = nu.toISOString().slice(0, 10);
-  const regels = paginas.map(({ pad, prioriteit = 0.7, frequentie = 'monthly' }) => [
+export function sitemapXml(paginas, standaardDatum = INHOUD_GEWIJZIGD) {
+  const regels = paginas.map(({ pad, prioriteit = 0.7, frequentie = 'monthly', gewijzigd }) => [
     '  <url>',
     `    <loc>${SITE}${pad === '/' ? '/' : pad}</loc>`,
-    `    <lastmod>${datum}</lastmod>`,
+    `    <lastmod>${gewijzigd || standaardDatum}</lastmod>`,
     `    <changefreq>${frequentie}</changefreq>`,
     `    <priority>${prioriteit.toFixed(1)}</priority>`,
     '  </url>',

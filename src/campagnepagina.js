@@ -46,8 +46,9 @@ import {
   BRIEFMERK, UPLOADBEELD, GRATIS, VRAGEN, kalender, prijsring,
 } from './campagnebeeld.js';
 import { organisatieSchema, siteSchema, faqSchema, kruimelSchema, dienstSchema, metSchema } from './seo.js';
+import { siteBasis } from './site.js';
 
-const SITE = 'https://nubeslist.nl';
+const SITE = siteBasis();
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 
 /** Het pad van deze pagina, zonder .html. */

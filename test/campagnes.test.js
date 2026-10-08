@@ -15,6 +15,9 @@ import { fileURLToPath } from 'node:url';
 import { ALGEMEEN, CAMPAGNES, alleIngangen, ingangVoor, campagnePaden } from '../public/shared/campagnes.js';
 import { landingHtml, alleLandingspaginas } from '../src/landingpagina.js';
 import { BESTUURSORGANEN, zoekZaaktype } from '../public/shared/catalogus.js';
+import { siteBasis } from '../src/site.js';
+
+const SITE = siteBasis();
 
 const WORTEL = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PUBLIEK = path.join(WORTEL, 'public');
@@ -95,7 +98,7 @@ test('een campagnepagina noemt zijn eigen instantie en niet "de instantie"', () 
 test('elke pagina heeft zijn eigen canonieke url en og-tags', () => {
   for (const ingang of alleIngangen()) {
     const html = landingHtml(ingang);
-    const url = ingang.slug ? `https://nubeslist.nl/${ingang.slug}` : 'https://nubeslist.nl/';
+    const url = ingang.slug ? `${SITE}/${ingang.slug}` : `${SITE}/`;
     assert.match(html, new RegExp(`<link rel="canonical" href="${url}">`), `${ingang.slug || '/'} mist canonical`);
     assert.match(html, new RegExp(`<meta property="og:url" content="${url}">`), `${ingang.slug || '/'} mist og:url`);
     assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);

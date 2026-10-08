@@ -8,6 +8,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { siteBasis } from '../src/site.js';
+
+const SITE = siteBasis();
 
 const tijdelijk = await fs.mkdtemp(path.join(os.tmpdir(), 'nubeslist-merk-'));
 process.env.DATA_DIR = tijdelijk;
@@ -56,7 +59,10 @@ test('elke pagina heeft een eigen titel, omschrijving en canonieke url', async (
     const omschrijving = /<meta name="description" content="([^"]+)">/.exec(html);
     assert.ok(omschrijving, `${pad} heeft geen omschrijving`);
     assert.ok(omschrijving[1].length >= 70, `${pad}: omschrijving is te kort`);
-    assert.match(html, /<link rel="canonical" href="https:\/\/nubeslist\.nl/, `${pad} mist een canonieke url`);
+    // De canonical hoort op dezelfde host te staan als de rest van de site;
+    // wijst hij ergens anders heen, dan crawlt Google een omleiding.
+    assert.ok(html.includes(`<link rel="canonical" href="${SITE}${pad === '/' ? '/' : pad}">`),
+      `${pad} mist een canonieke url op ${SITE}`);
   }
 });
 

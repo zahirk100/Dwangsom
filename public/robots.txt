@@ -12,4 +12,4 @@ Disallow: /diagnose
 Disallow: /aanmelden
 Disallow: /api/
 
-Sitemap: https://nubeslist.nl/sitemap.xml
+Sitemap: https://www.nubeslist.nl/sitemap.xml

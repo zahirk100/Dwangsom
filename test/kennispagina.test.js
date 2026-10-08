@@ -21,6 +21,9 @@ import assert from 'node:assert/strict';
 import { kennispaginas, KENNISLINKS } from '../src/kennispagina.js';
 import { TARIEF } from '../public/shared/dwangsom.js';
 import { ZAAKTYPEN, BESTUURSORGANEN } from '../public/shared/catalogus.js';
+import { siteBasis } from '../src/site.js';
+
+const SITE = siteBasis();
 
 const paginas = kennispaginas({ TARIEF_PERCENTAGE: '25' });
 const vind = (pad) => paginas.find((p) => p.pad === pad).html;
@@ -136,7 +139,7 @@ test('elke pagina heeft één h1, een eigen titel, omschrijving en canonical', (
       `${bestand}: omschrijving is ${omschrijving.length} tekens`);
     assert.ok(!gezien.has(titel), `dubbele titel: ${titel}`);
     gezien.add(titel);
-    assert.ok(html.includes(`<link rel="canonical" href="https://nubeslist.nl${pad}">`),
+    assert.ok(html.includes(`<link rel="canonical" href="${SITE}${pad}">`),
       `${bestand}: canonical klopt niet`);
   }
 });
@@ -190,6 +193,6 @@ test('elke kennispagina is als pad bereikbaar en staat in de sitemap', async () 
   const sitemap = fs.readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
   for (const { pad, bestand } of paginas) {
     assert.equal(PAGINAS[pad], bestand, `${pad} is niet bereikbaar`);
-    assert.ok(sitemap.includes(`<loc>https://nubeslist.nl${pad}</loc>`), `${pad} mist in de sitemap`);
+    assert.ok(sitemap.includes(`<loc>${SITE}${pad}</loc>`), `${pad} mist in de sitemap`);
   }
 });

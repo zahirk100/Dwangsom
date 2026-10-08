@@ -21,6 +21,9 @@ import assert from 'node:assert/strict';
 import { campagneHtml, CAMPAGNE_PAD } from '../src/campagnepagina.js';
 import { STANDAARD_PERCENTAGE } from '../public/shared/tarief.js';
 import { TARIEF } from '../public/shared/dwangsom.js';
+import { siteBasis } from '../src/site.js';
+
+const SITE = siteBasis();
 
 const html = (env = {}) => campagneHtml(env);
 
@@ -207,7 +210,7 @@ test('titel, omschrijving en canonical staan in de bron', () => {
   const h = html();
   assert.match(h, /<title>[^<]{30,}<\/title>/);
   assert.match(h, /<meta name="description" content="[^"]{80,}"/);
-  assert.match(h, new RegExp(`<link rel="canonical" href="https://nubeslist\\.nl${CAMPAGNE_PAD}">`));
+  assert.ok(h.includes(`<link rel="canonical" href="${SITE}${CAMPAGNE_PAD}">`));
   assert.match(h, /og:image/);
 });
 
