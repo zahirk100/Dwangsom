@@ -28,7 +28,9 @@ import {
   serveerBestand, stuurFout, stuurHtml, stuurJson, stuurLeeg, stuurTekst,
 } from './src/http-util.js';
 import { machtigingContext, machtigingHtml } from './src/machtiging.js';
-import { ingebrekestellingHtml, kanIngebrekestelling } from './src/ingebrekestelling.js';
+import {
+  ingebrekestellingPdf, ingebrekestellingBestandsnaam, kanIngebrekestelling,
+} from './src/ingebrekestelling.js';
 import { organisatiegegevens, ontbrekendeOrganisatiegegevens } from './src/organisatie.js';
 import { valideerAanvraag, valideerBijwerking } from './src/validatie.js';
 import { berekenDwangsom, DOSSIERSOORT } from './public/shared/dwangsom.js';
@@ -1537,7 +1539,16 @@ async function beheerApi(req, res, url) {
      * verkeerde datum in deze brief kost de aanvrager zijn hele vordering.
      */
     if (subpad === '/ingebrekestelling' && req.method === 'GET') {
-      return stuurHtml(res, 200, ingebrekestellingHtml(aanvraag, organisatiegegevens()));
+      const pdf = ingebrekestellingPdf(aanvraag, organisatiegegevens());
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Length': pdf.length,
+        // inline: hij opent in het scherm in plaats van in de map Downloads.
+        'Content-Disposition':
+          `inline; filename="${ingebrekestellingBestandsnaam(aanvraag.referentie)}"`,
+        'Cache-Control': 'no-store',
+      });
+      return res.end(pdf);
     }
 
     /**
@@ -1664,11 +1675,21 @@ async function beheerApi(req, res, url) {
      */
     if (subpad === '/brief' && req.method === 'GET') {
       const soort = url.searchParams.get('soort') === 'claim' ? 'claim' : 'ingebrekestelling';
-      const inhoud = soort === 'claim'
-        ? claimBrief({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport })
-        : ingebrekestellingHtml(aanvraag, organisatiegegevens());
-      return stuurTekst(res, 200, inhoud, {
-        'Content-Type': soort === 'claim' ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8',
+      if (soort === 'ingebrekestelling') {
+        const pdf = ingebrekestellingPdf(aanvraag, organisatiegegevens());
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Length': pdf.length,
+          'Content-Disposition':
+            `attachment; filename="${ingebrekestellingBestandsnaam(aanvraag.referentie)}"`,
+          'Cache-Control': 'no-store',
+        });
+        return res.end(pdf);
+      }
+      const tekst = claimBrief({
+        invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport,
+      });
+      return stuurTekst(res, 200, tekst, {
         'Content-Disposition': `attachment; filename="${briefBestandsnaam(soort, aanvraag.referentie)}"`,
       });
     }
@@ -1680,14 +1701,19 @@ async function beheerApi(req, res, url) {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
       const soort = body.soort === 'claim' ? 'claim' : 'ingebrekestelling';
-      const inhoud = soort === 'claim'
-        ? claimBrief({ invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport })
-        : ingebrekestellingHtml(aanvraag, organisatiegegevens());
+      const claim = soort === 'claim';
+      const inhoud = claim
+        ? Buffer.from(claimBrief({
+          invoer: aanvraag.invoer, contact: aanvraag.contact, rapport: aanvraag.rapport,
+        }), 'utf8')
+        : ingebrekestellingPdf(aanvraag, organisatiegegevens());
       const bijgewerkt = await store.voegBestandToe(aanvraag.id, {
         stukId: 'correspondentie',
-        bestandsnaam: briefBestandsnaam(soort, aanvraag.referentie),
-        mediaType: soort === 'claim' ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8',
-        data: Buffer.from(inhoud, 'utf8').toString('base64'),
+        bestandsnaam: claim
+          ? briefBestandsnaam(soort, aanvraag.referentie)
+          : ingebrekestellingBestandsnaam(aanvraag.referentie),
+        mediaType: claim ? 'text/plain; charset=utf-8' : 'application/pdf',
+        data: inhoud.toString('base64'),
         door: ik.naam || ik.email,
         toelichting: soort === 'claim' ? 'Dwangsomclaim, door ons opgesteld' : 'Ingebrekestelling, door ons opgesteld',
       });

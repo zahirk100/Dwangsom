@@ -68,7 +68,7 @@ function veilig(tekst) {
  * doen" is geen Nederlands. Daarom hier een korte omschrijving per soort, met
  * lidwoord, zoals je het zou zeggen.
  */
-const ONDERWERP = {
+export const ONDERWERP = {
   'uwv-wia': 'een WIA-aanvraag',
   'uwv-wajong': 'een Wajong-aanvraag',
   'uwv-ww': 'een WW-aanvraag',
@@ -288,4 +288,12 @@ export function zaakVragen(ingang = {}) {
   }
 
   return vragen;
+}
+
+/** De omschrijving van een zaaksoort zoals je hem in een zin zou zeggen. */
+export function onderwerpVan(zaaktypeId, terugval = 'mijn aanvraag') {
+  if (ONDERWERP[zaaktypeId]) return ONDERWERP[zaaktypeId];
+  const soort = zoekZaaktype(zaaktypeId);
+  if (!soort) return terugval;
+  return `een ${soort.label.toLowerCase().replace(/\s*\([^)]*\)/g, '')}`;
 }

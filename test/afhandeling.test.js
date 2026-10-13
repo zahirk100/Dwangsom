@@ -92,6 +92,29 @@ const bijwerken = (id, body) => api(`${id}/bijwerken`, {
   method: 'POST', body: JSON.stringify(body),
 });
 
+
+/**
+ * De tekst uit een pdf halen.
+ *
+ * Onze pdf's zijn niet gecomprimeerd en zetten elke regel als een losse string
+ * in de tekenstroom. Dat is genoeg om te controleren wat er in de brief staat,
+ * en het controleert het échte bestand - niet een tussenvorm die de behandelaar
+ * nooit onder ogen krijgt.
+ */
+function pdfTekst(buffer) {
+  const ruw = Buffer.from(buffer).toString('latin1');
+  const stukken = [...ruw.matchAll(/\(((?:\\.|[^\\()])*)\)\s*Tj/g)].map((m) => m[1]
+    .replace(/\\(\d{3})/g, (_, octaal) => String.fromCharCode(parseInt(octaal, 8)))
+    .replace(/\\([()\\])/g, '$1'));
+  return Buffer.from(stukken.join(' '), 'latin1').toString('latin1').replace(/\s+/g, ' ');
+}
+
+const briefVan = async (id, pad = '/ingebrekestelling') => {
+  const antwoord = await api(`${id}${pad}`);
+  const buffer = Buffer.from(await antwoord.arrayBuffer());
+  return { antwoord, buffer, tekst: pdfTekst(buffer) };
+};
+
 /** Het dossier zoals het nu in de opslag staat. */
 async function uitOpslag(id) {
   const alle = await opslag.haalAlle();
@@ -248,18 +271,48 @@ test('de brief is alleen voor ingelogde medewerkers', async () => {
   assert.equal(zonder.status, 401);
 });
 
-test('de ingebrekestelling staat op papier met de datums uit het dossier', async () => {
+test('de brief opent als pdf, kant-en-klaar', async () => {
+  /*
+   * Een pdf en geen webpagina: een browser zet bij het afdrukken zijn eigen
+   * kop- en voetregels erbij, met de datum en het webadres erin, en dat hoort
+   * niet op een brief die namens iemand anders de deur uit gaat.
+   */
   const dossier = await dossierKlaarGedeeld();
-  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
-  assert.match(html, /Ingebrekestelling wegens niet tijdig beslissen/);
-  assert.ok(html.includes(dossier.referentie));
-  assert.match(html, /1 juni 2026/, 'de beslisdatum uit de brief hoort erin te staan');
-  assert.match(html, /K\. Bakker/);
-  assert.match(html, /Molenweg 88/);
-  assert.match(html, /111222333/, 'UWV zoekt de zaak op met dit nummer');
-  assert.match(html, /artikel 4:17/);
-  assert.ok(!/Nog niet compleet/.test(html), 'dit dossier is compleet');
-  assert.ok(!/nog te vroeg/i.test(html), 'deze termijn is verstreken');
+  const { antwoord, buffer, tekst } = await briefVan(dossier.id);
+
+  assert.equal(antwoord.status, 200);
+  assert.match(antwoord.headers.get('content-type') || '', /application\/pdf/);
+  assert.match(antwoord.headers.get('content-disposition') || '', /^inline/,
+    'de brief hoort te openen, niet in de map Downloads te belanden');
+  assert.equal(buffer.slice(0, 5).toString(), '%PDF-');
+
+  assert.match(tekst, /Ingebrekestelling wegens niet tijdig beslissen/);
+  assert.match(tekst, /1 juni 2026/, 'de beslisdatum hoort erin te staan');
+  assert.match(tekst, /K\. Bakker/);
+  assert.match(tekst, /Molenweg 88/);
+  assert.match(tekst, /111222333/, 'UWV zoekt de zaak op met dit nummer');
+  assert.match(tekst, /artikel 4:17/);
+});
+
+test('de brief is van de aanvrager en noemt ons nergens', async () => {
+  /*
+   * Dit is een keuze met gevolgen. Zou de brief namens ons ondertekend worden,
+   * dan moet er een machtiging mee en krijgt de instantie te zien wat wij met
+   * de aanvrager hebben afgesproken. Nu is het een brief van hemzelf, die wij
+   * alleen afdrukken en op de post doen.
+   */
+  const dossier = await dossierKlaarGedeeld();
+  const { tekst } = await briefVan(dossier.id);
+
+  assert.ok(!/NuBeslist/i.test(tekst), 'onze naam staat in de brief');
+  assert.ok(!/machtiging/i.test(tekst), 'er wordt naar een machtiging verwezen');
+  assert.ok(!/namens/i.test(tekst), 'de brief zegt dat hij namens iemand wordt verstuurd');
+  assert.ok(!/gemachtigde/i.test(tekst));
+
+  // Wat er wél onder staat: de naam van de aanvrager, getypt. Niets om met de
+  // hand te zetten voordat de envelop dichtkan.
+  assert.match(tekst, /Met vriendelijke groet, K\. Bakker/);
+  assert.match(tekst, /Enschede, \d{1,2} \w+ 20\d\d/, 'plaats en datum van de aanvrager');
 });
 
 test('de brief noemt de bedragen uit de wet en verzint er geen', async () => {
@@ -279,16 +332,22 @@ test('de brief noemt de bedragen uit de wet en verzint er geen', async () => {
   assert.match(html, new RegExp(`${TARIEF.maxDagen} dagen`));
 });
 
-test('een brief met een gat erin zegt welk gegeven ontbreekt', async () => {
-  // Liever een invulregel en een waarschuwing dan een gegokt nummer: een
-  // verkeerd burgerservicenummer in deze brief maakt hem waardeloos.
+test('een brief met een gat erin verzint niets, en gaat niet de deur uit', async () => {
+  // Liever een zichtbare invulregel dan een gegokt nummer: een verkeerd
+  // burgerservicenummer in deze brief maakt hem waardeloos. En hij kan niet
+  // als verstuurd worden vastgelegd zolang het gat er zit.
   const dossier = await nieuwDossier();
   const data = await (await lees(dossier.id)).json();
   await bijwerken(dossier.id, { invoer: data.voorstel });
-  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
-  assert.match(html, /Nog niet compleet/);
-  assert.match(html, /Adres/);
-  assert.match(html, /\.{20,}/, 'een ontbrekend gegeven hoort een invulregel te zijn');
+
+  const { tekst } = await briefVan(dossier.id);
+  assert.match(tekst, /\.{20,}/, 'een ontbrekend gegeven hoort een invulregel te zijn');
+
+  const geweigerd = await api(`${dossier.id}/ingebrekestelling`, {
+    method: 'POST', body: JSON.stringify({ datum: '2026-09-20' }),
+  });
+  assert.equal(geweigerd.status, 422);
+  assert.ok((await geweigerd.json()).ontbreekt.includes('Adres'));
 });
 
 test('zonder verzenddatum wordt er niets vastgelegd', async () => {
@@ -402,8 +461,7 @@ test('de brief die wij zelf opstellen blijft werken', async () => {
  */
 test('de ingebrekestelling bevat alles wat UWV in een melding per brief eist', async () => {
   const dossier = await dossierKlaarGedeeld();
-  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
-  const kaal = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  const kaal = (await briefVan(dossier.id)).tekst;
 
   const eisen = [
     ['de datum', /\d{1,2} (januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december) 20\d\d/],
@@ -412,7 +470,7 @@ test('de ingebrekestelling bevat alles wat UWV in een melding per brief eist', a
     ['de postcode en woonplaats', /7511 AB\s+Enschede/],
     ['het burgerservicenummer', /111222333/],
     ['het telefoonnummer', /06 12345678/],
-    ['om welke aanvraag het gaat', /WW-uitkering aanvragen/],
+    ['om welke aanvraag het gaat', /WW-aanvraag/],
     ['de datum van de aanvraag', /7 april 2026/],
     ['het rekeningnummer', /NL91 ?ABNA ?0417 ?1643 ?00/],
   ];
@@ -441,9 +499,9 @@ test('een brief zonder telefoonnummer of rekeningnummer heet onvolledig', async 
   assert.equal(antwoord.status, 422);
   assert.ok((await antwoord.json()).ontbreekt.includes('Telefoonnummer'));
 
-  const html = await (await api(`${dossier.id}/ingebrekestelling`)).text();
-  assert.match(html, /Nog niet compleet/);
-  assert.match(html, /Telefoonnummer/);
+  // In de brief staat op die plek een invulregel, geen verzonnen nummer.
+  const { tekst } = await briefVan(dossier.id);
+  assert.match(tekst, /Telefoonnummer \.{20,}/);
 });
 
 test('voor een andere instantie verzinnen wij geen postbus', async () => {
@@ -466,14 +524,14 @@ test('er is maar één ingebrekestelling, waar je hem ook vandaan haalt', async 
    * waarop UWV een melding beoordeelt.
    */
   const dossier = await dossierKlaarGedeeld();
-  const stap3 = await (await api(`${dossier.id}/ingebrekestelling`)).text();
+  const stap3 = (await briefVan(dossier.id)).tekst;
   const download = await api(`${dossier.id}/brief?soort=ingebrekestelling`);
-  const gedownload = await download.text();
+  const gedownload = Buffer.from(await download.arrayBuffer());
 
   assert.equal(download.status, 200);
-  assert.match(download.headers.get('content-type') || '', /text\/html/);
-  assert.equal(gedownload, stap3, 'de downloadknop geeft een andere brief dan stap 3');
-  assert.ok(!/\[Afdeling/.test(gedownload));
+  assert.match(download.headers.get('content-type') || '', /application\/pdf/);
+  assert.equal(pdfTekst(gedownload), stap3, 'de downloadknop geeft een andere brief dan stap 3');
+  assert.ok(!/\[Afdeling/.test(stap3));
 
   // En wat er in het dossier bewaard wordt, is diezelfde brief.
   const bewaard = await api(`${dossier.id}/brief`, {
@@ -482,8 +540,8 @@ test('er is maar één ingebrekestelling, waar je hem ook vandaan haalt', async 
   assert.equal(bewaard.status, 200);
   const na = await uitOpslag(dossier.id);
   const stuk = na.bestanden.find((b) => b.stukId === 'correspondentie');
-  assert.match(stuk.bestandsnaam, /\.html$/);
-  assert.match(stuk.mediaType, /text\/html/);
+  assert.match(stuk.bestandsnaam, /\.pdf$/);
+  assert.equal(stuk.mediaType, 'application/pdf');
 });
 
 test('de claimbrief blijft gewone tekst', async () => {

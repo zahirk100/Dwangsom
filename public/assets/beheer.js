@@ -1174,6 +1174,28 @@ function gelezenBrief(a, data) {
  * voor staat, bij honderd niet, en dan blijven ze liggen op de stap die niemand
  * ziet.
  */
+/**
+ * Wat de ingebrekestelling nog mist.
+ *
+ * Dezelfde lijst die de server hanteert voordat hij een brief als verstuurd
+ * vastlegt. Hier staat hij zodat een behandelaar het ziet vóórdat hij de brief
+ * opent, in plaats van erna.
+ */
+function ontbrekendVoorBrief(a) {
+  const c = a.contact || {};
+  const mist = [];
+  if (!String(c.naam || '').trim()) mist.push('naam');
+  if (!parseDatum(c.geboortedatum)) mist.push('geboortedatum');
+  if (!String(c.adres || '').trim()) mist.push('adres');
+  if (!String(c.postcode || '').trim() && !String(c.woonplaats || '').trim()) {
+    mist.push('postcode en woonplaats');
+  }
+  if (!String(c.telefoon || '').trim()) mist.push('telefoonnummer');
+  if (!String(c.iban || '').trim()) mist.push('rekeningnummer');
+  if (!String(c.bsn || '').trim()) mist.push('burgerservicenummer');
+  return mist;
+}
+
 function volgendeStapBlok(a) {
   const invoer = a.invoer || {};
   const rapport = a.rapport || null;
@@ -1219,7 +1241,21 @@ function volgendeStapBlok(a) {
       class: 'knop knop--primair knop--klein',
       href: `/api/beheer/aanvragen/${a.id}/ingebrekestelling`,
       target: '_blank', rel: 'noopener',
-    }, 'Brief maken en bekijken');
+    }, '\u2193 Brief openen (pdf)');
+
+    /*
+     * Wat er nog ontbreekt, hoort hier te staan en niet in de brief zelf. In de
+     * brief zou het meegaan naar de instantie; hier is het een opdracht aan de
+     * behandelaar. Op de plek van een ontbrekend gegeven staat in de pdf een
+     * invulregel, nooit een gegokte waarde.
+     */
+    const mist = ontbrekendVoorBrief(a);
+    if (mist.length) {
+      houder.append(el('div', { class: 'melding melding--let-op', style: 'margin-top:10px' },
+        el('strong', { tekst: 'De brief is nog niet compleet' }),
+        el('p', { tekst: `Dit ontbreekt: ${mist.join(', ')}. Vul het aan onder Aanvrager, `
+          + 'dan staat het meteen in de brief.' })));
+    }
 
     const vastleggen = async (datum, tochDoorgaan = false) => {
       const data = await api(`/api/beheer/aanvragen/${a.id}/ingebrekestelling`, {
