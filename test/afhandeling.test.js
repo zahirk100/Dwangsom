@@ -681,3 +681,41 @@ test('een peildatum kan een dossier niet op een oude dag vastzetten', async () =
   assert.equal(data.aanvraag.rapport.uitkomst, 'ingebrekestelling-nodig',
     'het dossier rekent met een oude dag in plaats van met vandaag');
 });
+
+test('de knop Verstuurd op meldt het ook aan de aanvrager', async () => {
+  /*
+   * Dit liep uiteen: wie de status met de hand omzette in de lijst, stuurde de
+   * aanvrager een bericht; wie de knop "Verstuurd op" gebruikte - de bedoelde
+   * weg - niet. Dan hangt het ervan af welke weg een behandelaar toevallig
+   * neemt of iemand hoort dat zijn zaak is gemeld.
+   */
+  const bron = await fs.readFile(new URL('../server.js', import.meta.url), 'utf8');
+  const blok = /if \(subpad === '\/ingebrekestelling' && req\.method === 'POST'\)[\s\S]*?\n    \}/
+    .exec(bron);
+  assert.ok(blok, 'de route hoort in server.js te staan');
+  assert.match(blok[0], /meldAanKlant\(/,
+    'het vastleggen van de verzending meldt niets aan de aanvrager');
+});
+
+test('het bericht over de verstuurde melding gaat maar één keer', async () => {
+  // Zet een behandelaar de status nog eens om, dan hoort de aanvrager niet
+  // twee keer hetzelfde te horen.
+  const { bepaalBerichten, MOMENT } = await import('../src/bewaker.js');
+  const dossier = {
+    gebruikerId: 'g-1',
+    referentie: 'DWS-2026-0001',
+    contact: { naam: 'K. Bakker', email: 'k@voorbeeld.nl' },
+    invoer: { bestuursorgaan: 'uwv' },
+    rapport: { uitkomst: 'hersteltermijn-loopt' },
+    status: 'ingebrekestelling-verstuurd',
+    stukken: {},
+    berichten: {},
+    aangemaaktOp: new Date().toISOString(),
+  };
+  const eerste = bepaalBerichten(dossier);
+  assert.ok(eerste.some((b) => b.sleutel === MOMENT.MELDING_VERSTUURD));
+
+  const na = { ...dossier, berichten: { [MOMENT.MELDING_VERSTUURD]: { verstuurdOp: new Date().toISOString() } } };
+  assert.ok(!bepaalBerichten(na).some((b) => b.sleutel === MOMENT.MELDING_VERSTUURD),
+    'hetzelfde bericht gaat een tweede keer de deur uit');
+});

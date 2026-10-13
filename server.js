@@ -1587,6 +1587,14 @@ async function beheerApi(req, res, url) {
         door: ik.naam || ik.email,
         toelichting: `Ingebrekestelling verstuurd op ${datum}.`,
       });
+      /*
+       * De aanvrager hoort dit meteen te weten en niet pas bij de ronde van
+       * morgenochtend. Dit ging mis omdat de statuslijst het wél deed en deze
+       * knop niet, terwijl dit juist de knop is die een behandelaar gebruikt -
+       * wie de status met de hand omzette kreeg dus een ander resultaat dan wie
+       * de bedoelde weg nam.
+       */
+      meldAanKlant(bijgewerkt, req);
       return stuurJson(res, 200, {
         aanvraag: zonderBestandsinhoud(bijgewerkt),
         eisen: bepaalDossiereisen(bijgewerkt),
