@@ -1012,7 +1012,10 @@ function stuurBestandInhoud(res, bestand) {
  * de historie, het burgerservicenummer en de behandelaarsvelden komen er zo
  * nooit in terecht, ook niet als er later een veld bijkomt.
  */
-function voorKlant(a) {
+function voorKlant(ruw) {
+  // Ook de aanvrager hoort de stand van vandaag te zien, niet die van de dag
+  // waarop er voor het laatst gerekend is.
+  const a = metVerseBerekening(ruw);
   const contact = a.contact || {};
   const eisen = bepaalDossiereisen(a);
   return {
@@ -1456,11 +1459,12 @@ async function beheerApi(req, res, url) {
     const subpad = detail[2];
 
     if (!subpad && req.method === 'GET') {
+      const vers = metVerseBerekening(aanvraag);
       return stuurJson(res, 200, {
-        aanvraag: zonderBestandsinhoud(aanvraag),
+        aanvraag: zonderBestandsinhoud(vers),
         statussen: STATUSSEN,
         soorten: SOORTEN,
-        eisen: bepaalDossiereisen(aanvraag),
+        eisen: bepaalDossiereisen(vers),
         machtiging: {
           ...(aanvraag.machtiging || {}),
           ontbrekendeGegevens: machtigingContext(aanvraag, organisatiegegevens()).ontbreekt,
@@ -1649,7 +1653,12 @@ async function beheerApi(req, res, url) {
     if (subpad === '/herbereken' && req.method === 'POST') {
       const nee = magNietWijzigen(); if (nee) return nee;
       const body = await leesJsonBody(req);
-      const invoer = { ...aanvraag.invoer, ...(body.invoer || {}) };
+      // Zonder peildatum: die hoort nergens in een dossier te belanden. Stond
+      // hij er wel in, dan rekent dit dossier voortaan met de dag van toen en
+      // schuift het nooit meer mee met de kalender.
+      const { peildatum: ruwePeildatum, ...gevraagd } = body.invoer || {};
+      const invoer = { ...aanvraag.invoer, ...gevraagd };
+      delete invoer.peildatum;
       const bijgewerkt = await store.werkRapportBij(aanvraag.id, {
         invoer,
         rapport: berekenDwangsom(invoer),
@@ -1854,7 +1863,43 @@ async function beheerApi(req, res, url) {
   return false;
 }
 
-function samenvatting(a) {
+/**
+ * Statussen waarbij de zaak klaar is. Daar is het bedrag vastgesteld en hoort
+ * de teller niet verder te lopen.
+ */
+const AFGEROND = new Set(['toegekend', 'afgewezen', 'afgesloten']);
+
+/**
+ * Het dossier met een berekening van vandaag.
+ *
+ * Een rapport wordt bewaard zoals het was op de dag dat iemand het liet
+ * uitrekenen. Als geschiedenis klopt dat, maar niet als wat er op het scherm
+ * staat: "het bestuursorgaan heeft nog tot en met 12 oktober de tijd (7 dagen)"
+ * bleef zo staan tot iemand op "Opnieuw doorrekenen" drukte - ook op 13 oktober,
+ * toen die termijn allang voorbij was en de volgende stap dus een heel andere
+ * was. Een scherm dat gisteren gelijk had, is vandaag gewoon fout.
+ *
+ * Daarom rekent het scherm opnieuw, met de datum van vandaag. Wat er in de
+ * opslag staat blijft onaangeroerd; de dagelijkse ronde werkt dat bij.
+ */
+function metVerseBerekening(aanvraag) {
+  if (!aanvraag || !aanvraag.rapport) return aanvraag;
+  if (AFGEROND.has(aanvraag.status)) return aanvraag;
+  // Een peildatum die ooit in de invoer terecht is gekomen, zou de zaak voor
+  // altijd op die dag vastzetten. Het scherm rekent op vandaag, punt.
+  const { peildatum, ...invoer } = aanvraag.invoer || {};
+  const rapport = berekenDwangsom(invoer);
+  const vervolg = rapport.vervolg || {};
+  return {
+    ...aanvraag,
+    rapport,
+    soort: vervolg.soort || aanvraag.soort,
+    actiedatum: vervolg.actiedatum || null,
+  };
+}
+
+function samenvatting(ruw) {
+  const a = metVerseBerekening(ruw);
   const b = a.rapport && a.rapport.berekening;
   const vervolg = (a.rapport && a.rapport.vervolg) || {};
   const status = dossierStatus(a);

@@ -28,7 +28,7 @@ process.env.BEDRIJF_POSTCODE_PLAATS = '8302 AB  Emmeloord';
 process.env.PORT = '0';
 delete process.env.BEHEER_OPEN;
 
-const { start, server, opslag } = await import('../server.js');
+const { start, server, opslag, store } = await import('../server.js');
 await start(0);
 const basis = `http://127.0.0.1:${server.address().port}`;
 
@@ -551,4 +551,133 @@ test('de claimbrief blijft gewone tekst', async () => {
   assert.equal(antwoord.status, 200);
   assert.match(antwoord.headers.get('content-type') || '', /text\/plain/);
   assert.match(antwoord.headers.get('content-disposition') || '', /\.txt/);
+});
+
+// ------------------------------------------- de kalender loopt vanzelf door --
+
+/*
+ * Wat hier misging: een dossier bleef "De beslistermijn loopt nog - het
+ * bestuursorgaan heeft nog tot en met 12 oktober de tijd (7 dagen)" tonen, ook
+ * op 13 oktober. Het rapport wordt namelijk bewaard zoals het was op de dag dat
+ * iemand het liet uitrekenen, en niemand rekende opnieuw. Een scherm dat
+ * gisteren gelijk had, is vandaag gewoon fout - en bij deze zaken hangt er een
+ * stap aan vast die dan te laat wordt gezet.
+ */
+
+/**
+ * Een dossier waarvan de termijn gisteren afliep, met een berekening van vorige
+ * week erin.
+ *
+ * Precies de situatie die misging: op de dag van invoeren klopte het rapport,
+ * en daarna liep de kalender door zonder dat iemand opnieuw rekende.
+ */
+async function dossierTermijnNetVoorbij() {
+  /*
+   * Rechtstreeks in de opslag, niet via het aanmeldformulier. Deze toetsen gaan
+   * over de beheerkant, en elke aanmelding telt mee in de snelheidsbegrenzer op
+   * het indienen - die hoort in de toetsen net zo hard te staan als in het echt.
+   */
+  const { berekenDwangsom } = await import('../public/shared/dwangsom.js');
+  const dag = (dagen) => new Date(Date.now() + dagen * 86400000).toISOString().slice(0, 10);
+  const invoer = {
+    bestuursorgaan: 'uwv', zaaktype: 'uwv-ww', basisdatum: dag(-120),
+    termijnBekend: true, termijnEinddatum: dag(-1),
+  };
+  // Het rapport zoals het er een week geleden uitzag: toen liep de termijn nog.
+  const rapport = berekenDwangsom({ ...invoer, peildatum: dag(-8) });
+  assert.equal(rapport.uitkomst, 'termijn-loopt',
+    'de opzet klopt niet: het bewaarde rapport hoort achter te lopen');
+
+  const dossier = await store.nieuweAanvraag({
+    invoer,
+    contact: {
+      naam: 'K. Bakker', geboortedatum: '1979-03-02', bsn: '111222333',
+      iban: 'NL91ABNA0417164300', adres: 'Molenweg 88', postcode: '7511 AB',
+      woonplaats: 'Enschede', telefoon: '06 12345678',
+    },
+    rapport,
+    stukken: {},
+    handtekening: null,
+    historieregel: 'Toetsdossier met een berekening van vorige week.',
+    meta: {},
+  });
+  return dossier;
+}
+
+test('een dossier rekent zichzelf bij als de termijn voorbij is', async () => {
+  const dossier = await dossierTermijnNetVoorbij();
+
+  // Zo staat het in de opslag: de berekening van vorige week.
+  assert.equal(dossier.rapport.uitkomst, 'termijn-loopt');
+
+  // En zo komt het op het scherm: met de datum van vandaag.
+  const data = await (await api(`${dossier.id}`)).json();
+  assert.equal(data.aanvraag.rapport.uitkomst, 'ingebrekestelling-nodig',
+    'de termijn is voorbij; dan is de volgende stap de ingebrekestelling');
+  assert.ok(!/loopt nog/i.test(data.aanvraag.rapport.kop + data.aanvraag.rapport.samenvatting),
+    'het scherm zegt nog steeds dat de termijn loopt');
+});
+
+test('ook in de lijst staat de stand van vandaag', async () => {
+  const dossier = await dossierTermijnNetVoorbij();
+  const lijst = await (await fetch(`${basis}/api/beheer/aanvragen`, { headers: { cookie } })).json();
+  const regel = lijst.aanvragen.find((a) => a.referentie === dossier.referentie);
+  assert.ok(regel, 'het dossier hoort in de lijst te staan');
+  assert.equal(regel.uitkomst, 'ingebrekestelling-nodig');
+});
+
+test('een afgeronde zaak blijft staan zoals hij is vastgesteld', async () => {
+  // Daar is het bedrag vastgesteld; dat hoort niet verder te tellen omdat er
+  // een dag voorbijgaat.
+  const dossier = await dossierTermijnNetVoorbij();
+  await fetch(`${basis}/api/beheer/aanvragen/${dossier.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', cookie },
+    body: JSON.stringify({ status: 'toegekend' }),
+  });
+  const data = await (await api(`${dossier.id}`)).json();
+  assert.equal(data.aanvraag.rapport.uitkomst, 'termijn-loopt',
+    'bij een afgeronde zaak hoort de berekening te blijven staan zoals vastgesteld');
+});
+
+test('de dagelijkse ronde schrijft de nieuwe stand ook weg', async () => {
+  // Het scherm rekent zelf bij, maar de werklijst, de soort van het dossier en
+  // de cijfers lezen uit de opslag. Die hoort dus mee te schuiven.
+  const { hernieuwBerekening } = await import('../src/bewaker.js');
+  const dossier = await dossierTermijnNetVoorbij();
+  assert.equal(dossier.rapport.uitkomst, 'termijn-loopt');
+
+  const na = await hernieuwBerekening(dossier, { store });
+  assert.equal(na.rapport.uitkomst, 'ingebrekestelling-nodig');
+  assert.ok(na.historie.some((h) => /kalender/i.test(h.tekst)),
+    'een wijziging die vanzelf gaat, hoort wel in de historie te staan');
+
+  // En een tweede ronde op dezelfde dag schrijft niets meer.
+  const regels = na.historie.length;
+  const nogmaals = await hernieuwBerekening(na, { store });
+  assert.equal(nogmaals.historie.length, regels, 'de ronde schrijft bij elke keer een regel');
+});
+
+test('een peildatum kan een dossier niet op een oude dag vastzetten', async () => {
+  /*
+   * Dit kwam bij het naspelen boven water. De knop "opnieuw doorrekenen" gaf de
+   * meegestuurde invoer rechtstreeks door, inclusief een peildatum. Die werd
+   * opgeslagen, en daarna rekende het dossier voor altijd met die dag - het
+   * schoof dus nooit meer mee met de kalender, precies de fout die wij hier
+   * aan het repareren waren.
+   */
+  const dossier = await dossierTermijnNetVoorbij();
+  const terug = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+  await api(`${dossier.id}/herbereken`, {
+    method: 'POST',
+    body: JSON.stringify({ invoer: { peildatum: terug }, toelichting: 'proef' }),
+  });
+
+  const na = await uitOpslag(dossier.id);
+  assert.ok(!na.invoer.peildatum, 'er staat een peildatum in het dossier');
+
+  const data = await (await api(`${dossier.id}`)).json();
+  assert.equal(data.aanvraag.rapport.uitkomst, 'ingebrekestelling-nodig',
+    'het dossier rekent met een oude dag in plaats van met vandaag');
 });

@@ -236,7 +236,8 @@ test('wat de klantkant teruggeeft, bevat geen burgerservicenummer', async () => 
   // de klant gaat staat in server.js; die wordt hier gelezen, want een nummer
   // dat daar ooit bij komt te staan, komt er bij elke aanvrager uit.
   const bron = await fs.readFile(new URL('../server.js', import.meta.url), 'utf8');
-  const blok = /function voorKlant\(a\) \{[\s\S]*?\n\}/.exec(bron);
+  // Parameternaam vrij: het gaat om de lijst velden, niet om hoe het ding heet.
+  const blok = /function voorKlant\([^)]*\) \{[\s\S]*?\n\}/.exec(bron);
   assert.ok(blok, 'voorKlant hoort in server.js te staan');
   assert.ok(!/\bbsn\b\s*:/.test(blok[0]) || /bsnBekend/.test(blok[0]),
     'het burgerservicenummer hoort niet voluit naar de klant');

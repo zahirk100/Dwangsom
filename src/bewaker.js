@@ -24,7 +24,7 @@
  * draait elk verzoek ergens anders; alleen de opslag onthoudt iets.
  */
 
-import { UITKOMST } from '../public/shared/dwangsom.js';
+import { UITKOMST, berekenDwangsom } from '../public/shared/dwangsom.js';
 import { labelBestuursorgaan } from '../public/shared/catalogus.js';
 import { parseDatum, vandaag, verschilDagen } from '../public/shared/datum.js';
 import { dossierStatus } from '../public/shared/dossier.js';
@@ -145,6 +145,45 @@ export function bepaalBerichten(dossier, nu = vandaag()) {
  *
  * @returns {Promise<{verstuurd: string[], mislukt: string[]}>}
  */
+/**
+ * De berekening bijwerken als de kalender hem heeft ingehaald.
+ *
+ * Een rapport staat in de opslag zoals het was op de dag dat iemand het liet
+ * uitrekenen. Maar de uitkomst hangt van de datum af: een zaak die gisteren nog
+ * "termijn loopt nog" was, is vandaag "ingebrekestelling nodig". Zonder deze
+ * stap blijft dat verschil in de opslag staan tot iemand toevallig op
+ * "Opnieuw doorrekenen" drukt - en lopen de werklijst, de soort van het dossier
+ * en de cijfers achter op de werkelijkheid.
+ *
+ * Alleen schrijven als er echt iets verandert. Een regel in de historie bij
+ * elke nachtelijke ronde maakt de historie onleesbaar.
+ *
+ * @returns {Promise<object>} het dossier, bijgewerkt of ongewijzigd
+ */
+export async function hernieuwBerekening(dossier, { store, nu = vandaag() } = {}) {
+  if (!dossier || !dossier.rapport || AFGEROND.has(dossier.status)) return dossier;
+  const { peildatum: oud, ...invoer } = dossier.invoer || {};
+  const rapport = berekenDwangsom({ ...invoer, peildatum: formatPeildatum(nu) });
+  const vervolg = rapport.vervolg || {};
+  const anders = rapport.uitkomst !== dossier.rapport.uitkomst
+    || (vervolg.actiedatum || null) !== (dossier.actiedatum || null)
+    || (vervolg.soort || dossier.soort) !== dossier.soort;
+  if (!anders) return dossier;
+
+  const bij = await store.werkDossierBij(dossier.id, {
+    rapport,
+    door: 'systeem',
+    toelichting: rapport.uitkomst !== dossier.rapport.uitkomst
+      ? `De kalender liep door: ${rapport.kop}`
+      : '',
+  });
+  return bij || dossier;
+}
+
+function formatPeildatum(nu) {
+  return new Date(nu).toISOString().slice(0, 10);
+}
+
 export async function bewaakDossier(dossier, { store, gebruikers, verstuur, siteUrl, nu }) {
   const verstuurd = [];
   const mislukt = [];
@@ -189,18 +228,23 @@ export async function bewaakDossier(dossier, { store, gebruikers, verstuur, site
 /**
  * De dagelijkse ronde langs alle dossiers.
  *
- * @returns {Promise<{bekeken: number, verstuurd: number, mislukt: number, per: object}>}
+ * @returns {Promise<{bekeken: number, bijgewerkt: number, verstuurd: number, mislukt: number, per: object}>}
  */
 export async function loopBewakingAf({ store, gebruikers, verstuur, siteUrl, nu = vandaag() }) {
   const dossiers = await store.opslag.haalAlle();
   const per = {};
   let verstuurd = 0;
   let mislukt = 0;
-  for (const dossier of dossiers) {
+  let bijgewerkt = 0;
+  for (const ruw of dossiers) {
+    // Eerst de kalender, dan de post: een bericht hoort over de stand van
+    // vandaag te gaan en niet over die van de dag van de laatste berekening.
+    const dossier = await hernieuwBerekening(ruw, { store, nu });
+    if (dossier !== ruw) bijgewerkt += 1;
     const uitslag = await bewaakDossier(dossier, { store, gebruikers, verstuur, siteUrl, nu });
     for (const sleutel of uitslag.verstuurd) per[sleutel] = (per[sleutel] || 0) + 1;
     verstuurd += uitslag.verstuurd.length;
     mislukt += uitslag.mislukt.length;
   }
-  return { bekeken: dossiers.length, verstuurd, mislukt, per };
+  return { bekeken: dossiers.length, bijgewerkt, verstuurd, mislukt, per };
 }
